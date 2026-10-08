@@ -137,10 +137,10 @@ in-game alignment. Those require another KSA test.
 Compare the new filtered fill and percentage glyph against KSP2 in-game. The
 geometry checks do not establish final visual equivalence.
 
-The source handle label uses Realtime Rounded SDF, while KSI2 currently uses
-the active ImGui font. KSA's `Content/Fonts` folder currently contains
+The source handle label uses Realtime Rounded SDF. KSI2 can use an optional
+locally generated atlas from a user-provided OTF; when that atlas is absent,
+it uses the active ImGui font. KSA's `Content/Fonts` folder currently contains
 `3270-Regular.ttf` and `MilSpec33558.ttf`, neither matching that source font.
-For this numeric label, a small filtered glyph atlas containing digits 0-9,
-space, and `%` rasterized from the source TMP atlas is a viable future path.
-Using a complete TTF for general KSI2 text would require a redistributable
+The handle atlas contains the values 0 through 100 rendered from the local OTF.
+Using a complete font for general KSI2 text would require a redistributable
 font file and a safe way to add it to KSA's ImGui font atlas.
