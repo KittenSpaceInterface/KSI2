@@ -1,4 +1,5 @@
 name = "KSI2"
+assets = ["KSI2Assets.xml"]
 
 [StarMap]
 EntryAssembly = "KSI2"

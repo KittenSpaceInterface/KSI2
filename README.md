@@ -23,6 +23,37 @@ dotnet build KSI2.sln --configuration Release --no-restore
 
 Build output is written to `src/KSI2/bin/Release/net10.0`.
 
+## Throttle artwork
+
+The first overlay is a display only throttle gauge. Its source artwork is kept out of Git because it comes from a local AssetRipper export. Import it from an export whose root contains `Texture2D`, `Sprite`, and `group_throttle.prefab`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/Import-ThrottleAssets.ps1 `
+  -ExportRoot 'C:\path\to\ExportedProject\Assets'
+```
+
+The importer copies eight required sprite textures, extracts the original `%` glyph from its KSP2 font atlas, validates their dimensions, and updates the checked in [sprite and prefab reference](docs/throttle-assets.reference.json). A Release build copies the artwork to `src/KSI2/bin/Release/net10.0/[asset package]` beside the mod DLL. Copy the complete `assets` directory with the DLL, deps file, and `mod.toml` when installing. The mod never reads the original temporary export directory.
+
+If the artwork is absent, the gauge stays hidden and KSI2 reports the missing files in its settings window. The KSI2 window provides visibility, layout editing, scale, and reset controls; settings are stored beside the installed DLL in `ksi2.settings.json`.
+
+The current compatibility renderer caches CPU artwork geometry and uses ImGui's existing font atlas; it does not upload custom GPU textures. See the [rendering and coordinate audit](docs/throttle-rendering.md) for the source evidence and remaining visual differences. In **Edit layout**, the optional **Preview throttle** slider changes only the displayed value. Turn off edit mode to return to live telemetry. The settings window also shows the live manual throttle for comparison.
+
+Direct image rendering is still required for a final implementation. The CPU renderer remains a compatibility path until a safe KSA/StarMap texture registration path is verified in-game.
+
+## Geometry checks
+
+Run the focused handle, fill, telemetry, and settings checks with:
+
+```powershell
+dotnet run --project tests/KSI2.GeometryTests --configuration Release
+```
+
+To verify the locally imported artwork and generate a five-position preview without launching KSA:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/Preview-Throttle.ps1
+```
+
 ## Install
 
 Create `KSI2` under KSA's user mod directory:
@@ -36,6 +67,7 @@ Copy these files from the Release output:
 - `KSI2.dll`
 - `KSI2.deps.json`
 - `mod.toml`
+- `[asset] (the complete folder)
 
 Enable `KSI2` in KSA's user `manifest.toml`, then launch the game through StarMap.
 

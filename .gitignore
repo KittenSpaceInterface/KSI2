@@ -13,7 +13,9 @@
 # Local KSA reference assemblies
 [Ii]mport/
 
+
 # Logs and temporary files
 *.log
 *.tmp
 *.binlog
+/tools/inspect-assembly/output/
