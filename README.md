@@ -38,6 +38,15 @@ If the artwork is absent, the gauge stays hidden and KSI2 reports the missing fi
 
 The renderer uses KSA's registered texture path for the artwork and retains CPU geometry as a fallback. See the [rendering and coordinate audit](docs/throttle-rendering.md) for the source evidence and the [UI texture rendering notes](docs/ui-texture-rendering.md) before implementing other small interface art. In **Edit layout**, the optional **Preview throttle** slider changes only the displayed value. Turn off edit mode to return to live telemetry. The settings window also shows the live manual throttle for comparison.
 
+The handle number can use a locally generated atlas from a font you provide:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/Generate-HandleFontAtlas.ps1 `
+  -OtfPath 'C:\path\to\your\font.otf'
+```
+
+This creates `external asset package/throttle/[asset]`, which the Release build copies with the other artwork. The OTF file stays local; the generated PNG is tracked. If the atlas is absent from an installation, the handle number uses KSA's active ImGui font.
+
 KSA's texture registration path is used for direct image rendering. Pixel equivalence to KSP2 remains subject to in-game comparison.
 
 ## Geometry checks
