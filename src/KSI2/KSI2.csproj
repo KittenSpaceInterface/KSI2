@@ -5,6 +5,7 @@
     <RootNamespace>KSI2</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NeedsKsaReferences>true</NeedsKsaReferences>
   </PropertyGroup>
 
@@ -15,6 +16,10 @@
   <ItemGroup>
     <None Update="mod.toml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="KSI2Assets.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
   </ItemGroup>
 </Project>
