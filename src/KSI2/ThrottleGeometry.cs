@@ -77,7 +77,7 @@ internal static class ThrottleGeometry
         0.5f * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
 
     internal static float RadialFill(float throttle) => Math.Clamp(throttle, 0, 1) * 0.25f;
-    internal static string Percent(float throttle) => $"{MathF.Round(Math.Clamp(throttle, 0, 1) * 100):0}%";
+    internal static string Percent(float throttle) => $"{MathF.Round(Math.Clamp(throttle, 0, 1) * 100):0}";
 }
 
 internal readonly record struct ThrottleSnapshot(float Value);

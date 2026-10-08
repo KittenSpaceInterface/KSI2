@@ -132,3 +132,7 @@ angle continuity, monotonic sector area, fill direction, clipping bounds,
 handle bounds over a 1001-step sweep, telemetry rejection/clamping, percentage
 formatting and malformed settings. They do not establish Vulkan stability or
 in-game alignment. Those require another KSA test.
+
+## Known Visual Follow-up
+
+The percentage glyph is still slightly misaligned against the reference interface. Recheck its placement in-game and tune it in a later pass; current geometry checks do not establish final visual alignment.

@@ -34,7 +34,7 @@ Near(0.0625f, ThrottleGeometry.RadialFill(0.25f), "quarter throttle fill");
 Near(0.125f, ThrottleGeometry.RadialFill(0.5f), "half throttle fill");
 Near(0.1875f, ThrottleGeometry.RadialFill(0.75f), "three-quarter throttle fill");
 Near(0.25f, ThrottleGeometry.RadialFill(1), "full radial fill");
-if (ThrottleGeometry.Percent(0) != "0%" || ThrottleGeometry.Percent(1) != "100%") throw new Exception("percentage endpoints are incorrect");
+if (ThrottleGeometry.Percent(0) != "0" || ThrottleGeometry.Percent(1) != "100") throw new Exception("percentage endpoints are incorrect");
 if (!KsaThrottleSource.TryNormalize(0, out var zero) || zero.Value != 0) throw new Exception("zero throttle was rejected");
 if (!KsaThrottleSource.TryNormalize(1, out var full) || full.Value != 1) throw new Exception("full throttle was rejected");
 if (KsaThrottleSource.TryNormalize(float.NaN, out _)) throw new Exception("NaN telemetry was accepted");
@@ -138,7 +138,14 @@ if (args.Length > 0)
         }
         foreach (var run in art.Layer("[asset]"))
         {
-            var count = ThrottleGeometry.ClipFill(run.X + 59.8f, run.Y + 256, run.Width, run.Height, t, polygon);
+            var lx = run.X - 6.61f;
+            var ly = run.Y - 9.035f;
+            const float glyphAngle = 15.5f * MathF.PI / 180f;
+            var cos = MathF.Cos(glyphAngle);
+            var sin = MathF.Sin(glyphAngle);
+            var rx = 55.5f + (lx * cos - ly * sin);
+            var ry = 260.5f + (lx * sin + ly * cos);
+            var count = ThrottleGeometry.ClipFill(rx, ry, run.Width, run.Height, t, polygon);
             if (count >= 3) primitives.Add(new { points = polygon[..count].ToArray(), color = run.Color });
         }
         var handleCenter = ThrottleGeometry.HandleCenter(t);
