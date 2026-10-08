@@ -55,7 +55,7 @@ internal sealed unsafe class RasterArtwork
             ("[asset]", 0xFF662B29u, 85f, 290f),
             ("[asset]", 0xFFFF6D69u, 85f, 290f),
             ("[asset]", 0xFFFFFFFFu, 65f, 34f),
-            ("[asset]", 0xFF141110u, 13.22f, 18.07f) })
+            ("[asset]", 0xFF141110u, ThrottleGeometry.PercentGlyphWidth, ThrottleGeometry.PercentGlyphHeight) })
         {
             var bitmap = bitmaps[name];
             result._layers.Add(name, Runs(bitmap, width, height, (x, y) => Tint(Pixel(bitmap, x, y), tint)));
@@ -78,9 +78,11 @@ internal sealed unsafe class RasterArtwork
             var radialY = (ry / 416 + .5f) * radial.Height;
             var radialAlpha = RadialCoverage(radial, radialX, radialY);
             var textureAlpha = FilteredRadialAlpha(radial, radialX, radialY);
-            // Unity's Mask writes a stencil bit after alpha clipping. It does
-            // not multiply the child's alpha by the mask's alpha a second time.
-            var alpha = (Pixel(mask, x, y) >> 24) != 0 ? radialAlpha : 0;
+            // Unity uses the mask as stencil coverage. Preserve the source
+            // mask's fractional edge pixels to antialias this CPU raster
+            // approximation; the old binary test discarded that edge detail.
+            var maskAlpha = Pixel(mask, x, y) >> 24;
+            var alpha = maskAlpha * radialAlpha / 255;
             // The source's subpixel lattice is visible as a dark green texture
             // in KSP2. Its low-alpha cells exposed blue background when we
             // copied them literally. Keep the original pattern as green shade.
@@ -315,9 +317,7 @@ internal sealed unsafe class RasterArtwork
         draw.Flags &= ~ImDrawListFlags.AntiAliasedFill;
         try
         {
-            const float cx = 55.5f;
-            const float cy = 260.5f;
-            const float glyphAngle = 15.5f * MathF.PI / 180f;
+            const float glyphAngle = ThrottleGeometry.PercentGlyphAngleDegrees * MathF.PI / 180f;
             var cos = MathF.Cos(glyphAngle);
             var sin = MathF.Sin(glyphAngle);
 
@@ -325,10 +325,10 @@ internal sealed unsafe class RasterArtwork
             var points = stackalloc float2[8];
             foreach (var run in _layers["[asset]"])
             {
-                var lx = run.X - 6.61f;
-                var ly = run.Y - 9.035f;
-                var rx = cx + (lx * cos - ly * sin);
-                var ry = cy + (lx * sin + ly * cos);
+                var lx = run.X - ThrottleGeometry.PercentGlyphWidth / 2;
+                var ly = run.Y - ThrottleGeometry.PercentGlyphHeight / 2;
+                var rx = ThrottleGeometry.PercentGlyphCenterX + (lx * cos - ly * sin);
+                var ry = ThrottleGeometry.PercentGlyphCenterY + (lx * sin + ly * cos);
 
                 var count = ThrottleGeometry.ClipFill(rx, ry, run.Width, run.Height, throttle, clipped);
                 if (count < 3) continue;

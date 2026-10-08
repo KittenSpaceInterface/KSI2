@@ -7,6 +7,14 @@ internal readonly record struct HandlePose(Point Position, float AngleDegrees);
 internal static class ThrottleGeometry
 {
     internal static readonly Point RadialCenter = new(204.5f, 145);
+    // Exact 25x25 ELE-percent RectTransform bounds mapped from the parent's
+    // 85x290 bottom-left widget coordinates into top-left screen coordinates.
+    internal const float PercentGlyphCenterX = 60.5f;
+    internal const float PercentGlyphCenterY = 261.5f;
+    internal const float PercentGlyphAngleDegrees = 0f;
+    internal const float PercentGlyphRasterScale = 0.9f;
+    internal const float PercentGlyphWidth = 13.22f * PercentGlyphRasterScale;
+    internal const float PercentGlyphHeight = 18.07f * PercentGlyphRasterScale;
     internal static Point HandleCenter(float throttle)
     {
         var t = Math.Clamp(throttle, 0, 1);

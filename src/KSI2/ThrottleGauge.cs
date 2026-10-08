@@ -21,6 +21,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     private TextureReference? _bracketTexture;
     private TextureReference? _handleTexture;
     private TextureReference? _percentGlyphTexture;
+    private TextureReference? _fillTexture;
     private bool _useTestThrottle = true;
     private float _testThrottle = 100f;
     private ThrottleSnapshot? _snapshot;
@@ -31,6 +32,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     internal void SetBracketTexture(TextureReference texture) => _bracketTexture = texture;
     internal void SetHandleTexture(TextureReference texture) => _handleTexture = texture;
     internal void SetPercentGlyphTexture(TextureReference texture) => _percentGlyphTexture = texture;
+    internal void SetFillTexture(TextureReference texture) => _fillTexture = texture;
 
     internal void Draw()
     {
@@ -127,7 +129,10 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         DrawStaticLayer(draw, _barsTexture, art, "[asset]", origin, scale, 0xFF99413Eu);
         DrawStaticLayer(draw, _borderTexture, art, "[asset]", origin, scale, 0xFF662B29u);
         DrawStaticLayer(draw, _bracketTexture, art, "[asset]", origin, scale, 0xFFFF6D69u);
-        art.DrawFill(draw, origin, scale, throttle);
+        if (_fillTexture?.ImguiTextureRef is { } fillTexture)
+            DrawFillTexture(draw, fillTexture, origin, scale, throttle);
+        else
+            art.DrawFill(draw, origin, scale, throttle);
         DrawPercentGlyph(draw, _percentGlyphTexture, art, origin, scale, throttle);
         var pose = ThrottleGeometry.Handle(throttle);
         var center = ThrottleGeometry.HandleCenter(throttle);
@@ -190,20 +195,45 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         }
     }
 
+    private static void DrawFillTexture(ImDrawListPtr draw, ImTextureRef texture, Point origin, float scale, float throttle)
+    {
+        if (throttle <= 0) return;
+        Span<Point> clipped = stackalloc Point[8];
+        var count = ThrottleGeometry.ClipFill(0, 0, 85, 290, throttle, clipped);
+        if (count < 3) return;
+
+        float2 Position(Point p) => new(origin.X + p.X * scale, origin.Y + p.Y * scale);
+        float2 Uv(Point p) => new(p.X / 85f, p.Y / 290f);
+
+        // The fill image already contains both source masks. Triangulate the
+        // clipped widget rect so the native linear sampler filters its texels.
+        for (var i = 1; i < count - 1; i++)
+        {
+            var p1 = Position(clipped[0]);
+            var p2 = Position(clipped[i]);
+            var p3 = Position(clipped[i + 1]);
+            var p4 = p3;
+            var uv1 = Uv(clipped[0]);
+            var uv2 = Uv(clipped[i]);
+            var uv3 = Uv(clipped[i + 1]);
+            var uv4 = uv3;
+            ImGui.PInvoke.ImDrawList_AddImageQuad(draw.Ptr, texture,
+                &p1, &p2, &p3, &p4, &uv1, &uv2, &uv3, &uv4, 0xFFFFFFFFu);
+        }
+    }
+
     private static void DrawPercentGlyph(ImDrawListPtr draw, TextureReference? textureRef, RasterArtwork art, Point origin, float scale, float throttle)
     {
         if (throttle <= 0) return;
         if (textureRef?.ImguiTextureRef is { } tex)
         {
-            const float cx = 55.5f;
-            const float cy = 260.5f;
-            const float hw = 13.22f / 2f;
-            const float hh = 18.07f / 2f;
-            const float angle = 15.5f * MathF.PI / 180f;
+            const float hw = ThrottleGeometry.PercentGlyphWidth / 2f;
+            const float hh = ThrottleGeometry.PercentGlyphHeight / 2f;
+            const float angle = ThrottleGeometry.PercentGlyphAngleDegrees * MathF.PI / 180f;
             var cos = MathF.Cos(angle);
             var sin = MathF.Sin(angle);
-            var gx = origin.X + cx * scale;
-            var gy = origin.Y + cy * scale;
+            var gx = origin.X + ThrottleGeometry.PercentGlyphCenterX * scale;
+            var gy = origin.Y + ThrottleGeometry.PercentGlyphCenterY * scale;
 
             float2 Corner(float x, float y) => new(
                 gx + (x * cos - y * sin) * scale,

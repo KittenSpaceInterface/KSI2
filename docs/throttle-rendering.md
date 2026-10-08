@@ -42,40 +42,39 @@ inspected. Extracted game source/binaries are not distributed with the mod.
 
 ## Rendering constraints
 
-Custom ImGui texture uploads correlated with Vulkan device loss in user tests.
-This build decodes PNGs once with Brutal's CPU decoder, releases each decoded
-native image in a finally block, and caches colored rectangles. Adjacent equal
-runs are merged vertically. Rendering uses ordinary ImGui filled primitives
-and the existing font atlas. It allocates no custom Vulkan textures, submits
-no custom queue work, and performs no file reads during steady rendering.
+KSA's asset registration binds the source layers, handle, percentage glyph,
+and derived green fill to ImGui with its linear texture sampler. The mod keeps
+CPU decoded artwork as a fallback if native registration is unavailable. It
+submits no custom Vulkan work and reads no files during steady rendering.
 
-The static layers and handle preserve their source RGB and alpha, including
-the dark handle interior.
-The green packed ImGui color is ABGR `0xFF66FF00` (RGBA #00FF66). Per-rectangle
-edge antialiasing is disabled to prevent seams between neighboring runs;
-the original texture alpha supplies artwork edge coverage.
+The importer builds `[asset]` at 170 x 580 from the source bar
+mask and radial texture. It preserves fractional alpha at the bar edges and
+uses bilinear radial samples for the green shade. The renderer maps this image
+to the 85 x 290 widget and clips its triangles to the moving radial sector.
+The native sampler blends source texels at the displayed size, avoiding the
+seams and pixel stair steps of thousands of CPU rectangles.
 
-The source radial PNG has a small repeating alpha pattern. Drawing each texel
-as translucent geometry exposes the blue bars beneath and causes the blue
-speckles seen in the in-game photo. The compatibility renderer now treats
-that alpha as a green shade over opaque fill coverage: brighter source cells
-use the original `#00FF66`, darker cells remain green. It filters the pattern
-over each logical sample. This reproduces the reference photo's green hatch
-more closely but is an approximation of Unity texture filtering and blending.
+The source radial PNG contains a repeating alpha lattice. The derived fill
+uses it as a green shade over coverage: brighter cells use `#00FF66`, darker
+cells remain green. This approximates the KSP2 mask and blend behavior.
 
-The original `ELE-percent` is a `%` glyph in the `sbliquid-open1 SDF` TextMeshPro
-font. The importer extracts Unicode 37 from that atlas for the lower gauge
-symbol. The always-visible live number stays in KSA's font and now rotates
-inside the handle. The handle itself is sampled from its original PNG in
-display space, preserving its repeating grip-dot pattern as the marker turns.
-The bottom glyph remains inside the source radial fill mask, so it appears
-only when that part of the gauge is filled.
+The original `ELE-percent` is a TextMeshPro object containing `%`, using the
+`sbliquid-open1 SDF` font. Its RectTransform is bottom-right anchored at
+`(-12, 16)`, size `25x25`, pivot `(1, 0)`, under `BG-Throttle-Ticks`. Its widget
+bounds are `(48, 249)` to `(73, 274)`, center `(60.5, 261.5)`. The importer
+extracts Unicode 37 from the source atlas. The glyph displays at 90% of the
+atlas-derived `13.22x18.07` logical size (`11.898x16.263`). This is an
+in-game visual adjustment rather than a serialized TMP size. Its SDF coverage ramp is widened
+according to the material gradient scale and the reduction to display size.
+The appearance remains an approximation of the TMP shader.
 
-This CPU approach is a compatibility workaround. It has more geometry than
-textured quads and does not reproduce Unity's bilinear filtering, sprite
-padding/UV machinery, stencil edge sampling, or color-space conversion exactly.
-These differences remain subject to an in-game visual comparison. The source
-PNG canvases are now composed consistently, but pixel equivalence is unproven.
+In the source prefab, the live number is TextMeshProUGUI using
+`realtimerounded-regular SDF` (family Realtime Rounded, font size 22). It is a
+different font from the bottom `%` glyph's `sbliquid-open1 SDF`. KSI2 currently
+draws the live number with KSA's active ImGui font, so its typeface does not
+yet match the source prefab. The bottom glyph appears only when the lower
+gauge is filled. Pixel equivalence still needs an in-game comparison because
+Unity masking and color-space conversion differ.
 
 ## Native GPU Texture Integration (Verified Path)
 
@@ -135,4 +134,13 @@ in-game alignment. Those require another KSA test.
 
 ## Known Visual Follow-up
 
-The percentage glyph is still slightly misaligned against the reference interface. Recheck its placement in-game and tune it in a later pass; current geometry checks do not establish final visual alignment.
+Compare the new filtered fill and percentage glyph against KSP2 in-game. The
+geometry checks do not establish final visual equivalence.
+
+The source handle label uses Realtime Rounded SDF, while KSI2 currently uses
+the active ImGui font. KSA's `Content/Fonts` folder currently contains
+`3270-Regular.ttf` and `MilSpec33558.ttf`, neither matching that source font.
+For this numeric label, a small filtered glyph atlas containing digits 0-9,
+space, and `%` rasterized from the source TMP atlas is a viable future path.
+Using a complete TTF for general KSI2 text would require a redistributable
+font file and a safe way to add it to KSA's ImGui font atlas.

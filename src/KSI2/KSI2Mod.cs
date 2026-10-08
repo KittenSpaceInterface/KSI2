@@ -21,6 +21,7 @@ public sealed class KSI2Mod
         RegisterTexture("KSI2ThrottleBracket", tex => _gauge.SetBracketTexture(tex));
         RegisterTexture("KSI2ThrottleHandle", tex => _gauge.SetHandleTexture(tex));
         RegisterTexture("KSI2ThrottlePercentGlyph", tex => _gauge.SetPercentGlyphTexture(tex));
+        RegisterTexture("KSI2ThrottleFill", tex => _gauge.SetFillTexture(tex));
     }
 
     private static void RegisterTexture(string id, Action<TextureReference> assign)

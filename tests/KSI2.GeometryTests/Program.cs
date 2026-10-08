@@ -138,13 +138,13 @@ if (args.Length > 0)
         }
         foreach (var run in art.Layer("[asset]"))
         {
-            var lx = run.X - 6.61f;
-            var ly = run.Y - 9.035f;
-            const float glyphAngle = 15.5f * MathF.PI / 180f;
+            var lx = run.X - ThrottleGeometry.PercentGlyphWidth / 2;
+            var ly = run.Y - ThrottleGeometry.PercentGlyphHeight / 2;
+            const float glyphAngle = ThrottleGeometry.PercentGlyphAngleDegrees * MathF.PI / 180f;
             var cos = MathF.Cos(glyphAngle);
             var sin = MathF.Sin(glyphAngle);
-            var rx = 55.5f + (lx * cos - ly * sin);
-            var ry = 260.5f + (lx * sin + ly * cos);
+            var rx = ThrottleGeometry.PercentGlyphCenterX + (lx * cos - ly * sin);
+            var ry = ThrottleGeometry.PercentGlyphCenterY + (lx * sin + ly * cos);
             var count = ThrottleGeometry.ClipFill(rx, ry, run.Width, run.Height, t, polygon);
             if (count >= 3) primitives.Add(new { points = polygon[..count].ToArray(), color = run.Color });
         }
