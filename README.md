@@ -32,13 +32,13 @@ powershell -ExecutionPolicy Bypass -File tools/Import-ThrottleAssets.ps1 `
   -ExportRoot 'C:\path\to\ExportedProject\Assets'
 ```
 
-The importer copies eight required sprite textures, extracts the original `%` glyph from its KSP2 font atlas, validates their dimensions, and updates the checked in [sprite and prefab reference](docs/throttle-assets.reference.json). A Release build copies the artwork to `src/KSI2/bin/Release/net10.0/[asset package]` beside the mod DLL. Copy the complete `assets` directory with the DLL, deps file, and `mod.toml` when installing. The mod never reads the original temporary export directory.
+The importer copies eight required sprite textures, generates a filtered green fill texture, extracts the original `%` glyph from its KSP2 font atlas, validates their dimensions, and updates the checked in [sprite and prefab reference](docs/throttle-assets.reference.json). A Release build copies the artwork to `src/KSI2/bin/Release/net10.0/[asset package]` beside the mod DLL. Copy the complete `assets` directory with the DLL, deps file, manifest XML, and `mod.toml` when installing. The mod never reads the original temporary export directory.
 
 If the artwork is absent, the gauge stays hidden and KSI2 reports the missing files in its settings window. The KSI2 window provides visibility, layout editing, scale, and reset controls; settings are stored beside the installed DLL in `ksi2.settings.json`.
 
-The current compatibility renderer caches CPU artwork geometry and uses ImGui's existing font atlas; it does not upload custom GPU textures. See the [rendering and coordinate audit](docs/throttle-rendering.md) for the source evidence and remaining visual differences. In **Edit layout**, the optional **Preview throttle** slider changes only the displayed value. Turn off edit mode to return to live telemetry. The settings window also shows the live manual throttle for comparison.
+The renderer uses KSA's registered texture path for the artwork and retains CPU geometry as a fallback. See the [rendering and coordinate audit](docs/throttle-rendering.md) for the source evidence and the [UI texture rendering notes](docs/ui-texture-rendering.md) before implementing other small interface art. In **Edit layout**, the optional **Preview throttle** slider changes only the displayed value. Turn off edit mode to return to live telemetry. The settings window also shows the live manual throttle for comparison.
 
-Direct image rendering is still required for a final implementation. The CPU renderer remains a compatibility path until a safe KSA/StarMap texture registration path is verified in-game.
+KSA's texture registration path is used for direct image rendering. Pixel equivalence to KSP2 remains subject to in-game comparison.
 
 ## Geometry checks
 
@@ -67,6 +67,7 @@ Copy these files from the Release output:
 - `KSI2.dll`
 - `KSI2.deps.json`
 - `mod.toml`
+- `KSI2Assets.xml`
 - `[asset] (the complete folder)
 
 Enable `KSI2` in KSA's user `manifest.toml`, then launch the game through StarMap.
