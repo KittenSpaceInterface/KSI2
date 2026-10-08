@@ -8,7 +8,6 @@ namespace KSI2;
 public sealed class KSI2Mod
 {
     private readonly ThrottleGauge _gauge = new();
-    private TextureReference? _handleTexture;
 
     [StarMapBeforeMain]
     public void OnBeforeMain() => Console.WriteLine("KSI2 loaded.");
@@ -16,16 +15,26 @@ public sealed class KSI2Mod
     [StarMapAllModsLoaded]
     public void OnAllModsLoaded()
     {
+        RegisterTexture("KSI2ThrottleBG", tex => _gauge.SetBgTexture(tex));
+        RegisterTexture("KSI2ThrottleBars", tex => _gauge.SetBarsTexture(tex));
+        RegisterTexture("KSI2ThrottleBorder", tex => _gauge.SetBorderTexture(tex));
+        RegisterTexture("KSI2ThrottleBracket", tex => _gauge.SetBracketTexture(tex));
+        RegisterTexture("KSI2ThrottleHandle", tex => _gauge.SetHandleTexture(tex));
+        RegisterTexture("KSI2ThrottlePercentGlyph", tex => _gauge.SetPercentGlyphTexture(tex));
+    }
+
+    private static void RegisterTexture(string id, Action<TextureReference> assign)
+    {
         try
         {
-            _handleTexture = ModLibrary.Get<TextureReference>("KSI2ThrottleHandle");
-            _handleTexture.AddToImgui();
-            _gauge.SetHandleTexture(_handleTexture);
-            Console.WriteLine("KSI2: registered the throttle handle through KSA's texture pipeline.");
+            var tex = ModLibrary.Get<TextureReference>(id);
+            tex.AddToImgui();
+            assign(tex);
+            Console.WriteLine($"KSI2: registered '{id}' through KSA texture pipeline.");
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"KSI2: could not register throttle handle: {ex}");
+            Console.Error.WriteLine($"KSI2: could not register '{id}': {ex.Message}");
         }
     }
 

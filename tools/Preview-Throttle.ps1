@@ -38,7 +38,7 @@ try {
                 $graphics.FillPolygon($brush, $points)
             } finally { $brush.Dispose() }
         }
-        $label = '{0:0}%' -f ($frame.throttle * 100)
+        $label = '{0:0}' -f ($frame.throttle * 100)
         $width = $graphics.MeasureString($label, $font).Width
         $state = $graphics.Save()
         $graphics.TranslateTransform([single](($index * 175 + 25 + $frame.handle.X) * 2), [single]((14 + $frame.handle.Y) * 2 + 20))

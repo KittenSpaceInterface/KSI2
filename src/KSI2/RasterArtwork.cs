@@ -315,11 +315,22 @@ internal sealed unsafe class RasterArtwork
         draw.Flags &= ~ImDrawListFlags.AntiAliasedFill;
         try
         {
+            const float cx = 55.5f;
+            const float cy = 260.5f;
+            const float glyphAngle = 15.5f * MathF.PI / 180f;
+            var cos = MathF.Cos(glyphAngle);
+            var sin = MathF.Sin(glyphAngle);
+
             Span<Point> clipped = stackalloc Point[8];
             var points = stackalloc float2[8];
             foreach (var run in _layers["[asset]"])
             {
-                var count = ThrottleGeometry.ClipFill(run.X + 59.8f, run.Y + 256, run.Width, run.Height, throttle, clipped);
+                var lx = run.X - 6.61f;
+                var ly = run.Y - 9.035f;
+                var rx = cx + (lx * cos - ly * sin);
+                var ry = cy + (lx * sin + ly * cos);
+
+                var count = ThrottleGeometry.ClipFill(rx, ry, run.Width, run.Height, throttle, clipped);
                 if (count < 3) continue;
                 for (var i = 0; i < count; i++) points[i] = new(origin.X + clipped[i].X * scale, origin.Y + clipped[i].Y * scale);
                 ImGui.PInvoke.ImDrawList_AddConvexPolyFilled(draw.Ptr, points, count, run.Color);

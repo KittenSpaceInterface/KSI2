@@ -15,12 +15,22 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     private Point _dragOffset;
     private bool _disposed;
     private RasterArtwork? _artwork;
+    private TextureReference? _bgTexture;
+    private TextureReference? _barsTexture;
+    private TextureReference? _borderTexture;
+    private TextureReference? _bracketTexture;
     private TextureReference? _handleTexture;
-    private bool _preview;
-    private float _previewThrottle = .5f;
+    private TextureReference? _percentGlyphTexture;
+    private bool _useTestThrottle = true;
+    private float _testThrottle = 100f;
     private ThrottleSnapshot? _snapshot;
 
+    internal void SetBgTexture(TextureReference texture) => _bgTexture = texture;
+    internal void SetBarsTexture(TextureReference texture) => _barsTexture = texture;
+    internal void SetBorderTexture(TextureReference texture) => _borderTexture = texture;
+    internal void SetBracketTexture(TextureReference texture) => _bracketTexture = texture;
     internal void SetHandleTexture(TextureReference texture) => _handleTexture = texture;
+    internal void SetPercentGlyphTexture(TextureReference texture) => _percentGlyphTexture = texture;
 
     internal void Draw()
     {
@@ -28,9 +38,13 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         if (!KSA.Program.DrawUI) return;
         _snapshot = KsaThrottleSource.TryRead(out var snapshot) ? snapshot : null;
         DrawSettingsWindow();
-        if (!_settings.Show || _snapshot is null) return;
+        if (!_settings.Show) return;
+        var throttle = _useTestThrottle
+            ? _testThrottle / 100f
+            : _snapshot?.Value;
+        if (throttle is null) return;
         EnsureArtwork();
-        if (_artwork is not null) DrawGauge(_settings.Editing && _preview ? _previewThrottle : snapshot.Value);
+        if (_artwork is not null) DrawGauge(throttle.Value);
     }
 
     private void EnsureArtwork()
@@ -71,12 +85,15 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         var scale = _settings.Scale;
         if (ImGui.SliderFloat("Scale", ref scale, 0.5f, 2f, "%.2fx")) _settings.Scale = scale;
         if (ImGui.IsItemDeactivatedAfterEdit()) _settings.Save();
+        if (ImGui.SliderFloat("Throttle (0-100)", ref _testThrottle, 0f, 100f, "%.0f"))
+        {
+            _useTestThrottle = true;
+        }
+        ImGui.Checkbox("Test throttle override", ref _useTestThrottle);
         if (ImGui.Button("Reset layout")) _settings.Reset();
-        ImGui.Text(_snapshot is { } value ? $"Live manual throttle: {ThrottleGeometry.Percent(value.Value)}" : "No controlled vehicle");
+        ImGui.Text(_useTestThrottle ? $"Test throttle active: {_testThrottle:0}" : (_snapshot is { } value ? $"Live manual throttle: {ThrottleGeometry.Percent(value.Value)}" : "No controlled vehicle"));
         if (_settings.Editing)
         {
-            ImGui.Checkbox("Preview throttle (display only)", ref _preview);
-            if (_preview) ImGui.SliderFloat("Preview value", ref _previewThrottle, 0, 1, "%.2f");
             var io = ImGui.GetIO();
             ImGui.Text($"Display: {io.DisplaySize.X:0} x {io.DisplaySize.Y:0}; framebuffer scale: {io.DisplayFramebufferScale.X:0.##} x {io.DisplayFramebufferScale.Y:0.##}");
         }
@@ -106,12 +123,12 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         var top = frame.Y + 14 * scale;
         var origin = new Point(left, top);
         var art = _artwork!;
-        art.Draw(draw, "[asset]", origin, scale);
-        art.Draw(draw, "[asset]", origin, scale);
-        art.Draw(draw, "[asset]", origin, scale);
-        art.Draw(draw, "[asset]", origin, scale);
+        DrawStaticLayer(draw, _bgTexture, art, "[asset]", origin, scale, 0xFD2F2624u);
+        DrawStaticLayer(draw, _barsTexture, art, "[asset]", origin, scale, 0xFF99413Eu);
+        DrawStaticLayer(draw, _borderTexture, art, "[asset]", origin, scale, 0xFF662B29u);
+        DrawStaticLayer(draw, _bracketTexture, art, "[asset]", origin, scale, 0xFFFF6D69u);
         art.DrawFill(draw, origin, scale, throttle);
-        art.DrawPercentGlyph(draw, origin, scale, throttle);
+        DrawPercentGlyph(draw, _percentGlyphTexture, art, origin, scale, throttle);
         var pose = ThrottleGeometry.Handle(throttle);
         var center = ThrottleGeometry.HandleCenter(throttle);
         var hx = left + center.X * scale;
@@ -157,6 +174,60 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         ImGui.PopStyleVar();
     }
 
+    private static void DrawStaticLayer(ImDrawListPtr draw, TextureReference? textureRef, RasterArtwork art, string fallbackName, Point origin, float scale, uint tint)
+    {
+        if (textureRef?.ImguiTextureRef is { } tex)
+        {
+            var min = new float2(origin.X, origin.Y);
+            var max = new float2(origin.X + 85f * scale, origin.Y + 290f * scale);
+            var uvMin = new float2(0f, 0f);
+            var uvMax = new float2(1f, 1f);
+            ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, tex, &min, &max, &uvMin, &uvMax, tint);
+        }
+        else
+        {
+            art.Draw(draw, fallbackName, origin, scale);
+        }
+    }
+
+    private static void DrawPercentGlyph(ImDrawListPtr draw, TextureReference? textureRef, RasterArtwork art, Point origin, float scale, float throttle)
+    {
+        if (throttle <= 0) return;
+        if (textureRef?.ImguiTextureRef is { } tex)
+        {
+            const float cx = 55.5f;
+            const float cy = 260.5f;
+            const float hw = 13.22f / 2f;
+            const float hh = 18.07f / 2f;
+            const float angle = 15.5f * MathF.PI / 180f;
+            var cos = MathF.Cos(angle);
+            var sin = MathF.Sin(angle);
+            var gx = origin.X + cx * scale;
+            var gy = origin.Y + cy * scale;
+
+            float2 Corner(float x, float y) => new(
+                gx + (x * cos - y * sin) * scale,
+                gy + (x * sin + y * cos) * scale);
+
+            var p1 = Corner(-hw, -hh);
+            var p2 = Corner(hw, -hh);
+            var p3 = Corner(hw, hh);
+            var p4 = Corner(-hw, hh);
+
+            var uv1 = new float2(0f, 0f);
+            var uv2 = new float2(1f, 0f);
+            var uv3 = new float2(1f, 1f);
+            var uv4 = new float2(0f, 1f);
+
+            ImGui.PInvoke.ImDrawList_AddImageQuad(draw.Ptr, tex,
+                &p1, &p2, &p3, &p4, &uv1, &uv2, &uv3, &uv4, 0xFF141110u);
+        }
+        else
+        {
+            art.DrawPercentGlyph(draw, origin, scale, throttle);
+        }
+    }
+
     private static void DrawRect(ImDrawListPtr draw, Point min, Point max, uint color)
     {
         var a = new float2(min.X, min.Y);
@@ -170,9 +241,9 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         fixed (byte* text = bytes)
         {
             var font = ImGui.GetFont();
-            var size = 14f * scale;
+            var size = 18f * scale;
             var measured = ImGui.PInvoke.ImFont_CalcTextSizeA(font.Ptr, size, 1000, -1, text, text + bytes.Length, null);
-            var position = new float2(x + 6 * scale - measured.X / 2, y - measured.Y / 2);
+            var position = new float2(x + 7.5f * scale - measured.X / 2, y - measured.Y / 2);
             var first = draw.VtxBuffer.Count;
             ImGui.PInvoke.ImDrawList_AddText_1(draw.Ptr, font.Ptr, size, &position, 0xFFFFFFFF, text, text + bytes.Length, 0, null);
             var cos = MathF.Cos(angle); var sin = MathF.Sin(angle);
