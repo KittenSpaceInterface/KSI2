@@ -34,6 +34,14 @@ public sealed class KSI2Mod
             RegisterTexture("KSI2NavballPrograde", tex => _navballSpike.SetProgradeTexture(tex));
         if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
             RegisterTexture("KSI2NavballRetrograde", tex => _navballSpike.SetRetrogradeTexture(tex));
+        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
+            RegisterTexture("KSI2NavballNormal", tex => _navballSpike.SetNormalTexture(tex));
+        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
+            RegisterTexture("KSI2NavballAntiNormal", tex => _navballSpike.SetAntiNormalTexture(tex));
+        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
+            RegisterTexture("KSI2NavballRadialOut", tex => _navballSpike.SetRadialOutTexture(tex));
+        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
+            RegisterTexture("KSI2NavballRadialIn", tex => _navballSpike.SetRadialInTexture(tex));
     }
 
     private static void RegisterTexture(string id, Action<TextureReference> assign)

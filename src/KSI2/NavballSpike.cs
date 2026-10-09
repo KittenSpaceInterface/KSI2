@@ -26,6 +26,10 @@ internal sealed unsafe class NavballSpike
     private TextureReference? _texture;
     private TextureReference? _progradeTexture;
     private TextureReference? _retrogradeTexture;
+    private TextureReference? _normalTexture;
+    private TextureReference? _antiNormalTexture;
+    private TextureReference? _radialOutTexture;
+    private TextureReference? _radialInTexture;
     private NavballMesh? _mesh;
     private ProjectedVertex[]? _vertices;
     private string? _meshError;
@@ -43,6 +47,10 @@ internal sealed unsafe class NavballSpike
     internal void SetTexture(TextureReference texture) => _texture = texture;
     internal void SetProgradeTexture(TextureReference texture) => _progradeTexture = texture;
     internal void SetRetrogradeTexture(TextureReference texture) => _retrogradeTexture = texture;
+    internal void SetNormalTexture(TextureReference texture) => _normalTexture = texture;
+    internal void SetAntiNormalTexture(TextureReference texture) => _antiNormalTexture = texture;
+    internal void SetRadialOutTexture(TextureReference texture) => _radialOutTexture = texture;
+    internal void SetRadialInTexture(TextureReference texture) => _radialInTexture = texture;
 
     internal void Draw()
     {
@@ -82,7 +90,7 @@ internal sealed unsafe class NavballSpike
         var center = new Vector2(ballMin.X + 120f, ballMin.Y + 120f);
         var start = Stopwatch.GetTimestamp();
         _drawnTriangles = DrawSphere(draw, texture, center, 115f);
-        DrawVelocityMarkers(draw, center, 115f);
+        DrawMarkers(draw, center, 115f);
         DrawReferenceT(draw, center);
         _lastMilliseconds = (float)Stopwatch.GetElapsedTime(start).TotalMilliseconds;
         _averageMilliseconds = _averageMilliseconds == 0 ? _lastMilliseconds : _averageMilliseconds * 0.95f + _lastMilliseconds * 0.05f;
@@ -200,17 +208,23 @@ internal sealed unsafe class NavballSpike
         }
     }
 
-    private void DrawVelocityMarkers(ImDrawListPtr draw, Vector2 center, float radius)
+    private void DrawMarkers(ImDrawListPtr draw, Vector2 center, float radius)
     {
         var vehicle = KSA.Program.ControlledVehicle;
         if (vehicle is null) return;
-        var direction = NavBallRenderer.GetNavBallMarkers(vehicle).VelocityDirScreen;
-        if (direction.W < 0.5f) return;
+        var markers = NavBallRenderer.GetNavBallMarkers(vehicle);
+        DrawPair(markers.VelocityDirScreen, _progradeTexture, _retrogradeTexture, 0xFF00FFAAu);
+        DrawPair(markers.NormalDirScreen, _normalTexture, _antiNormalTexture, 0xFFD91AD9u);
+        DrawPair(markers.RadialOutDirScreen, _radialOutTexture, _radialInTexture, 0xFFD9CC00u);
 
-        DrawMarker(_progradeTexture, direction);
-        DrawMarker(_retrogradeTexture, -direction);
+        void DrawPair(float4 direction, TextureReference? positive, TextureReference? negative, uint color)
+        {
+            if (direction.W < 0.5f) return;
+            DrawMarker(positive, direction, color);
+            DrawMarker(negative, -direction, color);
+        }
 
-        void DrawMarker(TextureReference? source, float4 marker)
+        void DrawMarker(TextureReference? source, float4 marker, uint color)
         {
             if (source?.ImguiTextureRef is not { } markerTexture || marker.Z <= 0f) return;
             var distanceSquared = marker.X * marker.X + marker.Y * marker.Y;
@@ -223,7 +237,7 @@ internal sealed unsafe class NavballSpike
             var max = new float2(x + halfSize, y + halfSize);
             var uvMin = new float2(0f, 0f);
             var uvMax = new float2(1f, 1f);
-            ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, markerTexture, &min, &max, &uvMin, &uvMax, 0xFF00FFAAu);
+            ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, markerTexture, &min, &max, &uvMin, &uvMax, color);
         }
     }
 }
