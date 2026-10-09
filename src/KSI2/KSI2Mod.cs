@@ -8,6 +8,7 @@ namespace KSI2;
 public sealed class KSI2Mod
 {
     private readonly ThrottleGauge _gauge = new();
+    private readonly NavballClusterBackground _navballClusterBackground = new();
     private readonly NavballSpike _navballSpike = new();
 
     [StarMapBeforeMain]
@@ -30,6 +31,10 @@ public sealed class KSI2Mod
         if (File.Exists(navballTexture))
             RegisterTexture("KSI2NavballSurface", tex => _navballSpike.SetTexture(tex));
         var navballDirectory = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "navball");
+        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
+            RegisterTexture("KSI2NavballClusterBackground", tex => _navballClusterBackground.SetBackgroundTexture(tex));
+        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
+            RegisterTexture("KSI2NavballClusterBorder", tex => _navballClusterBackground.SetBorderTexture(tex));
         if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
             RegisterTexture("KSI2NavballCrosshair", tex => _navballSpike.SetCrosshairTexture(tex));
         if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
@@ -71,6 +76,7 @@ public sealed class KSI2Mod
     public void OnAfterGui(double dt)
     {
         if (ImGui.GetCurrentContext().IsNull()) return;
+        _navballClusterBackground.Draw();
         _gauge.Draw();
         _navballSpike.Draw();
     }
