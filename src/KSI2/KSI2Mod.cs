@@ -35,6 +35,10 @@ public sealed class KSI2Mod
         if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
             RegisterTexture("KSI2NavballRetrograde", tex => _navballSpike.SetRetrogradeTexture(tex));
         if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
+            RegisterTexture("KSI2NavballTarget", tex => _navballSpike.SetTargetTexture(tex));
+        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
+            RegisterTexture("KSI2NavballAntiTarget", tex => _navballSpike.SetAntiTargetTexture(tex));
+        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
             RegisterTexture("KSI2NavballNormal", tex => _navballSpike.SetNormalTexture(tex));
         if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
             RegisterTexture("KSI2NavballAntiNormal", tex => _navballSpike.SetAntiNormalTexture(tex));
