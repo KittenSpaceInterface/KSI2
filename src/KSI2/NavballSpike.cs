@@ -32,6 +32,7 @@ internal sealed unsafe class NavballSpike
     private TextureReference? _antiNormalTexture;
     private TextureReference? _radialOutTexture;
     private TextureReference? _radialInTexture;
+    private TextureReference? _burnTexture;
     private NavballMesh? _mesh;
     private ProjectedVertex[]? _vertices;
     private string? _meshError;
@@ -55,6 +56,7 @@ internal sealed unsafe class NavballSpike
     internal void SetAntiNormalTexture(TextureReference texture) => _antiNormalTexture = texture;
     internal void SetRadialOutTexture(TextureReference texture) => _radialOutTexture = texture;
     internal void SetRadialInTexture(TextureReference texture) => _radialInTexture = texture;
+    internal void SetBurnTexture(TextureReference texture) => _burnTexture = texture;
 
     internal void Draw()
     {
@@ -221,6 +223,8 @@ internal sealed unsafe class NavballSpike
         DrawPair(markers.VelocityDirScreen, _progradeTexture, _retrogradeTexture, 0xFF00FFAAu);
         DrawPair(markers.NormalDirScreen, _normalTexture, _antiNormalTexture, 0xFFD91AD9u);
         DrawPair(markers.RadialOutDirScreen, _radialOutTexture, _radialInTexture, 0xFFD9CC00u);
+        if (markers.BurnDirScreen.W >= 0.5f)
+            DrawMarker(_burnTexture, markers.BurnDirScreen, 0xFFF2591Fu);
 
         void DrawPair(float4 direction, TextureReference? positive, TextureReference? negative, uint color)
         {
