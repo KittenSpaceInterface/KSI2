@@ -26,6 +26,8 @@ internal sealed unsafe class NavballSpike
     private TextureReference? _texture;
     private TextureReference? _progradeTexture;
     private TextureReference? _retrogradeTexture;
+    private TextureReference? _targetTexture;
+    private TextureReference? _antiTargetTexture;
     private TextureReference? _normalTexture;
     private TextureReference? _antiNormalTexture;
     private TextureReference? _radialOutTexture;
@@ -47,6 +49,8 @@ internal sealed unsafe class NavballSpike
     internal void SetTexture(TextureReference texture) => _texture = texture;
     internal void SetProgradeTexture(TextureReference texture) => _progradeTexture = texture;
     internal void SetRetrogradeTexture(TextureReference texture) => _retrogradeTexture = texture;
+    internal void SetTargetTexture(TextureReference texture) => _targetTexture = texture;
+    internal void SetAntiTargetTexture(TextureReference texture) => _antiTargetTexture = texture;
     internal void SetNormalTexture(TextureReference texture) => _normalTexture = texture;
     internal void SetAntiNormalTexture(TextureReference texture) => _antiNormalTexture = texture;
     internal void SetRadialOutTexture(TextureReference texture) => _radialOutTexture = texture;
@@ -213,6 +217,7 @@ internal sealed unsafe class NavballSpike
         var vehicle = KSA.Program.ControlledVehicle;
         if (vehicle is null) return;
         var markers = NavBallRenderer.GetNavBallMarkers(vehicle);
+        DrawPair(markers.TargetDirScreen, _targetTexture, _antiTargetTexture, 0xFFD933BFu);
         DrawPair(markers.VelocityDirScreen, _progradeTexture, _retrogradeTexture, 0xFF00FFAAu);
         DrawPair(markers.NormalDirScreen, _normalTexture, _antiNormalTexture, 0xFFD91AD9u);
         DrawPair(markers.RadialOutDirScreen, _radialOutTexture, _radialInTexture, 0xFFD9CC00u);
