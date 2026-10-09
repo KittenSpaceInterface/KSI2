@@ -8,6 +8,7 @@ namespace KSI2;
 public sealed class KSI2Mod
 {
     private readonly ThrottleGauge _gauge = new();
+    private readonly NavballSpike _navballSpike = new();
 
     [StarMapBeforeMain]
     public void OnBeforeMain() => Console.WriteLine("KSI2 loaded.");
@@ -25,6 +26,14 @@ public sealed class KSI2Mod
         var handleFontAtlas = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "throttle", "[asset]");
         if (File.Exists(handleFontAtlas))
             RegisterTexture("KSI2HandleOtf", tex => _gauge.SetHandleOtfTexture(tex));
+        var navballTexture = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "navball", "[asset]");
+        if (File.Exists(navballTexture))
+            RegisterTexture("KSI2NavballSurface", tex => _navballSpike.SetTexture(tex));
+        var navballDirectory = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "navball");
+        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
+            RegisterTexture("KSI2NavballPrograde", tex => _navballSpike.SetProgradeTexture(tex));
+        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
+            RegisterTexture("KSI2NavballRetrograde", tex => _navballSpike.SetRetrogradeTexture(tex));
     }
 
     private static void RegisterTexture(string id, Action<TextureReference> assign)
@@ -47,6 +56,7 @@ public sealed class KSI2Mod
     {
         if (ImGui.GetCurrentContext().IsNull()) return;
         _gauge.Draw();
+        _navballSpike.Draw();
     }
 
     [StarMapUnload]
