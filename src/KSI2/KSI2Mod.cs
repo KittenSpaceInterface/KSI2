@@ -46,6 +46,8 @@ public sealed class KSI2Mod
             RegisterTexture("KSI2NavballRadialOut", tex => _navballSpike.SetRadialOutTexture(tex));
         if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
             RegisterTexture("KSI2NavballRadialIn", tex => _navballSpike.SetRadialInTexture(tex));
+        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
+            RegisterTexture("KSI2NavballManeuver", tex => _navballSpike.SetBurnTexture(tex));
     }
 
     private static void RegisterTexture(string id, Action<TextureReference> assign)
