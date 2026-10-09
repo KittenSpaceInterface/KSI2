@@ -23,7 +23,7 @@ Build output is written to `src/KSI2/bin/Release/net10.0`.
 
 ## Throttle gauge
 
-The throttle gauge is a display-only overlay. Its settings window lets you show or hide it, adjust its scale and position, and preview throttle values. Turn off **Edit layout** to return to live throttle readings. Settings are saved beside the mod.
+The throttle gauge is a display-only overlay that follows the controlled vehicle's manual throttle by default. Its settings window lets you show or hide it and adjust its scale and position. **Edit layout** offers a temporary throttle preview; turning off edit mode returns to live readings. Settings are saved beside the mod.
 
 ## Geometry checks
 

@@ -23,7 +23,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     private TextureReference? _percentGlyphTexture;
     private TextureReference? _fillTexture;
     private TextureReference? _handleOtfTexture;
-    private bool _useTestThrottle = true;
+    private bool _useTestThrottle;
     private float _testThrottle = 100f;
     private ThrottleSnapshot? _snapshot;
 
@@ -43,7 +43,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         _snapshot = KsaThrottleSource.TryRead(out var snapshot) ? snapshot : null;
         DrawSettingsWindow();
         if (!_settings.Show) return;
-        var throttle = _useTestThrottle
+        var throttle = _settings.Editing && _useTestThrottle
             ? _testThrottle / 100f
             : _snapshot?.Value;
         if (throttle is null) return;
@@ -84,18 +84,19 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         if (ImGui.Checkbox("Edit layout", ref editing))
         {
             _settings.Editing = editing;
-            if (!editing) { _dragging = false; _settings.Save(); }
+            if (!editing) { _dragging = false; _useTestThrottle = false; _settings.Save(); }
         }
         var scale = _settings.Scale;
         if (ImGui.SliderFloat("Scale", ref scale, 0.5f, 2f, "%.2fx")) _settings.Scale = scale;
         if (ImGui.IsItemDeactivatedAfterEdit()) _settings.Save();
-        if (ImGui.SliderFloat("Throttle (0-100)", ref _testThrottle, 0f, 100f, "%.0f"))
+        if (_settings.Editing)
         {
-            _useTestThrottle = true;
+            if (ImGui.SliderFloat("Preview throttle (0-100)", ref _testThrottle, 0f, 100f, "%.0f"))
+                _useTestThrottle = true;
+            ImGui.Checkbox("Preview throttle", ref _useTestThrottle);
         }
-        ImGui.Checkbox("Test throttle override", ref _useTestThrottle);
         if (ImGui.Button("Reset layout")) _settings.Reset();
-        ImGui.Text(_useTestThrottle ? $"Test throttle active: {_testThrottle:0}" : (_snapshot is { } value ? $"Live manual throttle: {ThrottleGeometry.Percent(value.Value)}" : "No controlled vehicle"));
+        ImGui.Text(_settings.Editing && _useTestThrottle ? $"Preview throttle: {_testThrottle:0}" : (_snapshot is { } value ? $"Live manual throttle: {ThrottleGeometry.Percent(value.Value)}" : "No controlled vehicle"));
         if (_settings.Editing)
         {
             var io = ImGui.GetIO();
