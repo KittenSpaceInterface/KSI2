@@ -24,6 +24,7 @@ internal sealed unsafe class NavballSpike
     }
 
     private TextureReference? _texture;
+    private TextureReference? _crosshairTexture;
     private TextureReference? _progradeTexture;
     private TextureReference? _retrogradeTexture;
     private TextureReference? _targetTexture;
@@ -48,6 +49,7 @@ internal sealed unsafe class NavballSpike
     private int _drawnTriangles;
 
     internal void SetTexture(TextureReference texture) => _texture = texture;
+    internal void SetCrosshairTexture(TextureReference texture) => _crosshairTexture = texture;
     internal void SetProgradeTexture(TextureReference texture) => _progradeTexture = texture;
     internal void SetRetrogradeTexture(TextureReference texture) => _retrogradeTexture = texture;
     internal void SetTargetTexture(TextureReference texture) => _targetTexture = texture;
@@ -81,7 +83,7 @@ internal sealed unsafe class NavballSpike
         ImGui.SliderFloat("Roll correction", ref _roll, -180f, 180f, "%.0f deg");
         ImGui.Text($"Source atlas: 1024 x 1024 | mesh: {_mesh.Positions.Length} vertices, {_mesh.Indices.Length / 3} triangles");
         ImGui.Text($"Sphere draw: {_lastMilliseconds:F3} ms, rolling {_averageMilliseconds:F3} ms | {_drawnTriangles} triangles");
-        ImGui.Text("Fixed T: vessel pointing direction");
+        ImGui.Text("Fixed crosshair: vessel pointing reference");
 
         var draw = ImGui.GetWindowDrawList();
         var atlasMin = ImGui.GetCursorScreenPos();
@@ -97,7 +99,7 @@ internal sealed unsafe class NavballSpike
         var start = Stopwatch.GetTimestamp();
         _drawnTriangles = DrawSphere(draw, texture, center, 115f);
         DrawMarkers(draw, center, 115f);
-        DrawReferenceT(draw, center);
+        DrawCrosshair(draw, center, 115f);
         _lastMilliseconds = (float)Stopwatch.GetElapsedTime(start).TotalMilliseconds;
         _averageMilliseconds = _averageMilliseconds == 0 ? _lastMilliseconds : _averageMilliseconds * 0.95f + _lastMilliseconds * 0.05f;
         ImGui.End();
@@ -197,21 +199,20 @@ internal sealed unsafe class NavballSpike
         ImGui.PInvoke.ImDrawList_AddImageQuad(draw.Ptr, texture, &p1, &p2, &p3, &p4, &uv1, &uv2, &uv3, &uv4, 0xFFFFFFFFu);
     }
 
-    private static void DrawReferenceT(ImDrawListPtr draw, Vector2 center)
+    private void DrawCrosshair(ImDrawListPtr draw, Vector2 center, float radius)
     {
-        // Draw after the sphere so this vessel-fixed reference never rotates
-        // with the texture. The dark border keeps it legible on both hemispheres.
-        AddFilledRect(-20f, -4f, 20f, 2f, 0xFF000000u);
-        AddFilledRect(-4f, -4f, 4f, 16f, 0xFF000000u);
-        AddFilledRect(-18f, -2f, 18f, 0f, 0xFF00E8FFu);
-        AddFilledRect(-1f, -2f, 1f, 14f, 0xFF00E8FFu);
-
-        void AddFilledRect(float left, float top, float right, float bottom, uint color)
-        {
-            var min = new float2(center.X + left, center.Y + top);
-            var max = new float2(center.X + right, center.Y + bottom);
-            ImGui.PInvoke.ImDrawList_AddRectFilled(draw.Ptr, &min, &max, color, 0f, ImDrawFlags.None);
-        }
+        if (_crosshairTexture?.ImguiTextureRef is not { } texture) return;
+        // KSP2's group_navball prefab uses a 176x176 ball and a 64x24
+        // ELE-ship-marker 7 units below its center. Preserve those ratios.
+        var scale = radius * 2f / 176f;
+        var halfWidth = 32f * scale;
+        var halfHeight = 12f * scale;
+        var markerY = center.Y + 7f * scale;
+        var min = new float2(center.X - halfWidth, markerY - halfHeight);
+        var max = new float2(center.X + halfWidth, markerY + halfHeight);
+        var uvMin = new float2(0f, 0f);
+        var uvMax = new float2(1f, 1f);
+        ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, texture, &min, &max, &uvMin, &uvMax, 0xFFFFFFFFu);
     }
 
     private void DrawMarkers(ImDrawListPtr draw, Vector2 center, float radius)

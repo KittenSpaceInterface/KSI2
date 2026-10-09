@@ -31,6 +31,8 @@ public sealed class KSI2Mod
             RegisterTexture("KSI2NavballSurface", tex => _navballSpike.SetTexture(tex));
         var navballDirectory = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "navball");
         if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
+            RegisterTexture("KSI2NavballCrosshair", tex => _navballSpike.SetCrosshairTexture(tex));
+        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
             RegisterTexture("KSI2NavballPrograde", tex => _navballSpike.SetProgradeTexture(tex));
         if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
             RegisterTexture("KSI2NavballRetrograde", tex => _navballSpike.SetRetrogradeTexture(tex));
