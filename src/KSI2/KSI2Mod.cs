@@ -32,6 +32,8 @@ public sealed class KSI2Mod
             RegisterTexture("KSI2NavballSurface", tex => _navballSpike.SetTexture(tex));
         var navballDirectory = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "navball");
         if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
+            RegisterTexture("KSI2NavballShadow", tex => _navballSpike.SetShadowTexture(tex));
+        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
             RegisterTexture("KSI2NavballClusterBackground", tex => _navballClusterBackground.SetBackgroundTexture(tex));
         if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
             RegisterTexture("KSI2NavballClusterBorder", tex => _navballClusterBackground.SetBorderTexture(tex));
@@ -81,6 +83,11 @@ public sealed class KSI2Mod
         _navballSpike.Draw();
     }
 
+
     [StarMapUnload]
-    public void Unload() => _gauge.Dispose();
+    public void Unload()
+    {
+        _navballSpike.Dispose();
+        _gauge.Dispose();
+    }
 }

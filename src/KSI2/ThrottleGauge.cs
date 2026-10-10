@@ -95,6 +95,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
                 _useTestThrottle = true;
             ImGui.Checkbox("Preview throttle", ref _useTestThrottle);
         }
+
         if (ImGui.Button("Reset layout")) _settings.Reset();
         ImGui.Text(_settings.Editing && _useTestThrottle ? $"Preview throttle: {_testThrottle:0}" : (_snapshot is { } value ? $"Live manual throttle: {ThrottleGeometry.Percent(value.Value)}" : "No controlled vehicle"));
         if (_settings.Editing)
