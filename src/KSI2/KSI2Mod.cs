@@ -37,9 +37,6 @@ public sealed class KSI2Mod
         RegisterTexture("KSI2ThrottleHandle", tex => _gauge.SetHandleTexture(tex));
         RegisterTexture("KSI2ThrottlePercentGlyph", tex => _gauge.SetPercentGlyphTexture(tex));
         RegisterTexture("KSI2ThrottleFill", tex => _gauge.SetFillTexture(tex));
-        var handleFontAtlas = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "throttle", "[asset]");
-        if (File.Exists(handleFontAtlas))
-            RegisterTexture("KSI2HandleOtf", tex => _gauge.SetHandleOtfTexture(tex));
         var navballTexture = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "navball", "[asset]");
         if (File.Exists(navballTexture))
             RegisterTexture("KSI2NavballSurface", tex => _navballSpike.SetTexture(tex));
