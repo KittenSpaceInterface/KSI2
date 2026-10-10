@@ -127,7 +127,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         var top = frame.Y + 14 * scale;
         var origin = new Point(left, top);
         var art = _artwork!;
-        DrawStaticLayer(draw, _bgTexture, art, "[asset]", origin, scale, 0xFD2F2624u);
+        DrawStaticLayer(draw, _bgTexture, art, "[asset]", origin, scale, 0xFD190B03u);
         DrawStaticLayer(draw, _barsTexture, art, "[asset]", origin, scale, 0xFF99413Eu);
         DrawStaticLayer(draw, _borderTexture, art, "[asset]", origin, scale, 0xFF662B29u);
         DrawStaticLayer(draw, _bracketTexture, art, "[asset]", origin, scale, 0xFFFF6D69u);

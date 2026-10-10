@@ -27,3 +27,13 @@ For future UI elements:
 The throttle fill and percent glyph remain visual approximations of Unity's
 masking and TextMeshPro shader. Compare them in game before reusing their
 specific color or SDF conversion constants elsewhere.
+
+## Future work: blurred panel backgrounds
+
+KSP2 uses `UIBlur2` on the atmosphere fill, vertical-speed panel, throttle
+background, and navball cluster background. KSI2 currently draws their original
+shape masks with a flat color; `#030B19` is the current temporary visual trial
+for all four. Recreate the scene sampling and blur when KSA provides a suitable
+render stage, and audit other HUD panels for the same material. The shader, blur path,
+and KSA integration constraints are documented in
+`interface-investigation/blur-panel-rendering-investigation.md`.

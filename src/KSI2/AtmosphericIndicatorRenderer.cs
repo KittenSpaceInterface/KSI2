@@ -40,7 +40,7 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
         var origin = new float2(widgetOrigin.X, widgetOrigin.Y);
         var draw = ImGui.GetForegroundDrawList(viewport);
 
-        DrawLayer("KSI2AtmoFill", 0xFD2F2624u);
+        DrawLayer("KSI2AtmoFill", 0xFD190B03u);
         DrawLayer("KSI2AtmoLayers", 0xFFF2F2F2u);
         DrawLayer("KSI2AtmoBorder", 0xFF662B29u);
         DrawLayer("KSI2AtmoBracket", 0xFFCC5753u);

@@ -50,7 +50,7 @@ internal sealed unsafe class RasterArtwork
         // Exported PNGs share their original complete texture canvas. Do not
         // stretch each sprite's tight rectangle over the complete widget.
         foreach (var (name, tint, width, height) in new[] {
-            ("[asset]", 0xFD2F2624u, 85f, 290f),
+            ("[asset]", 0xFD190B03u, 85f, 290f),
             ("[asset]", 0xFF99413Eu, 85f, 290f),
             ("[asset]", 0xFF662B29u, 85f, 290f),
             ("[asset]", 0xFFFF6D69u, 85f, 290f),
