@@ -10,6 +10,19 @@ var cluster = NavballClusterLayout.Calculate(0, 0, 1920, 1080);
 var speedOrigin = SpeedReadoutGeometry.TopLeft(cluster);
 Near(75.85f, speedOrigin.X, "speed card follows current navball x");
 Near(864.95f, speedOrigin.Y, "speed card follows current navball y");
+var altitudeOrigin = AltitudeReadoutGeometry.TopLeft(cluster);
+Near(363.85f, altitudeOrigin.X, "altitude card follows current navball x");
+Near(864.95f, altitudeOrigin.Y, "altitude card follows current navball y");
+var altitudeFormat = System.Globalization.CultureInfo.InvariantCulture;
+if (AltitudeReadoutGeometry.Format(99.999, altitudeFormat) != new AltitudeReadoutValue("100", "M")
+    || AltitudeReadoutGeometry.Format(99.99901, altitudeFormat) != new AltitudeReadoutValue("99", "M"))
+    throw new Exception("altitude first unit entry uses the serialized float threshold");
+if (AltitudeReadoutGeometry.Format(99_998.9, altitudeFormat) != new AltitudeReadoutValue("99998", "M")
+    || AltitudeReadoutGeometry.Format(99_999, altitudeFormat) != new AltitudeReadoutValue("99", "KM")
+    || AltitudeReadoutGeometry.Format(99_999_000, altitudeFormat) != new AltitudeReadoutValue("99", "MM")
+    || AltitudeReadoutGeometry.Format(-99_999, altitudeFormat) != new AltitudeReadoutValue("-99", "KM")
+    || AltitudeReadoutGeometry.Format(99_999_000_000, altitudeFormat) is not null)
+    throw new Exception("altitude integer units or truncation differs from KSP2 binder");
 var speedFormat = System.Globalization.CultureInfo.InvariantCulture;
 if (SpeedReadoutGeometry.Format(7_784.4, speedFormat) != new SpeedReadoutValue("7784.4", "m/s"))
     throw new Exception("orbital speed below KSP2 unit switch remains in m/s");

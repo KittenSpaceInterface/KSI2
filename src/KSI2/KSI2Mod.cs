@@ -13,6 +13,7 @@ public sealed class KSI2Mod
     private readonly HeadingDialRenderer _headingDial = new();
     private readonly SideDialRenderer _sideDials = new();
     private readonly SpeedReadoutRenderer _speedReadout = new();
+    private readonly AltitudeReadoutRenderer _altitudeReadout = new();
     private readonly AtmosphericIndicatorRenderer _atmosphericIndicator = new();
     private readonly VerticalSpeedIndicatorRenderer _verticalSpeedIndicator = new();
 
@@ -82,7 +83,14 @@ public sealed class KSI2Mod
                 RegisterTexture(id, tex => _sideDials.SetTexture(id, tex));
         foreach (var (id, file) in SpeedReadoutRenderer.Assets)
             if (File.Exists(Path.Combine(navballDirectory, file)))
-                RegisterTexture(id, tex => _speedReadout.SetTexture(id, tex));
+                RegisterTexture(id, tex =>
+                {
+                    _speedReadout.SetTexture(id, tex);
+                    _altitudeReadout.SetTexture(id, tex);
+                });
+        foreach (var (id, file) in AltitudeReadoutRenderer.Assets)
+            if (File.Exists(Path.Combine(navballDirectory, file)))
+                RegisterTexture(id, tex => _altitudeReadout.SetTexture(id, tex));
     }
 
     private static void RegisterTexture(string id, Action<TextureReference> assign)
@@ -112,6 +120,7 @@ public sealed class KSI2Mod
         _headingDial.Draw();
         _atmosphericIndicator.Draw();
         _verticalSpeedIndicator.Draw();
+        _altitudeReadout.Draw();
     }
 
 
