@@ -22,7 +22,6 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     private TextureReference? _handleTexture;
     private TextureReference? _percentGlyphTexture;
     private TextureReference? _fillTexture;
-    private TextureReference? _handleOtfTexture;
     private bool _useTestThrottle;
     private float _testThrottle = 100f;
     private ThrottleSnapshot? _snapshot;
@@ -34,7 +33,6 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     internal void SetHandleTexture(TextureReference texture) => _handleTexture = texture;
     internal void SetPercentGlyphTexture(TextureReference texture) => _percentGlyphTexture = texture;
     internal void SetFillTexture(TextureReference texture) => _fillTexture = texture;
-    internal void SetHandleOtfTexture(TextureReference texture) => _handleOtfTexture = texture;
 
     internal void Draw()
     {
@@ -149,11 +147,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
             RasterArtwork.DrawHandleTexture(draw, texture, new(hx, hy), scale, angle);
         else
             art.DrawHandle(draw, new(hx, hy), scale, angle);
-        var handleNumber = Math.Clamp((int)MathF.Round(throttle * 100), 0, 100);
-        if (_handleOtfTexture?.ImguiTextureRef is { } handleTextTexture)
-            DrawHandleNumberImage(draw, handleTextTexture, handleNumber, hx, hy, scale, angle);
-        else
-            DrawHandleText(draw, ThrottleGeometry.Percent(throttle), hx, hy, scale, angle);
+        DrawHandleText(draw, ThrottleGeometry.Percent(throttle), hx, hy, scale, angle);
     }
 
     private void HandleLayoutDrag(Point frame, float width, float height, ImGuiViewportPtr viewport, float px, float py)
@@ -279,7 +273,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         fixed (byte* text = bytes)
         {
             var font = ImGui.GetFont();
-            var size = 18f * scale;
+            var size = 22f * scale;
             var measured = ImGui.PInvoke.ImFont_CalcTextSizeA(font.Ptr, size, 1000, -1, text, text + bytes.Length, null);
             var position = new float2(x + 4f * scale - measured.X / 2, y - 0.5f * scale - measured.Y / 2);
             var first = draw.VtxBuffer.Count;
@@ -292,32 +286,6 @@ internal sealed unsafe class ThrottleGauge : IDisposable
                 vertices[i].pos = new float2(x + dx * cos - dy * sin, y + dx * sin + dy * cos);
             }
         }
-    }
-
-    private static void DrawHandleNumberImage(ImDrawListPtr draw, ImTextureRef texture, int value, float x, float y, float scale, float angle)
-    {
-        const float tileWidth = 64f;
-        const float tileHeight = 32f;
-        var cos = MathF.Cos(angle);
-        var sin = MathF.Sin(angle);
-        float2 Corner(float lx, float ly) => new(
-            x + (lx * cos - ly * sin) * scale,
-            y + (lx * sin + ly * cos) * scale);
-
-        const float labelOffsetX = 4f;
-        const float labelOffsetY = -0.5f;
-        var p1 = Corner(labelOffsetX - tileWidth / 2, labelOffsetY - tileHeight / 2);
-        var p2 = Corner(labelOffsetX + tileWidth / 2, labelOffsetY - tileHeight / 2);
-        var p3 = Corner(labelOffsetX + tileWidth / 2, labelOffsetY + tileHeight / 2);
-        var p4 = Corner(labelOffsetX - tileWidth / 2, labelOffsetY + tileHeight / 2);
-        var column = value % 8;
-        var row = value / 8;
-        var uv1 = new float2(column / 8f, row / 13f);
-        var uv2 = new float2((column + 1) / 8f, row / 13f);
-        var uv3 = new float2((column + 1) / 8f, (row + 1) / 13f);
-        var uv4 = new float2(column / 8f, (row + 1) / 13f);
-        ImGui.PInvoke.ImDrawList_AddImageQuad(draw.Ptr, texture,
-            &p1, &p2, &p3, &p4, &uv1, &uv2, &uv3, &uv4, 0xFFFFFFFFu);
     }
 
     public void Dispose() => _disposed = true;

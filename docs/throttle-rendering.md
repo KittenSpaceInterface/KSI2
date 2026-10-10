@@ -70,11 +70,11 @@ The appearance remains an approximation of the TMP shader.
 
 In the source prefab, the live number is TextMeshProUGUI using
 `realtimerounded-regular SDF` (family Realtime Rounded, font size 22). It is a
-different font from the bottom `%` glyph's `sbliquid-open1 SDF`. KSI2 currently
-draws the live number with KSA's active ImGui font, so its typeface does not
-yet match the source prefab. The bottom glyph appears only when the lower
-gauge is filled. Pixel equivalence still needs an in-game comparison because
-Unity masking and color-space conversion differ.
+different font from the bottom `%` glyph's `sbliquid-open1 SDF`. KSI2 draws the
+handle value with KSA's active ImGui font, confirmed in-game as JetBrains Mono
+Regular. The bottom glyph appears only when the lower gauge is filled. Pixel
+equivalence still needs an in-game comparison because Unity masking and
+color-space conversion differ.
 
 ## Native GPU Texture Integration (Verified Path)
 
@@ -137,10 +137,12 @@ in-game alignment. Those require another KSA test.
 Compare the new filtered fill and percentage glyph against KSP2 in-game. The
 geometry checks do not establish final visual equivalence.
 
-The source handle label uses Realtime Rounded SDF. KSI2 can use an optional
-locally generated atlas from a user-provided OTF; when that atlas is absent,
-it uses the active ImGui font. KSA's `Content/Fonts` folder currently contains
-`3270-Regular.ttf` and `MilSpec33558.ttf`, neither matching that source font.
-The handle atlas contains the values 0 through 100 rendered from the local OTF.
-Using a complete font for general KSI2 text would require a redistributable
-font file and a safe way to add it to KSA's ImGui font atlas.
+The source handle label uses Realtime Rounded SDF. KSI2 uses KSA's active ImGui
+font, confirmed in-game as JetBrains Mono Regular, matching
+`Content/Core/JetBrainsMono-Regular.ttf`; the separate `Content/Fonts` files
+`3270-Regular.ttf` and `MilSpec33558.ttf` are not the active face.
+
+The handle value uses KSA's active ImGui font at 22 px, matching the size that
+looked best in the in-game comparison. Downloaded JetBrains Mono weight files
+are kept outside the repository in the workspace-root
+`font-weight-test-assets/` folder and are not included in the mod.
