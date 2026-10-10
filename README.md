@@ -4,6 +4,9 @@ KSI2 is a KSP2-inspired interface mod for Kitten Space Agency, loaded through St
 
 The project is in early development.
 
+The current viewport and navball placement calculations are documented in
+[docs/screen-layout.md](docs/screen-layout.md).
+
 ## Requirements
 
 - Kitten Space Agency
@@ -53,7 +56,7 @@ Copy these files from the Release output:
 - `KSI2.deps.json`
 - `mod.toml`
 - `KSI2Assets.xml`
-- `[asset] (the complete folder)
+- `assets/` (the complete folder)
 
 Enable `KSI2` in KSA's user `manifest.toml`, then launch the game through StarMap.
 

@@ -11,6 +11,7 @@ public sealed class KSI2Mod
     private readonly NavballClusterBackground _navballClusterBackground = new();
     private readonly NavballSpike _navballSpike = new();
     private readonly HeadingDialRenderer _headingDial = new();
+    private readonly SideDialRenderer _sideDials = new();
     private readonly AtmosphericIndicatorRenderer _atmosphericIndicator = new();
     private readonly VerticalSpeedIndicatorRenderer _verticalSpeedIndicator = new();
 
@@ -70,7 +71,14 @@ public sealed class KSI2Mod
             RegisterTexture("KSI2NavballManeuver", tex => _navballSpike.SetBurnTexture(tex));
         foreach (var (id, file) in HeadingDialRenderer.Assets)
             if (File.Exists(Path.Combine(navballDirectory, file)))
-                RegisterTexture(id, tex => _headingDial.SetTexture(id, tex));
+                RegisterTexture(id, tex =>
+                {
+                    _headingDial.SetTexture(id, tex);
+                    _sideDials.SetTexture(id, tex);
+                });
+        foreach (var (id, file) in SideDialRenderer.Assets)
+            if (File.Exists(Path.Combine(navballDirectory, file)))
+                RegisterTexture(id, tex => _sideDials.SetTexture(id, tex));
     }
 
     private static void RegisterTexture(string id, Action<TextureReference> assign)
@@ -95,6 +103,7 @@ public sealed class KSI2Mod
         _navballClusterBackground.Draw();
         _gauge.Draw();
         _navballSpike.Draw();
+        _sideDials.Draw();
         _headingDial.Draw();
         _atmosphericIndicator.Draw();
         _verticalSpeedIndicator.Draw();
