@@ -6,7 +6,7 @@ internal static class AtmosphericIndicatorGeometry
 {
     internal const float WidgetWidth = 85f;
     internal const float WidgetHeight = 140f;
-    private const float MaskCenterX = 43.5f + 8.1f;
+    private const float MaskCenterX = 43f + 8.1f;
     private const float MaskCenterY = 70f + 6.3f;
 
     // KSP2's locator positions are in Unity's bottom-up local coordinates.
@@ -18,6 +18,15 @@ internal static class AtmosphericIndicatorGeometry
     internal static AtmosphereMarkerPose Rocket(float gauge) =>
         Interpolate(gauge, new Point(44.2f, -24.4f), new Point(-27.2f, -16.8f),
             new Point(-65.7f, 25.5f), 4.7118416f, 41.395893f);
+
+    internal static Point WidgetOrigin(float viewportX, float viewportY, float viewportWidth, float viewportHeight)
+    {
+        var scale = MathF.Min(viewportWidth / 1920f, viewportHeight / 1080f);
+        // Container is 100x100 with a centered pivot at (960, 540).
+        // Its bottom-left is (910, 490), before the widget's (-537, -403).
+        return new Point(viewportX + 373f * scale,
+            viewportY + viewportHeight - (87f + WidgetHeight) * scale);
+    }
 
     internal static AtmosphereMarkerPose NeedleOnWidget(float gauge)
     {
@@ -44,8 +53,10 @@ internal static class AtmosphericIndicatorGeometry
         var oneMinusT = 1f - t;
         var x = oneMinusT * oneMinusT * minimum.X + 2f * oneMinusT * t * handle.X + t * t * maximum.X;
         var y = oneMinusT * oneMinusT * minimum.Y + 2f * oneMinusT * t * handle.Y + t * t * maximum.Y;
-        var minRadians = minimumAngle * MathF.PI / 180f;
-        var maxRadians = maximumAngle * MathF.PI / 180f;
+        // Saved quaternions rotate clockwise in Unity coordinates even though
+        // the prefab's m_LocalEulerAnglesHint writes positive Z values.
+        var minRadians = -minimumAngle * MathF.PI / 180f;
+        var maxRadians = -maximumAngle * MathF.PI / 180f;
         var sine = oneMinusT * MathF.Sin(minRadians / 2f) + t * MathF.Sin(maxRadians / 2f);
         var cosine = oneMinusT * MathF.Cos(minRadians / 2f) + t * MathF.Cos(maxRadians / 2f);
         var angle = 2f * MathF.Atan2(sine, cosine) * 180f / MathF.PI;

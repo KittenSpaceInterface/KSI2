@@ -10,14 +10,18 @@ repository's `atmospheric-indicator-map.md`. Positions follow the quadratic
 Bezier equivalent of Unity's nested `Vector3.Lerp` calls. Rotation follows
 clamped quaternion interpolation between endpoint angles. Both poses convert
 Unity's upward Y to ImGui's downward Y. The rotated mask parent then maps the
-paths to top-down widget positions: the rocket moves from roughly `(76, 19.5)`
-in vacuum to `(26.1, 129.4)` at sea level on the 85 x 140 widget.
+paths to top-down widget positions: the rocket moves from roughly `(75.5, 19.5)`
+in vacuum to `(25.6, 129.4)` at sea level on the 85 x 140 widget. The saved
+quaternions turn in the opposite direction from their Euler hint text, so the
+port interpolates the saved quaternion directions.
 
 `AtmosphericIndicatorRenderer` draws the backing, layers, border, bracket,
 moving needle, rocket and thrust sprites, then the shade. Colors and the
-bottom-left `(423, 137)` widget origin follow the inspected prefab. The small
-markers are split into 2-unit cells so their opacity follows the authored
-needle mask; this approximates Unity's UI stencil at mask edges. The marker
+bottom-left `(373, 87)` widget origin follow the inspected prefab. The old
+`(423, 137)` estimate omitted the 50-unit centered pivot of the Container.
+The needle uses 2-unit cells and the rocket uses 1-unit cells, with bilinear
+mask sampling. This approximates Unity's UI stencil while keeping the moving
+rocket inside the gauge artwork. The marker
 sprite `VertSpeed-ELE-Needle` is shared with the vertical-speed widget, so
 there are nine source PNGs in the local `[asset package]` directory.
 

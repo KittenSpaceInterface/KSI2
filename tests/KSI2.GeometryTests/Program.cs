@@ -22,15 +22,31 @@ Near(-2.325f, needleMiddle.Position.Y, "needle Bezier midpoint screen y");
 var rocketEnd = AtmosphericIndicatorGeometry.Rocket(1);
 Near(-65.7f, rocketEnd.Position.X, "rocket maximum x");
 Near(-25.5f, rocketEnd.Position.Y, "rocket maximum screen y");
-Near(41.395893f, rocketEnd.AngleDegrees, "rocket maximum rotation");
+Near(-41.395893f, rocketEnd.AngleDegrees, "rocket maximum quaternion rotation");
 Near(rocketEnd.Position.X, AtmosphericIndicatorGeometry.Rocket(1.2f).Position.X,
     "rocket path clamps beyond maximum");
+var widgetOrigin = AtmosphericIndicatorGeometry.WidgetOrigin(0, 0, 1920, 1080);
+Near(373f, widgetOrigin.X, "atmosphere widget left includes parent pivot");
+Near(853f, widgetOrigin.Y, "atmosphere widget top includes parent pivot");
 var rocketAtTop = AtmosphericIndicatorGeometry.RocketOnWidget(0);
-Near(76f, rocketAtTop.Position.X, "vacuum rocket widget x");
+Near(75.5f, rocketAtTop.Position.X, "vacuum rocket widget x");
 Near(19.5f, rocketAtTop.Position.Y, "vacuum rocket widget y");
 var rocketAtBottom = AtmosphericIndicatorGeometry.RocketOnWidget(1);
-Near(26.1f, rocketAtBottom.Position.X, "sea level rocket widget x");
+Near(25.6f, rocketAtBottom.Position.X, "sea level rocket widget x");
 Near(129.4f, rocketAtBottom.Position.Y, "sea level rocket widget y");
+var previousRocket = rocketAtTop;
+for (var i = 1; i <= 100; i++)
+{
+    var rocket = AtmosphericIndicatorGeometry.RocketOnWidget(i / 100f);
+    if (rocket.Position.X > previousRocket.Position.X || rocket.Position.Y < previousRocket.Position.Y
+        || rocket.AngleDegrees > previousRocket.AngleDegrees)
+        throw new Exception($"atmosphere rocket reversed direction at {i}%");
+    var dx = rocket.Position.X - previousRocket.Position.X;
+    var dy = rocket.Position.Y - previousRocket.Position.Y;
+    if (MathF.Sqrt(dx * dx + dy * dy) > 2f)
+        throw new Exception($"atmosphere rocket jumped at {i}%");
+    previousRocket = rocket;
+}
 Near(112.85f, cluster.Min.X, "cluster left");
 Near(746.95f, cluster.Min.Y, "cluster top");
 Near(262.85f, cluster.Center.X, "navball center x");

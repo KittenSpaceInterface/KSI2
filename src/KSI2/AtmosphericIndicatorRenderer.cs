@@ -35,9 +35,9 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
 
         var viewport = ImGui.GetMainViewport();
         var scale = MathF.Min(viewport.Size.X / 1920f, viewport.Size.Y / 1080f);
-        // Prefab bottom-left widget origin is (423, 137) in a 1920x1080 canvas.
-        var origin = new float2(viewport.Pos.X + 423f * scale,
-            viewport.Pos.Y + viewport.Size.Y - (137f + 140f) * scale);
+        var widgetOrigin = AtmosphericIndicatorGeometry.WidgetOrigin(
+            viewport.Pos.X, viewport.Pos.Y, viewport.Size.X, viewport.Size.Y);
+        var origin = new float2(widgetOrigin.X, widgetOrigin.Y);
         var draw = ImGui.GetForegroundDrawList(viewport);
 
         DrawLayer("KSI2AtmoFill", 0xFD2F2624u);
@@ -71,12 +71,13 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
             var pose = AtmosphericIndicatorGeometry.RocketOnWidget(gauge);
             var angle = pose.AngleDegrees * MathF.PI / 180f;
             DrawRotated("KSI2AtmoRocket", pose.Position.X, pose.Position.Y,
-                9f, 29f, angle, 0xFFCCB2AAu);
+                9f, 29f, angle, 0xFFCCB2AAu, cellSize: 1f);
             DrawRotated("KSI2AtmoRocketThrust", pose.Position.X, pose.Position.Y,
-                9f, 29f, angle, 0xFF0816D1u);
+                9f, 29f, angle, 0xFF0816D1u, cellSize: 1f);
         }
 
-        void DrawRotated(string id, float x, float y, float width, float height, float angle, uint tint)
+        void DrawRotated(string id, float x, float y, float width, float height, float angle, uint tint,
+            float cellSize = 2f)
         {
             var texture = _textures[id].ImguiTextureRef!.Value;
             var center = origin + new float2(x * scale, y * scale);
@@ -86,19 +87,18 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
                 (dx * cos + dy * sin) * scale, (-dx * sin + dy * cos) * scale);
 
             // KSP2 uses a Unity UI Mask. Standard ImGui draws have no stencil,
-            // so split the small marker into 2-unit cells and apply the
-            // authored mask alpha to each cell. The source image stays intact.
-            for (var top = -height / 2f; top < height / 2f; top += 2f)
-            for (var left = -width / 2f; left < width / 2f; left += 2f)
+            // so split the small marker into cells and bilinearly sample the
+            // authored mask. Finer rocket cells keep its diagonal edge smooth.
+            for (var top = -height / 2f; top < height / 2f; top += cellSize)
+            for (var left = -width / 2f; left < width / 2f; left += cellSize)
             {
-                var right = MathF.Min(left + 2f, width / 2f);
-                var bottom = MathF.Min(top + 2f, height / 2f);
+                var right = MathF.Min(left + cellSize, width / 2f);
+                var bottom = MathF.Min(top + cellSize, height / 2f);
                 var middle = Corner((left + right) / 2f, (top + bottom) / 2f);
                 var maskX = (middle.X - origin.X) / scale;
                 var maskY = (middle.Y - origin.Y) / scale;
-                if (maskX < 0 || maskY < 0 || maskX >= 85 || maskY >= 140) continue;
-                var alpha = _maskAlpha![(int)(maskY * 2), (int)(maskX * 2)];
-                if (alpha == 0) continue;
+                var alpha = SampleMask(maskX, maskY);
+                if (alpha < 0.5f) continue;
                 var p1 = Corner(left, top);
                 var p2 = Corner(right, top);
                 var p3 = Corner(right, bottom);
@@ -107,11 +107,28 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
                 var uv2 = new float2((right + width / 2f) / width, uv1.Y);
                 var uv3 = new float2(uv2.X, (bottom + height / 2f) / height);
                 var uv4 = new float2(uv1.X, uv3.Y);
-                var color = tint & 0x00FFFFFFu | (uint)(alpha * (tint >> 24) / 255) << 24;
+                var color = tint & 0x00FFFFFFu | (uint)(alpha * (tint >> 24) / 255f) << 24;
                 ImGui.PInvoke.ImDrawList_AddImageQuad(draw.Ptr, texture,
                     &p1, &p2, &p3, &p4, &uv1, &uv2, &uv3, &uv4, color);
             }
         }
+    }
+
+    private float SampleMask(float x, float y)
+    {
+        if (x < 0 || y < 0 || x >= AtmosphericIndicatorGeometry.WidgetWidth
+            || y >= AtmosphericIndicatorGeometry.WidgetHeight) return 0f;
+        var px = Math.Clamp(x * 2f - 0.5f, 0f, 169f);
+        var py = Math.Clamp(y * 2f - 0.5f, 0f, 279f);
+        var x0 = (int)px;
+        var y0 = (int)py;
+        var x1 = Math.Min(x0 + 1, 169);
+        var y1 = Math.Min(y0 + 1, 279);
+        var fx = px - x0;
+        var fy = py - y0;
+        var top = _maskAlpha![y0, x0] * (1f - fx) + _maskAlpha[y0, x1] * fx;
+        var bottom = _maskAlpha[y1, x0] * (1f - fx) + _maskAlpha[y1, x1] * fx;
+        return top * (1f - fy) + bottom * fy;
     }
 
     private bool EnsureMask()
