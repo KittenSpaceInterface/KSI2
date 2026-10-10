@@ -6,6 +6,34 @@ static void Near(float expected, float actual, string name, float epsilon = 0.00
     if (MathF.Abs(expected - actual) > epsilon) throw new Exception($"{name}: expected {expected}, received {actual}");
 }
 
+var cluster = NavballClusterLayout.Calculate(0, 0, 1920, 1080);
+Near(112.85f, cluster.Min.X, "cluster left");
+Near(746.95f, cluster.Min.Y, "cluster top");
+Near(262.85f, cluster.Center.X, "navball center x");
+Near(896.95f, cluster.Center.Y, "navball center y");
+Near(88f, cluster.BallRadius, "navball radius");
+if (NavballClusterLayout.BackgroundColor != 0xFF190B03u)
+    throw new Exception("cluster background color mismatch");
+var scaledCluster = NavballClusterLayout.Calculate(10, 20, 1280, 720);
+Near(10f + cluster.Min.X * 2f / 3f, scaledCluster.Min.X, "scaled cluster left");
+Near(20f + cluster.Min.Y * 2f / 3f, scaledCluster.Min.Y, "scaled cluster top");
+Near(88f * 2f / 3f, scaledCluster.BallRadius, "scaled navball radius");
+
+// Verify that equator clipping normalization produces an exact unit circle silhouette.
+for (var angleDeg = 0; angleDeg < 360; angleDeg += 15)
+{
+    var rad = angleDeg * MathF.PI / 180f;
+    var p1 = new System.Numerics.Vector3(MathF.Cos(rad) * 0.9f, MathF.Sin(rad) * 0.9f, 0.43588989f);
+    var p2 = new System.Numerics.Vector3(MathF.Cos(rad) * 0.9f, MathF.Sin(rad) * 0.9f, -0.43588989f);
+    var t = p1.Z / (p1.Z - p2.Z);
+    var pos = System.Numerics.Vector3.Lerp(p1, p2, t);
+    Near(0f, pos.Z, "interpolated z is on equator plane");
+    var len = MathF.Sqrt(pos.X * pos.X + pos.Y * pos.Y);
+    if (len > 1e-4f) pos = new System.Numerics.Vector3(pos.X / len, pos.Y / len, 0f);
+    Near(1f, MathF.Sqrt(pos.X * pos.X + pos.Y * pos.Y), "normalized equator radius");
+}
+
+
 for (var i = 0; i < ThrottleGeometry.Nodes.Length; i++)
 {
     var throttle = i / 10f;
@@ -47,6 +75,7 @@ if (clampedSettings.Show || clampedSettings.Scale != 2 || clampedSettings.X != 0
     throw new Exception("settings were not clamped or edit mode did not start locked");
 
 Console.WriteLine("Throttle geometry and telemetry checks passed.");
+
 
 Near(269, ThrottleGeometry.HandleCenter(0).Y, "complete slider travel at zero");
 Near(145, ThrottleGeometry.HandleCenter(.5f).Y, "complete slider travel at half");

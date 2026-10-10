@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="StarMap.API" Version="0.3.6" />
+    <Reference Include="$(KsaReferencePath)\Planet.Render.Core.dll" Private="false" Condition="'$(UseKsaReferencePackage)' != 'true'" />
   </ItemGroup>
 
   <ItemGroup>

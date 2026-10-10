@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Numerics;
 using Brutal.ImGuiApi;
 using Brutal.Numerics;
@@ -24,6 +23,8 @@ internal sealed unsafe class NavballSpike
     }
 
     private TextureReference? _texture;
+    private readonly NavballTextureFiltering _filtering = new();
+    private TextureReference? _shadowTexture;
     private TextureReference? _crosshairTexture;
     private TextureReference? _progradeTexture;
     private TextureReference? _retrogradeTexture;
@@ -38,17 +39,9 @@ internal sealed unsafe class NavballSpike
     private ProjectedVertex[]? _vertices;
     private string? _meshError;
     private bool _loadAttempted;
-    private bool _show = true;
-    private bool _liveAttitude = true;
-    private bool _flipV;
-    private float _yaw;
-    private float _pitch;
-    private float _roll;
-    private float _lastMilliseconds;
-    private float _averageMilliseconds;
-    private int _drawnTriangles;
 
     internal void SetTexture(TextureReference texture) => _texture = texture;
+    internal void SetShadowTexture(TextureReference texture) => _shadowTexture = texture;
     internal void SetCrosshairTexture(TextureReference texture) => _crosshairTexture = texture;
     internal void SetProgradeTexture(TextureReference texture) => _progradeTexture = texture;
     internal void SetRetrogradeTexture(TextureReference texture) => _retrogradeTexture = texture;
@@ -59,51 +52,25 @@ internal sealed unsafe class NavballSpike
     internal void SetRadialOutTexture(TextureReference texture) => _radialOutTexture = texture;
     internal void SetRadialInTexture(TextureReference texture) => _radialInTexture = texture;
     internal void SetBurnTexture(TextureReference texture) => _burnTexture = texture;
-
     internal void Draw()
     {
-        if (!KSA.Program.DrawUI || _texture?.ImguiTextureRef is not { } texture) return;
+        if (!KSA.Program.DrawUI || _texture?.ImguiTextureRef is null) return;
         EnsureMesh();
-        ImGui.SetNextWindowPos(new float2(550f, 72f), ImGuiCond.FirstUseEver);
-        if (!ImGui.Begin("KSI2 Navball Spike", ref _show, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings))
-        {
-            ImGui.End();
-            return;
-        }
-        if (_mesh is null)
-        {
-            ImGui.TextWrapped($"Navball mesh unavailable: {_meshError ?? "unknown error"}");
-            ImGui.End();
-            return;
-        }
-        ImGui.Checkbox("Use live vessel attitude", ref _liveAttitude);
-        ImGui.Checkbox("Flip texture V", ref _flipV);
-        ImGui.SliderFloat("Yaw correction", ref _yaw, -180f, 180f, "%.0f deg");
-        ImGui.SliderFloat("Pitch correction", ref _pitch, -180f, 180f, "%.0f deg");
-        ImGui.SliderFloat("Roll correction", ref _roll, -180f, 180f, "%.0f deg");
-        ImGui.Text($"Source atlas: 1024 x 1024 | mesh: {_mesh.Positions.Length} vertices, {_mesh.Indices.Length / 3} triangles");
-        ImGui.Text($"Sphere draw: {_lastMilliseconds:F3} ms, rolling {_averageMilliseconds:F3} ms | {_drawnTriangles} triangles");
-        ImGui.Text("Fixed crosshair: vessel pointing reference");
+        if (_mesh is null) return;
 
-        var draw = ImGui.GetWindowDrawList();
-        var atlasMin = ImGui.GetCursorScreenPos();
-        ImGui.InvisibleButton("##navball-atlas", new float2(180, 180));
-        var atlasMax = atlasMin + new float2(180, 180);
-        var uvMin = new float2(0, 0);
-        var uvMax = new float2(1, 1);
-        ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, texture, &atlasMin, &atlasMax, &uvMin, &uvMax, 0xFFFFFFFFu);
-        ImGui.SameLine();
-        var ballMin = ImGui.GetCursorScreenPos();
-        ImGui.InvisibleButton("##navball-sphere", new float2(240, 240));
-        var center = new Vector2(ballMin.X + 120f, ballMin.Y + 120f);
-        var start = Stopwatch.GetTimestamp();
-        _drawnTriangles = DrawSphere(draw, texture, center, 115f);
-        DrawMarkers(draw, center, 115f);
-        DrawCrosshair(draw, center, 115f);
-        _lastMilliseconds = (float)Stopwatch.GetElapsedTime(start).TotalMilliseconds;
-        _averageMilliseconds = _averageMilliseconds == 0 ? _lastMilliseconds : _averageMilliseconds * 0.95f + _lastMilliseconds * 0.05f;
-        ImGui.End();
+        var viewport = ImGui.GetMainViewport();
+        var bounds = NavballClusterLayout.Calculate(viewport.Pos.X, viewport.Pos.Y, viewport.Size.X, viewport.Size.Y);
+        var center = new Vector2(bounds.Center.X, bounds.Center.Y);
+        var draw = ImGui.GetForegroundDrawList(viewport);
+        ProjectSphere();
+        DrawProjectedSphere(draw, _filtering.GetTexture(_texture), center, bounds.BallRadius);
+        DrawShadow(draw, center, bounds.Scale);
+        DrawMarkers(draw, center, bounds.BallRadius);
+        DrawCrosshair(draw, center, bounds.BallRadius);
     }
+
+
+
 
     private void EnsureMesh()
     {
@@ -123,31 +90,31 @@ internal sealed unsafe class NavballSpike
         }
     }
 
-    private int DrawSphere(ImDrawListPtr draw, ImTextureRef texture, Vector2 center, float radius)
+    private void ProjectSphere()
     {
         var mesh = _mesh!;
         var vertices = _vertices!;
-        var calibration = Quaternion.CreateFromYawPitchRoll(_yaw * MathF.PI / 180f, _pitch * MathF.PI / 180f, _roll * MathF.PI / 180f);
         var vehicle = KSA.Program.ControlledVehicle;
-        var live = _liveAttitude && vehicle is not null;
+        var live = vehicle is not null;
         float4x4 inverse = float4x4.Identity;
         if (live) float4x4.Invert(NavBallRenderer.GetNavBallTransform(vehicle!), out inverse);
         for (var i = 0; i < vertices.Length; i++)
         {
-            var position = Vector3.Transform(mesh.Positions[i], calibration);
+            var position = mesh.Positions[i];
             if (live)
             {
                 var aligned = float4.Transform(new float4(position.X, position.Y, position.Z, 0f), Ksp2ToKsaNavball);
                 var transformed = float4.Transform(aligned, inverse);
                 position = new Vector3(transformed.X, transformed.Y, transformed.Z);
             }
-            var uv = mesh.Uvs[i];
-            if (_flipV) uv.Y = 1f - uv.Y;
-            vertices[i] = new ProjectedVertex(position, uv);
+            vertices[i] = new ProjectedVertex(position, mesh.Uvs[i]);
         }
+    }
 
-        var drawn = 0;
-        var indices = mesh.Indices;
+    private void DrawProjectedSphere(ImDrawListPtr draw, ImTextureRef texture, Vector2 center, float radius)
+    {
+        var indices = _mesh!.Indices;
+        var vertices = _vertices!;
         Span<ProjectedVertex> clipped = stackalloc ProjectedVertex[4];
         for (var i = 0; i < indices.Length; i += 3)
         {
@@ -158,11 +125,25 @@ internal sealed unsafe class NavballSpike
             for (var j = 1; j < count - 1; j++)
             {
                 DrawTriangle(draw, texture, center, radius, clipped[0], clipped[j], clipped[j + 1]);
-                drawn++;
             }
         }
-        return drawn;
     }
+
+    private void DrawShadow(ImDrawListPtr draw, Vector2 center, float scale)
+    {
+        if (_shadowTexture?.ImguiTextureRef is not { } texture) return;
+        var halfSize = 89f * scale;
+        var min = new float2(center.X - halfSize, center.Y - halfSize);
+        var max = new float2(center.X + halfSize, center.Y + halfSize);
+        var uvMin = new float2(0f, 0f);
+        var uvMax = new float2(1f, 1f);
+        // One authored gradient preserves the rim without compounding its
+        // alpha four times in ImGui. This is a KSI2 readability adjustment,
+        // not a claim that KSP2's four serialized Images draw identically.
+        ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, texture, &min, &max, &uvMin, &uvMax, 0xFFFFFFFFu);
+    }
+
+    internal void Dispose() => _filtering.Dispose();
 
     private static int ClipFront(ProjectedVertex a, ProjectedVertex b, ProjectedVertex c, Span<ProjectedVertex> output)
     {
@@ -176,7 +157,10 @@ internal sealed unsafe class NavballSpike
             if (inside != previousInside)
             {
                 var t = previous.Position.Z / (previous.Position.Z - current.Position.Z);
-                output[count++] = new ProjectedVertex(Vector3.Lerp(previous.Position, current.Position, t), Vector2.Lerp(previous.Uv, current.Uv, t));
+                var pos = Vector3.Lerp(previous.Position, current.Position, t);
+                var len = MathF.Sqrt(pos.X * pos.X + pos.Y * pos.Y);
+                if (len > 1e-4f) pos = new Vector3(pos.X / len, pos.Y / len, 0f);
+                output[count++] = new ProjectedVertex(pos, Vector2.Lerp(previous.Uv, current.Uv, t));
             }
             if (inside) output[count++] = current;
             previous = current;
@@ -184,6 +168,7 @@ internal sealed unsafe class NavballSpike
         }
         return count;
     }
+
 
     private static void DrawTriangle(ImDrawListPtr draw, ImTextureRef texture, Vector2 center, float radius,
         ProjectedVertex a, ProjectedVertex b, ProjectedVertex c)
@@ -240,7 +225,7 @@ internal sealed unsafe class NavballSpike
             var distanceSquared = marker.X * marker.X + marker.Y * marker.Y;
             if (distanceSquared > 0.9f) return;
 
-            const float halfSize = 14f;
+            var halfSize = 14f * radius / 115f;
             var x = center.X + marker.X * radius;
             var y = center.Y + marker.Y * radius;
             var min = new float2(x - halfSize, y - halfSize);

@@ -65,4 +65,5 @@ internal sealed class ThrottleSettings
         PositionSet = false;
         Save();
     }
+
 }
