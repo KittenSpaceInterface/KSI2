@@ -26,8 +26,9 @@ the rendered navball.
 The needle uses 2-unit cells and the rocket uses 1-unit cells, with bilinear
 mask sampling. This approximates Unity's UI stencil while keeping the moving
 rocket inside the gauge artwork. The marker
-sprite `VertSpeed-ELE-Needle` is shared with the vertical-speed widget, so
-there are nine source PNGs in the local `[asset package]` directory.
+sprite `VertSpeed-ELE-Needle` is shared with the vertical-speed widget. The
+vertical-speed widget also uses two additional local sprites; the local
+`[asset package]` directory now contains eleven source PNGs.
 
 The PNGs were copied from the existing focused AssetRipper export of
 `hudinstruments_assets_all.bundle`. They stay in ignored `external asset package/atmosphere`

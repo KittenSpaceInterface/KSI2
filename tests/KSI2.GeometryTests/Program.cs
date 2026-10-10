@@ -32,6 +32,21 @@ var clusterOrigin = NavballClusterLayout.Calculate(0, 0, 1920, 1080);
 Near(279f, widgetOrigin.X - clusterOrigin.Min.X, "authored atmosphere offset from navball x");
 Near(5f, clusterOrigin.Min.Y + clusterOrigin.PanelSize - widgetOrigin.Y - AtmosphericIndicatorGeometry.WidgetHeight,
     "authored atmosphere offset from navball bottom");
+var verticalSpeedOrigin = VerticalSpeedIndicatorGeometry.WidgetOrigin(0, 0, 1920, 1080);
+Near(widgetOrigin.X, verticalSpeedOrigin.X, "vertical speed aligns with atmosphere");
+Near(8f, widgetOrigin.Y - verticalSpeedOrigin.Y - VerticalSpeedIndicatorGeometry.WidgetHeight,
+    "vertical speed gap above atmosphere");
+var descendingMarker = VerticalSpeedIndicatorGeometry.Marker(-1000);
+Near(59f, descendingMarker.Position.X, "vertical speed minimum locator x");
+Near(131f, descendingMarker.Position.Y, "vertical speed minimum locator y");
+Near(5f, descendingMarker.AngleDegrees, "vertical speed minimum locator angle");
+var ascendingMarker = VerticalSpeedIndicatorGeometry.Marker(1000);
+Near(16f, ascendingMarker.Position.X, "vertical speed maximum locator x");
+Near(24f, ascendingMarker.Position.Y, "vertical speed maximum locator y");
+Near(45f, ascendingMarker.AngleDegrees, "vertical speed maximum locator angle");
+var quarterSpeedMarker = VerticalSpeedIndicatorGeometry.Marker(-500);
+Near(52.28125f, quarterSpeedMarker.Position.X, "vertical speed curve quarter x");
+Near(114.28125f, quarterSpeedMarker.Position.Y, "vertical speed curve quarter y");
 var rocketAtTop = AtmosphericIndicatorGeometry.RocketOnWidget(0);
 Near(75.5f, rocketAtTop.Position.X, "vacuum rocket widget x");
 Near(19.5f, rocketAtTop.Position.Y, "vacuum rocket widget y");
