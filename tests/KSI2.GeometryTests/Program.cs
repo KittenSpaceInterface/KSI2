@@ -7,6 +7,20 @@ static void Near(float expected, float actual, string name, float epsilon = 0.00
 }
 
 var cluster = NavballClusterLayout.Calculate(0, 0, 1920, 1080);
+var speedOrigin = SpeedReadoutGeometry.TopLeft(cluster);
+Near(75.85f, speedOrigin.X, "speed card follows current navball x");
+Near(864.95f, speedOrigin.Y, "speed card follows current navball y");
+var speedFormat = System.Globalization.CultureInfo.InvariantCulture;
+if (SpeedReadoutGeometry.Format(7_784.4, speedFormat) != new SpeedReadoutValue("7784.4", "m/s"))
+    throw new Exception("orbital speed below KSP2 unit switch remains in m/s");
+if (SpeedReadoutGeometry.Format(99_998.9, speedFormat) != new SpeedReadoutValue("99998.9", "m/s"))
+    throw new Exception("speed below km/s threshold");
+if (SpeedReadoutGeometry.Format(99_999, speedFormat) != new SpeedReadoutValue("100.0", "km/s"))
+    throw new Exception("speed at km/s threshold");
+if (SpeedReadoutGeometry.Format(99_999_000, speedFormat) != new SpeedReadoutValue("100.0", "mm/s"))
+    throw new Exception("speed at mm/s threshold");
+if (SpeedReadoutGeometry.Format(99_999_000_000, speedFormat) is not null)
+    throw new Exception("speed beyond final binder entry should retain prior display");
 Near(0f, KsaAtmosphereSource.Gauge(0, 1.225), "vacuum atmosphere gauge");
 Near(1f, KsaAtmosphereSource.Gauge(1.225, 1.225), "sea level atmosphere gauge");
 Near(0.5f, KsaAtmosphereSource.Gauge(1.225 / 16, 1.225), "quarter-root atmosphere gauge");
