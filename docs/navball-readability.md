@@ -1,34 +1,25 @@
 # Navball lettering and shadow
 
-The ball projects a 1024-pixel texture into a roughly 176-pixel diameter at
-1920 x 1080. Sampling just the base level with a bilinear UI sampler can skip
-thin parts of numbers as the ball rotates. The surface manifest now enables
-mip generation. `NavballTextureFiltering` registers a separate ImGui descriptor
-for the same game-managed image with trilinear filtering and up to 8x anisotropy,
-capped by the device limit. Anisotropy preserves detail along the narrower axis
-of the texture footprint where the sphere curves away from the viewer.
+KSP2 renders the navball mesh into a texture at twice the RawImage resolution,
+then displays that texture at roughly 176 pixels of visible sphere diameter.
+KSI2 now follows the same spatial sampling step in `NavballSupersampler`: it
+rasterizes the original mesh and surface texture at twice the displayed ball
+diameter, averages each 2 × 2 group of samples, and submits the resolved pixels
+to ImGui. This preserves the ball's displayed size and is intended to improve
+coverage of thin numbers and markings near its edge.
 
-Local inspection of `TextureReference.Bind`, `Presets.Sampler.SamplerLinearClamped`,
-and `KSADeviceContextEx` confirms that the default UI sampler supports mip levels
-but disables anisotropy, and KSA enables sampler anisotropy on its device. No
-texture upload or render-target synchronization is replaced. The custom sampler
-and descriptor are released after waiting for submitted frames at mod unload;
-creation failure falls back to the original UI descriptor.
+The intermediate is built on the CPU because KSI2's `StarMapAfterGui` hook
+submits draw commands to an ImGui pass that KSA has already begun. It is not a
+Unity `RenderTexture` or a Vulkan offscreen pass. The rasterizer uses the source
+texture's base level with bilinear sampling, like the single-mip KSP2 source
+texture. If the source pixels are unavailable, KSI2 falls back to its previous
+direct mesh draw with `NavballTextureFiltering`.
 
-The shadow now draws one full-opacity copy of the original gradient. Previously
-three full-opacity copies plus one 40% copy compounded its alpha: a texel with
-50% alpha obscured 90% of the ball (`1 - 0.5^3 * 0.8`). One copy obscures 50%.
-This is an intentional KSI2 readability adjustment, not a revision to the KSP2
-prefab findings. The earlier single-copy 40% trial documented in the investigation
-was too faint; this version retains the full gradient and rim.
+The locally extracted `Flight-Navball-Shadow` remains a single full-opacity
+copy over the ball. KSP2's prefab contains multiple shadow Images, but the
+single copy is KSI2's existing readability adjustment.
 
-The KSP2 research is in the sibling investigation repository's
-`navball-followup-investigation.md`. KSP2's actual twofold offscreen render and
-resolve remains a different pipeline; mip/anisotropic filtering does not
-reproduce that resolve or add silhouette antialiasing.
-
-Validation: Release build and existing geometry checks pass. Runtime visual
-acceptance is still required: compare the same attitude at the same viewport
-size, inspect center and rim numbers, and slowly roll to check lettering
-stability. Check the startup log for the navball filtering message. No source
-artwork is modified or added to version control.
+The Release build succeeds, and an in-game check showed a considerable
+readability improvement. Frame cost has not been measured.
+KSP2's GPU color-space handling and its exact 390 × 390 render target remain
+differences from this software implementation.

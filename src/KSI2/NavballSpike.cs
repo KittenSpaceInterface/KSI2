@@ -16,7 +16,7 @@ internal sealed unsafe class NavballSpike
         1f, 0f, 0f, 0f,
         0f, 0f, 0f, 1f);
 
-    private readonly struct ProjectedVertex(Vector3 position, Vector2 uv)
+    internal readonly struct ProjectedVertex(Vector3 position, Vector2 uv)
     {
         internal Vector3 Position { get; } = position;
         internal Vector2 Uv { get; } = uv;
@@ -24,6 +24,7 @@ internal sealed unsafe class NavballSpike
 
     private TextureReference? _texture;
     private readonly NavballTextureFiltering _filtering = new();
+    private readonly NavballSupersampler _supersampler = new();
     private TextureReference? _shadowTexture;
     private TextureReference? _crosshairTexture;
     private TextureReference? _progradeTexture;
@@ -63,7 +64,8 @@ internal sealed unsafe class NavballSpike
         var center = new Vector2(bounds.Center.X, bounds.Center.Y);
         var draw = ImGui.GetForegroundDrawList(viewport);
         ProjectSphere();
-        DrawProjectedSphere(draw, _filtering.GetTexture(_texture), center, bounds.BallRadius);
+        if (!_supersampler.TryDraw(draw, _texture, center, bounds.BallRadius, _mesh, _vertices!))
+            DrawProjectedSphere(draw, _filtering.GetTexture(_texture), center, bounds.BallRadius);
         DrawShadow(draw, center, bounds.Scale);
         DrawMarkers(draw, center, bounds.BallRadius);
         DrawCrosshair(draw, center, bounds.BallRadius);
@@ -145,7 +147,7 @@ internal sealed unsafe class NavballSpike
 
     internal void Dispose() => _filtering.Dispose();
 
-    private static int ClipFront(ProjectedVertex a, ProjectedVertex b, ProjectedVertex c, Span<ProjectedVertex> output)
+    internal static int ClipFront(ProjectedVertex a, ProjectedVertex b, ProjectedVertex c, Span<ProjectedVertex> output)
     {
         Span<ProjectedVertex> input = stackalloc ProjectedVertex[3] { a, b, c };
         var count = 0;
