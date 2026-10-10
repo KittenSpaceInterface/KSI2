@@ -11,9 +11,8 @@ internal static class NavballClusterLayout
 {
     internal const float PanelSize = 300f;
     internal const float BallSize = 176f;
-    // Authored background tint from KSP2's group_navball / Container / BG-Cluster.
-    // In KSA, ImGui samples Mask-Cluster-BG with this tint, and NavballSpike
-    // uses it to blend the sphere's geometric edge into the background.
+    // Trial flat color for the UIBlur2-backed BG-Cluster mask. ImGui packs
+    // #030B19 as ABGR; the KSP2 shader samples a blurred scene instead.
     internal const uint BackgroundColor = 0xFF190B03u;
     private const float ReferenceWidth = 1920f;
 

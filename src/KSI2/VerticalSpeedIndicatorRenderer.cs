@@ -36,7 +36,7 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
         var origin = new float2(widgetOrigin.X, widgetOrigin.Y);
         var draw = ImGui.GetForegroundDrawList(viewport);
 
-        DrawLayer("KSI2AtmoFill", 0xFD2F2624u, flipVertically: true);
+        DrawLayer("KSI2AtmoFill", 0xFD190B03u, flipVertically: true);
         DrawLayer("KSI2VertSpeedColors", 0xFFFFFFFFu);
         DrawLayer("KSI2VertSpeedNumbers", 0xFFFF6D69u);
         DrawLayer("KSI2AtmoBorder", 0x33FF6C68u, flipVertically: true);
