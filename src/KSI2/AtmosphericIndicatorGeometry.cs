@@ -21,11 +21,12 @@ internal static class AtmosphericIndicatorGeometry
 
     internal static Point WidgetOrigin(float viewportX, float viewportY, float viewportWidth, float viewportHeight)
     {
-        var scale = MathF.Min(viewportWidth / 1920f, viewportHeight / 1080f);
-        // Container is 100x100 with a centered pivot at (960, 540).
-        // Its bottom-left is (910, 490), before the widget's (-537, -403).
-        return new Point(viewportX + 373f * scale,
-            viewportY + viewportHeight - (87f + WidgetHeight) * scale);
+        var cluster = NavballClusterLayout.Calculate(viewportX, viewportY, viewportWidth, viewportHeight);
+        // KSP2: navball Container bottom-left (94, 82); atmosphere widget
+        // bottom-left (373, 87). Keep that (279, 5) offset when KSI2 moves
+        // the navball cluster relative to the viewport.
+        return new Point(cluster.Min.X + 279f * cluster.Scale,
+            cluster.Min.Y + (NavballClusterLayout.PanelSize - 5f - WidgetHeight) * cluster.Scale);
     }
 
     internal static AtmosphereMarkerPose NeedleOnWidget(float gauge)

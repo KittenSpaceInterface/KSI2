@@ -16,9 +16,13 @@ quaternions turn in the opposite direction from their Euler hint text, so the
 port interpolates the saved quaternion directions.
 
 `AtmosphericIndicatorRenderer` draws the backing, layers, border, bracket,
-moving needle, rocket and thrust sprites, then the shade. Colors and the
-bottom-left `(373, 87)` widget origin follow the inspected prefab. The old
-`(423, 137)` estimate omitted the 50-unit centered pivot of the Container.
+moving needle, rocket and thrust sprites, then the shade. In the KSP2 prefabs,
+the navball cluster is at bottom-left `(94, 82)` and the atmosphere widget is
+at `(373, 87)`, a `(279, 5)` offset. KSI2 applies that offset to its actual
+navball cluster position, so the indicator tracks the relocated navball. At
+1920 x 1080 its widget top-left is `(391.85, 901.95)`. The older direct canvas
+origin `(373, 87)` put it 18.85 units left and 48.95 units high relative to
+the rendered navball.
 The needle uses 2-unit cells and the rocket uses 1-unit cells, with bilinear
 mask sampling. This approximates Unity's UI stencil while keeping the moving
 rocket inside the gauge artwork. The marker
