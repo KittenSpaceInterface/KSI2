@@ -10,6 +10,7 @@ public sealed class KSI2Mod
     private readonly ThrottleGauge _gauge = new();
     private readonly NavballClusterBackground _navballClusterBackground = new();
     private readonly NavballSpike _navballSpike = new();
+    private readonly AtmosphericIndicatorRenderer _atmosphericIndicator = new();
 
     [StarMapBeforeMain]
     public void OnBeforeMain() => Console.WriteLine("KSI2 loaded.");
@@ -17,6 +18,10 @@ public sealed class KSI2Mod
     [StarMapAllModsLoaded]
     public void OnAllModsLoaded()
     {
+        var atmosphereDirectory = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "atmosphere");
+        foreach (var (id, file) in AtmosphericIndicatorRenderer.Assets)
+            if (File.Exists(Path.Combine(atmosphereDirectory, file)))
+                RegisterTexture(id, tex => _atmosphericIndicator.SetTexture(id, tex));
         RegisterTexture("KSI2ThrottleBG", tex => _gauge.SetBgTexture(tex));
         RegisterTexture("KSI2ThrottleBars", tex => _gauge.SetBarsTexture(tex));
         RegisterTexture("KSI2ThrottleBorder", tex => _gauge.SetBorderTexture(tex));
@@ -81,6 +86,7 @@ public sealed class KSI2Mod
         _navballClusterBackground.Draw();
         _gauge.Draw();
         _navballSpike.Draw();
+        _atmosphericIndicator.Draw();
     }
 
 
