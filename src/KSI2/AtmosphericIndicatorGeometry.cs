@@ -4,6 +4,11 @@ internal readonly record struct AtmosphereMarkerPose(Point Position, float Angle
 
 internal static class AtmosphericIndicatorGeometry
 {
+    internal const float WidgetWidth = 85f;
+    internal const float WidgetHeight = 140f;
+    private const float MaskCenterX = 43.5f + 8.1f;
+    private const float MaskCenterY = 70f + 6.3f;
+
     // KSP2's locator positions are in Unity's bottom-up local coordinates.
     // Convert Y here so callers receive top-down ImGui coordinates.
     internal static AtmosphereMarkerPose Needle(float gauge) =>
@@ -13,6 +18,23 @@ internal static class AtmosphericIndicatorGeometry
     internal static AtmosphereMarkerPose Rocket(float gauge) =>
         Interpolate(gauge, new Point(44.2f, -24.4f), new Point(-27.2f, -16.8f),
             new Point(-65.7f, 25.5f), 4.7118416f, 41.395893f);
+
+    internal static AtmosphereMarkerPose NeedleOnWidget(float gauge)
+    {
+        var pose = Needle(gauge);
+        var angle = pose.AngleDegrees * MathF.PI / 180f;
+        // The icon is 10 units above the moving marker in the rotated mask.
+        var x = pose.Position.X - 10f * MathF.Sin(angle);
+        var y = -pose.Position.Y + 10f * MathF.Cos(angle);
+        return new(new Point(MaskCenterX - y, WidgetHeight - (MaskCenterY + x)), pose.AngleDegrees);
+    }
+
+    internal static AtmosphereMarkerPose RocketOnWidget(float gauge)
+    {
+        var pose = Rocket(gauge);
+        return new(new Point(MaskCenterX + pose.Position.Y,
+            WidgetHeight - (MaskCenterY + pose.Position.X)), pose.AngleDegrees);
+    }
 
     private static AtmosphereMarkerPose Interpolate(float gauge, Point minimum,
         Point handle, Point maximum, float minimumAngle, float maximumAngle)

@@ -25,6 +25,12 @@ Near(-25.5f, rocketEnd.Position.Y, "rocket maximum screen y");
 Near(41.395893f, rocketEnd.AngleDegrees, "rocket maximum rotation");
 Near(rocketEnd.Position.X, AtmosphericIndicatorGeometry.Rocket(1.2f).Position.X,
     "rocket path clamps beyond maximum");
+var rocketAtTop = AtmosphericIndicatorGeometry.RocketOnWidget(0);
+Near(76f, rocketAtTop.Position.X, "vacuum rocket widget x");
+Near(19.5f, rocketAtTop.Position.Y, "vacuum rocket widget y");
+var rocketAtBottom = AtmosphericIndicatorGeometry.RocketOnWidget(1);
+Near(26.1f, rocketAtBottom.Position.X, "sea level rocket widget x");
+Near(129.4f, rocketAtBottom.Position.Y, "sea level rocket widget y");
 Near(112.85f, cluster.Min.X, "cluster left");
 Near(746.95f, cluster.Min.Y, "cluster top");
 Near(262.85f, cluster.Center.X, "navball center x");
