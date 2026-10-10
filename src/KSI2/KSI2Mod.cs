@@ -11,6 +11,7 @@ public sealed class KSI2Mod
     private readonly NavballClusterBackground _navballClusterBackground = new();
     private readonly NavballSpike _navballSpike = new();
     private readonly AtmosphericIndicatorRenderer _atmosphericIndicator = new();
+    private readonly VerticalSpeedIndicatorRenderer _verticalSpeedIndicator = new();
 
     [StarMapBeforeMain]
     public void OnBeforeMain() => Console.WriteLine("KSI2 loaded.");
@@ -21,7 +22,14 @@ public sealed class KSI2Mod
         var atmosphereDirectory = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "atmosphere");
         foreach (var (id, file) in AtmosphericIndicatorRenderer.Assets)
             if (File.Exists(Path.Combine(atmosphereDirectory, file)))
-                RegisterTexture(id, tex => _atmosphericIndicator.SetTexture(id, tex));
+                RegisterTexture(id, tex =>
+                {
+                    _atmosphericIndicator.SetTexture(id, tex);
+                    _verticalSpeedIndicator.SetTexture(id, tex);
+                });
+        foreach (var (id, file) in VerticalSpeedIndicatorRenderer.Assets)
+            if (File.Exists(Path.Combine(atmosphereDirectory, file)))
+                RegisterTexture(id, tex => _verticalSpeedIndicator.SetTexture(id, tex));
         RegisterTexture("KSI2ThrottleBG", tex => _gauge.SetBgTexture(tex));
         RegisterTexture("KSI2ThrottleBars", tex => _gauge.SetBarsTexture(tex));
         RegisterTexture("KSI2ThrottleBorder", tex => _gauge.SetBorderTexture(tex));
@@ -87,6 +95,7 @@ public sealed class KSI2Mod
         _gauge.Draw();
         _navballSpike.Draw();
         _atmosphericIndicator.Draw();
+        _verticalSpeedIndicator.Draw();
     }
 
 
