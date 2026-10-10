@@ -26,8 +26,12 @@ Near(-41.395893f, rocketEnd.AngleDegrees, "rocket maximum quaternion rotation");
 Near(rocketEnd.Position.X, AtmosphericIndicatorGeometry.Rocket(1.2f).Position.X,
     "rocket path clamps beyond maximum");
 var widgetOrigin = AtmosphericIndicatorGeometry.WidgetOrigin(0, 0, 1920, 1080);
-Near(373f, widgetOrigin.X, "atmosphere widget left includes parent pivot");
-Near(853f, widgetOrigin.Y, "atmosphere widget top includes parent pivot");
+Near(391.85f, widgetOrigin.X, "atmosphere widget follows navball cluster x");
+Near(901.95f, widgetOrigin.Y, "atmosphere widget follows navball cluster y");
+var clusterOrigin = NavballClusterLayout.Calculate(0, 0, 1920, 1080);
+Near(279f, widgetOrigin.X - clusterOrigin.Min.X, "authored atmosphere offset from navball x");
+Near(5f, clusterOrigin.Min.Y + clusterOrigin.PanelSize - widgetOrigin.Y - AtmosphericIndicatorGeometry.WidgetHeight,
+    "authored atmosphere offset from navball bottom");
 var rocketAtTop = AtmosphericIndicatorGeometry.RocketOnWidget(0);
 Near(75.5f, rocketAtTop.Position.X, "vacuum rocket widget x");
 Near(19.5f, rocketAtTop.Position.Y, "vacuum rocket widget y");
