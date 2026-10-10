@@ -7,6 +7,24 @@ static void Near(float expected, float actual, string name, float epsilon = 0.00
 }
 
 var cluster = NavballClusterLayout.Calculate(0, 0, 1920, 1080);
+Near(0f, KsaAtmosphereSource.Gauge(0, 1.225), "vacuum atmosphere gauge");
+Near(1f, KsaAtmosphereSource.Gauge(1.225, 1.225), "sea level atmosphere gauge");
+Near(0.5f, KsaAtmosphereSource.Gauge(1.225 / 16, 1.225), "quarter-root atmosphere gauge");
+Near(0f, KsaAtmosphereSource.Gauge(1, 0), "airless body atmosphere gauge");
+Near(0f, KsaAtmosphereSource.Gauge(double.NaN, 1), "invalid atmosphere density");
+var needleStart = AtmosphericIndicatorGeometry.Needle(0);
+Near(53.5f, needleStart.Position.X, "needle minimum x");
+Near(11.9f, needleStart.Position.Y, "needle minimum screen y");
+Near(0f, needleStart.AngleDegrees, "needle minimum rotation");
+var needleMiddle = AtmosphericIndicatorGeometry.Needle(0.5f);
+Near(-6.025f, needleMiddle.Position.X, "needle Bezier midpoint x");
+Near(-2.325f, needleMiddle.Position.Y, "needle Bezier midpoint screen y");
+var rocketEnd = AtmosphericIndicatorGeometry.Rocket(1);
+Near(-65.7f, rocketEnd.Position.X, "rocket maximum x");
+Near(-25.5f, rocketEnd.Position.Y, "rocket maximum screen y");
+Near(41.395893f, rocketEnd.AngleDegrees, "rocket maximum rotation");
+Near(rocketEnd.Position.X, AtmosphericIndicatorGeometry.Rocket(1.2f).Position.X,
+    "rocket path clamps beyond maximum");
 Near(112.85f, cluster.Min.X, "cluster left");
 Near(746.95f, cluster.Min.Y, "cluster top");
 Near(262.85f, cluster.Center.X, "navball center x");

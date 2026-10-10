@@ -1,0 +1,60 @@
+namespace KSI2;
+
+internal readonly record struct AtmosphereMarkerPose(Point Position, float AngleDegrees);
+
+internal static class AtmosphericIndicatorGeometry
+{
+    // KSP2's locator positions are in Unity's bottom-up local coordinates.
+    // Convert Y here so callers receive top-down ImGui coordinates.
+    internal static AtmosphereMarkerPose Needle(float gauge) =>
+        Interpolate(gauge, new Point(53.5f, -11.9f), new Point(-10f, -8f),
+            new Point(-57.6f, 37.2f), 0f, 44.045227f);
+
+    internal static AtmosphereMarkerPose Rocket(float gauge) =>
+        Interpolate(gauge, new Point(44.2f, -24.4f), new Point(-27.2f, -16.8f),
+            new Point(-65.7f, 25.5f), 4.7118416f, 41.395893f);
+
+    private static AtmosphereMarkerPose Interpolate(float gauge, Point minimum,
+        Point handle, Point maximum, float minimumAngle, float maximumAngle)
+    {
+        // Unity's Vector3.Lerp and Quaternion.Lerp clamp the evaluated input.
+        var t = Math.Clamp(gauge, 0f, 1f);
+        var oneMinusT = 1f - t;
+        var x = oneMinusT * oneMinusT * minimum.X + 2f * oneMinusT * t * handle.X + t * t * maximum.X;
+        var y = oneMinusT * oneMinusT * minimum.Y + 2f * oneMinusT * t * handle.Y + t * t * maximum.Y;
+        var minRadians = minimumAngle * MathF.PI / 180f;
+        var maxRadians = maximumAngle * MathF.PI / 180f;
+        var sine = oneMinusT * MathF.Sin(minRadians / 2f) + t * MathF.Sin(maxRadians / 2f);
+        var cosine = oneMinusT * MathF.Cos(minRadians / 2f) + t * MathF.Cos(maxRadians / 2f);
+        var angle = 2f * MathF.Atan2(sine, cosine) * 180f / MathF.PI;
+        return new(new Point(x, -y), angle);
+    }
+}
+
+internal static class KsaAtmosphereSource
+{
+    internal static float Gauge(double density, double seaLevelDensity)
+    {
+        if (!double.IsFinite(density) || !double.IsFinite(seaLevelDensity)
+            || density <= 0 || seaLevelDensity <= 0) return 0f;
+        var value = Math.Pow(density / seaLevelDensity, 0.25);
+        return double.IsFinite(value) ? (float)value : 0f;
+    }
+
+    internal static bool TryRead(out float gauge)
+    {
+        gauge = 0f;
+        try
+        {
+            var vehicle = KSA.Program.ControlledVehicle;
+            if (vehicle is null || vehicle.IsDisposed) return false;
+            var atmosphere = vehicle.PhysicsEnvironment.ClosestParent?.GetAtmosphereReference();
+            if (atmosphere is null) return true;
+            gauge = Gauge(vehicle.PhysicsEnvironment.AtmosphericDensity,
+                atmosphere.Physical.SeaLevelDensity);
+            return true;
+        }
+        catch (ObjectDisposedException) { return false; }
+        catch (InvalidOperationException) { return false; }
+    }
+}
