@@ -10,6 +10,7 @@ public sealed class KSI2Mod
     private readonly ThrottleGauge _gauge = new();
     private readonly NavballClusterBackground _navballClusterBackground = new();
     private readonly NavballSpike _navballSpike = new();
+    private readonly HeadingDialRenderer _headingDial = new();
     private readonly AtmosphericIndicatorRenderer _atmosphericIndicator = new();
     private readonly VerticalSpeedIndicatorRenderer _verticalSpeedIndicator = new();
 
@@ -67,6 +68,9 @@ public sealed class KSI2Mod
             RegisterTexture("KSI2NavballRadialIn", tex => _navballSpike.SetRadialInTexture(tex));
         if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
             RegisterTexture("KSI2NavballManeuver", tex => _navballSpike.SetBurnTexture(tex));
+        foreach (var (id, file) in HeadingDialRenderer.Assets)
+            if (File.Exists(Path.Combine(navballDirectory, file)))
+                RegisterTexture(id, tex => _headingDial.SetTexture(id, tex));
     }
 
     private static void RegisterTexture(string id, Action<TextureReference> assign)
@@ -91,6 +95,7 @@ public sealed class KSI2Mod
         _navballClusterBackground.Draw();
         _gauge.Draw();
         _navballSpike.Draw();
+        _headingDial.Draw();
         _atmosphericIndicator.Draw();
         _verticalSpeedIndicator.Draw();
     }
