@@ -15,6 +15,29 @@ unavailable.
 | Mouse throttle control | Drag the curved throttle handle to command throttle directly, subject to KSA control authority, time warp, minimum throttle, and automatic burn rules. | Drag control is disabled. The gauge remains read-only. |
 | Blurred panel backgrounds | Sample and blur the rendered scene inside the existing panel shape masks. | Draw the current solid-color masked backgrounds. |
 
+## Shared pilot interface layout tree
+
+Replace the current implicit relationships between independent ImGui renderers
+with a small KSI2 layout tree. A pilot interface root should own the shared
+position and scale. Its children should include the throttle, the navball
+cluster, and the atmospheric and vertical-speed indicators. Inside the navball
+cluster, the background, ball and markers, dials, readouts, and controls should
+use local coordinates relative to that cluster. The background and ball are
+siblings under the cluster; the background is a visual layer, not a parent.
+
+Calculate the root transform once per frame and pass resolved child transforms
+to each renderer. Dragging the single edit overlay should update the root, and Reset
+layout should restore the root's initial transform. Keep visual draw order and
+interactive hit areas explicit. Preserve the current appearance and saved
+settings while moving renderers to this model, then compare placement at
+multiple viewport sizes.
+
+KSA's native gauge definition has a `GaugeCanvas` with a list of sibling
+`GaugeComponent`s; KSI2 currently draws through ImGui draw lists. This plan
+models parent-child layout within KSI2 rather than assuming ImGui draw lists
+automatically inherit transforms. See [screen-layout.md](screen-layout.md)
+for the current coordinates.
+
 ## Mouse throttle control
 
 The separate `interface-investigation/throttle-indicator-map.md` found no
