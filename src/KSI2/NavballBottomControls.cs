@@ -7,7 +7,7 @@ namespace KSI2;
 
 internal sealed unsafe class NavballBottomControls
 {
-    private const string FontKey = "KSI2-LCD-Solid";
+    internal const string FontKey = "KSI2-LCD-Solid";
     internal static readonly (string Id, string File)[] Assets =
     [
         ("KSI2BottomToggleOutline", "[asset]"),
