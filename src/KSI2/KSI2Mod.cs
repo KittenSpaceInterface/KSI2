@@ -46,6 +46,7 @@ public sealed class KSI2Mod
         if (File.Exists(navballTexture))
             RegisterTexture("KSI2NavballSurface", tex => _navballSpike.SetTexture(tex));
         var navballDirectory = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "navball");
+        var fontsDirectory = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "fonts");
         if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
             RegisterTexture("KSI2NavballShadow", tex => _navballSpike.SetShadowTexture(tex));
         if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
@@ -95,7 +96,7 @@ public sealed class KSI2Mod
         foreach (var (id, file) in NavballBottomControls.Assets)
             if (File.Exists(Path.Combine(navballDirectory, file)))
                 RegisterTexture(id, tex => _bottomControls.SetTexture(id, tex));
-        _bottomControls.LoadFont(Path.Combine(navballDirectory, "LCD_Solid.ttf"));
+        _bottomControls.LoadFont(Path.Combine(fontsDirectory, "LCD_Solid.ttf"));
     }
 
     private static void RegisterTexture(string id, Action<TextureReference> assign)

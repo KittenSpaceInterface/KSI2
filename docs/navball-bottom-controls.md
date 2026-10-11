@@ -19,6 +19,7 @@ manager, so they are rasterized at display density rather than scaled from a
 small PNG. The existing speed and altitude PNG font atlases are unchanged.
 
 Run `tools/Prepare-BottomControlsAssets.ps1` to copy the locally exported
-outline and icon sprites plus the font from the workspace's `external fonts`
-folder into ignored `external asset package/navball/`. The build copies these four files
-to `[asset]; they are not committed to this repository.
+outline and icon sprites into ignored `external asset package/navball/`, and the font
+from the workspace's `external fonts` folder into ignored `external asset package/fonts/`.
+The build places the sprites under `[asset] and font files under
+`assets/fonts/`; these local assets are not committed to this repository.
