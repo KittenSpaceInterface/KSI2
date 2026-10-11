@@ -17,6 +17,8 @@ public sealed class KSI2Mod
     private readonly AtmosphericIndicatorRenderer _atmosphericIndicator = new();
     private readonly VerticalSpeedIndicatorRenderer _verticalSpeedIndicator = new();
     private readonly NavballBottomControls _bottomControls = new();
+    private PanelBackgroundBlur? _panelBlur;
+    private bool _panelBlurAttempted;
 
     [StarMapBeforeMain]
     public void OnBeforeMain() => Console.WriteLine("KSI2 loaded.");
@@ -118,16 +120,29 @@ public sealed class KSI2Mod
     public void OnAfterGui(double dt)
     {
         if (ImGui.GetCurrentContext().IsNull()) return;
-        _navballClusterBackground.Draw();
-        _gauge.Draw();
+        _gauge.Draw(GetPanelBlur);
+        var blur = _gauge.BlurPanelBackgrounds ? GetPanelBlur() : null;
+        var opacity = _gauge.BlurOpacity;
+        _navballClusterBackground.Draw(blur, opacity);
         _navballSpike.Draw();
         _sideDials.Draw();
         _speedReadout.Draw();
         _headingDial.Draw();
-        _atmosphericIndicator.Draw();
-        _verticalSpeedIndicator.Draw();
+        _atmosphericIndicator.Draw(blur, opacity);
+        _verticalSpeedIndicator.Draw(blur, opacity);
         _altitudeReadout.Draw();
         _bottomControls.Draw();
+    }
+
+    private PanelBackgroundBlur? GetPanelBlur()
+    {
+        if (!_gauge.BlurPanelBackgrounds) return null;
+        if (!_panelBlurAttempted)
+        {
+            _panelBlurAttempted = true;
+            _panelBlur = PanelBackgroundBlur.Create();
+        }
+        return _panelBlur;
     }
 
 
@@ -135,6 +150,7 @@ public sealed class KSI2Mod
     public void Unload()
     {
         _navballSpike.Dispose();
+        _panelBlur?.Dispose();
         _gauge.Dispose();
     }
 }

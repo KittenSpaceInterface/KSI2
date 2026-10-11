@@ -12,7 +12,7 @@ internal sealed unsafe class NavballClusterBackground
     internal void SetBackgroundTexture(TextureReference texture) => _backgroundTexture = texture;
     internal void SetBorderTexture(TextureReference texture) => _borderTexture = texture;
 
-    internal void Draw()
+    internal void Draw(PanelBackgroundBlur? blur, float opacity)
     {
         if (!KSA.Program.DrawUI || _backgroundTexture?.ImguiTextureRef is not { } background) return;
 
@@ -27,9 +27,9 @@ internal sealed unsafe class NavballClusterBackground
         var uvMax = new float2(1f, 1f);
         var draw = ImGui.GetBackgroundDrawList(viewport);
 
-        // KSP2 uses UIBlur2 here. KSI2 cannot bind that Unity shader to ImGui;
-        // this opaque tint matches the clear interior of the supplied picture.
-        ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, background, &min, &max, &uvMin, &uvMax, NavballClusterLayout.BackgroundColor);
+        var blurQueued = blur?.Queue(draw, min, max, _backgroundTexture!, opacity) == true;
+        if (!blurQueued)
+            ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, background, &min, &max, &uvMin, &uvMax, NavballClusterLayout.BackgroundColor);
         if (_borderTexture?.ImguiTextureRef is { } border)
             ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, border, &min, &max, &uvMin, &uvMax, 0xFF662B29u);
     }

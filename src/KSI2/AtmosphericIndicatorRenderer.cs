@@ -27,7 +27,7 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
 
     internal void SetTexture(string id, TextureReference texture) => _textures[id] = texture;
 
-    internal void Draw()
+    internal void Draw(PanelBackgroundBlur? blur, float opacity)
     {
         if (!KSA.Program.DrawUI || !KsaAtmosphereSource.TryRead(out var gauge)) return;
         if (Assets.Any(asset => !_textures.TryGetValue(asset.Id, out var texture) || texture.ImguiTextureRef is null)) return;
@@ -40,7 +40,10 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
         var origin = new float2(widgetOrigin.X, widgetOrigin.Y);
         var draw = ImGui.GetForegroundDrawList(viewport);
 
-        DrawLayer("KSI2AtmoFill", 0xFD190B03u);
+        var blurQueued = blur?.Queue(draw, origin,
+            origin + new float2(85f * scale, 140f * scale),
+            _textures["KSI2AtmoFill"], opacity) == true;
+        if (!blurQueued) DrawLayer("KSI2AtmoFill", 0xFD190B03u);
         DrawLayer("KSI2AtmoLayers", 0xFFF2F2F2u);
         DrawLayer("KSI2AtmoBorder", 0xFF662B29u);
         DrawLayer("KSI2AtmoBracket", 0xFFCC5753u);
@@ -113,6 +116,7 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
             }
         }
     }
+
 
     private float SampleMask(float x, float y)
     {

@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="assets\shaders\*.vert;assets\shaders\*.frag">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
     <Content Include="$(MSBuildProjectDirectory)\assets\fonts\*.ttf;$(MSBuildProjectDirectory)\assets\fonts\*.otf" Condition="Exists('$(MSBuildProjectDirectory)\assets\fonts')">
       <Link>assets\fonts\%(Filename)%(Extension)</Link>
       <TargetPath>assets\fonts\%(Filename)%(Extension)</TargetPath>

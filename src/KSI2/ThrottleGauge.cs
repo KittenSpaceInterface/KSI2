@@ -8,6 +8,7 @@ namespace KSI2;
 internal sealed unsafe class ThrottleGauge : IDisposable
 {
     private readonly ThrottleSettings _settings = ThrottleSettings.Load();
+    private readonly BlurCrashGuard _blurCrashGuard;
     private readonly ThrottleMouseController _mouseControl = new();
     private string? _assetError;
     private bool _loggedAssetError;
@@ -27,6 +28,10 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     private bool _useTestThrottle;
     private float _testThrottle = 100f;
     private ThrottleSnapshot? _snapshot;
+    internal bool BlurPanelBackgrounds => _blurCrashGuard.Enabled;
+    internal float BlurOpacity => _settings.BlurOpacityTicks / 400f;
+
+    internal ThrottleGauge() => _blurCrashGuard = new BlurCrashGuard(_settings);
 
     internal void SetBgTexture(TextureReference texture) => _bgTexture = texture;
     internal void SetBarsTexture(TextureReference texture) => _barsTexture = texture;
@@ -36,7 +41,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     internal void SetPercentGlyphTexture(TextureReference texture) => _percentGlyphTexture = texture;
     internal void SetFillTexture(TextureReference texture) => _fillTexture = texture;
 
-    internal void Draw()
+    internal void Draw(Func<PanelBackgroundBlur?> getBlur)
     {
         if (_disposed || ImGui.GetCurrentContext().IsNull() || !KSA.Program.DrawUI)
         {
@@ -54,7 +59,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
             : _snapshot?.Value;
         if (throttle is null) return;
         EnsureArtwork();
-        if (_artwork is not null) DrawGauge(throttle.Value);
+        if (_artwork is not null) DrawGauge(throttle.Value, getBlur);
         else _mouseControl.Cancel();
     }
 
@@ -105,6 +110,21 @@ internal sealed unsafe class ThrottleGauge : IDisposable
 
         if (ImGui.Button("Reset layout")) _settings.Reset();
         ImGui.Text("Experimental");
+        var blurPanelBackgrounds = BlurPanelBackgrounds;
+        if (ImGui.Checkbox("Blur panel backgrounds", ref blurPanelBackgrounds))
+            _blurCrashGuard.SetEnabled(blurPanelBackgrounds);
+        if (BlurPanelBackgrounds)
+        {
+            ImGui.Text($"Blur opacity: {_settings.BlurOpacityTicks / 4f:0.00}%");
+            var blurOpacityTicks = _settings.BlurOpacityTicks;
+            if (ImGui.SliderInt("##KSI2BlurOpacity", ref blurOpacityTicks, 0, 400, ""))
+                _settings.BlurOpacityTicks = blurOpacityTicks;
+            if (ImGui.IsItemDeactivatedAfterEdit()) _settings.Save();
+            ImGui.TextWrapped("Experimental blur uses Vulkan. If KSA exits unexpectedly while it is enabled, KSI2 disables it on the next launch.");
+        }
+        if (_blurCrashGuard.RecoveredAfterCrash)
+            ImGui.TextWrapped("Panel blur was disabled after the previous run ended unexpectedly.");
+        if (_blurCrashGuard.Error is { } blurError) ImGui.TextWrapped(blurError);
         var mouseThrottle = _settings.MouseThrottleControl;
         if (ImGui.Checkbox("Mouse throttle control", ref mouseThrottle))
         {
@@ -124,7 +144,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         ImGui.End();
     }
 
-    private void DrawGauge(float throttle)
+    private void DrawGauge(float throttle, Func<PanelBackgroundBlur?> getBlur)
     {
         var viewport = ImGui.GetMainViewport();
         var scale = MathF.Min(viewport.Size.X / 1920f, viewport.Size.Y / 1080f) * _settings.Scale;
@@ -149,7 +169,11 @@ internal sealed unsafe class ThrottleGauge : IDisposable
             ThrottleMouseController.CanControl(KSA.Program.ControlledVehicle))
             HandleThrottleDrag(origin, scale, throttle);
         var art = _artwork!;
-        DrawStaticLayer(draw, _bgTexture, art, "[asset]", origin, scale, 0xFD190B03u);
+        var blurQueued = BlurPanelBackgrounds && _bgTexture is { } mask &&
+            getBlur()?.Queue(draw, new float2(origin.X, origin.Y),
+                new float2(origin.X + 85f * scale, origin.Y + 290f * scale),
+                mask, BlurOpacity) == true;
+        if (!blurQueued) DrawStaticLayer(draw, _bgTexture, art, "[asset]", origin, scale, 0xFD190B03u);
         DrawStaticLayer(draw, _barsTexture, art, "[asset]", origin, scale, 0xFF99413Eu);
         DrawStaticLayer(draw, _borderTexture, art, "[asset]", origin, scale, 0xFF662B29u);
         DrawStaticLayer(draw, _bracketTexture, art, "[asset]", origin, scale, 0xFFFF6D69u);
@@ -346,6 +370,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     public void Dispose()
     {
         _mouseControl.Dispose();
+        _blurCrashGuard.OnCleanUnload();
         _disposed = true;
     }
 }
