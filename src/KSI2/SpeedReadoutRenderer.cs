@@ -14,12 +14,10 @@ internal sealed unsafe class SpeedReadoutRenderer
         ("KSI2SpeedUnitsTile", "[asset]"),
         ("KSI2SpeedSurface", "[asset]"),
         ("KSI2SpeedOrbit", "[asset]"),
-        ("KSI2SpeedTarget", "[asset]"),
-        ("KSI2SpeedVelFont", "[asset]")
+        ("KSI2SpeedTarget", "[asset]")
     ];
 
     private readonly Dictionary<string, TextureReference> _textures = new();
-    private readonly SpeedBitmapFont? _velFont;
     private SpeedReadoutValue? _lastValue;
 
 // FUTURE USE ONLY: keep this preview disabled in the flight screen. If an
@@ -32,31 +30,14 @@ internal sealed unsafe class SpeedReadoutRenderer
     private float _testSpeedExponent = MathF.Log10(7_784.4f);
 #endif
 
-    internal SpeedReadoutRenderer()
-    {
-        var directory = Path.Combine(Path.GetDirectoryName(typeof(SpeedReadoutRenderer).Assembly.Location)!,
-            "assets", "navball");
-        _velFont = TryLoad("speed-vel.csv");
-
-        SpeedBitmapFont? TryLoad(string file)
-        {
-            var path = Path.Combine(directory, file);
-            return File.Exists(path) ? new SpeedBitmapFont(path) : null;
-        }
-    }
-
     internal void SetTexture(string id, TextureReference texture)
     {
         _textures[id] = texture;
-        switch (id)
-        {
-            case "KSI2SpeedVelFont": _velFont?.SetTexture(texture); break;
-        }
     }
 
     internal void Draw()
     {
-        if (!KSA.Program.DrawUI || _velFont?.Ready != true) return;
+        if (!KSA.Program.DrawUI) return;
         var vehicle = KSA.Program.ControlledVehicle;
         if (vehicle is null || vehicle.IsDisposed) return;
         if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
@@ -83,26 +64,12 @@ internal sealed unsafe class SpeedReadoutRenderer
 
         // The authored BG is a sliced Image with 14/62/19/62 source-pixel borders.
         DrawNineSlice("KSI2SpeedBackground", x, y, 86f, 64f, 0xFF00ABCCu);
-        // The title's Lines and backing sprites are inactive. Its opaque black
-        // sprite-null Image is drawn after the frame and interrupts its left line.
+        // The title's black label overlays and interrupts the left frame line.
         const float velSize = 10.5f;
         const float velLineStep = 70.8f / 59f * velSize - 16f * velSize * 0.01f;
-        var (velInkTop, velInkBottom) = _velFont.InkVerticalBounds("V", velSize);
-        var velInkHeight = velInkBottom - velInkTop + 2f * velLineStep;
-        var firstVelTop = y + (32f - velInkHeight / 2f - velInkTop) * scale;
-        var stripTop = y + (32f - velInkHeight / 2f - 2f) * scale;
-        var stripBottom = y + (32f + velInkHeight / 2f + 2f) * scale;
-        var stripMin = new float2(x + 2f * scale, stripTop);
-        var stripMax = new float2(x + 12f * scale, stripBottom);
-        ImGui.PInvoke.ImDrawList_AddRectFilled(draw.Ptr, &stripMin, &stripMax,
-            0xFF000000u, 0f, ImDrawFlags.None);
-        for (var i = 0; i < 3; i++)
-        {
-            var letter = "VEL"[i].ToString();
-            var width = _velFont.Width(letter, velSize * scale);
-            _velFont.Draw(draw, letter, x + 6.5f * scale - width / 2f,
-                firstVelTop + i * velLineStep * scale, velSize * scale, 0xFF00D6FFu);
-        }
+        ReadoutLcdText.DrawVerticalTitle(draw, "VEL", x + 6.5f * scale,
+            y + 32f * scale, x + 2f * scale, x + 12f * scale,
+            velSize, velLineStep, scale, 0xFF00D6FFu);
 
         DrawTiledImage("KSI2SpeedModeTile", x + 15f * scale, y + 8f * scale,
             48f, 8f, 14f, 8f, 0x45008099u);
