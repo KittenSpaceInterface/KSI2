@@ -30,7 +30,8 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
         if (!EnsureMask()) return;
 
         var viewport = ImGui.GetMainViewport();
-        var scale = MathF.Min(viewport.Size.X / 1920f, viewport.Size.Y / 1080f);
+        var scale = NavballClusterLayout.Calculate(viewport.Pos.X, viewport.Pos.Y,
+            viewport.Size.X, viewport.Size.Y).Scale;
         var widgetOrigin = VerticalSpeedIndicatorGeometry.WidgetOrigin(
             viewport.Pos.X, viewport.Pos.Y, viewport.Size.X, viewport.Size.Y);
         var origin = new float2(widgetOrigin.X, widgetOrigin.Y);

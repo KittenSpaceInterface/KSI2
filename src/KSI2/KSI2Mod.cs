@@ -132,6 +132,7 @@ public sealed class KSI2Mod
         _verticalSpeedIndicator.Draw(blur, opacity);
         _altitudeReadout.Draw();
         _bottomControls.Draw();
+        _gauge.DrawLayoutEditor();
     }
 
     private PanelBackgroundBlur? GetPanelBlur()
