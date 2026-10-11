@@ -6,6 +6,8 @@ The project is in early development.
 
 The current viewport and navball placement calculations are documented in
 [docs/screen-layout.md](docs/screen-layout.md).
+Deferred experimental controls and panel blur are recorded in
+[docs/future-ui-plan.md](docs/future-ui-plan.md).
 
 ## Requirements
 
