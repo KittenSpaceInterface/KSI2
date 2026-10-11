@@ -24,9 +24,7 @@ internal sealed unsafe class AltitudeReadoutRenderer
     private const uint UnitsTileTint = 0x70591E59u;
 
     private readonly Dictionary<string, TextureReference> _textures = new();
-    private readonly SpeedBitmapFont? _modeFont;
     private readonly SpeedBitmapFont? _titleFont;
-    private readonly SpeedBitmapFont? _digitsFont;
     private AltitudeReadoutValue? _lastValue;
     private Vehicle? _selectedVehicle;
     private AltitudeReadoutMode _selectedMode;
@@ -35,9 +33,7 @@ internal sealed unsafe class AltitudeReadoutRenderer
     {
         var directory = Path.Combine(Path.GetDirectoryName(typeof(AltitudeReadoutRenderer).Assembly.Location)!,
             "assets", "navball");
-        _modeFont = TryLoad("speed-sbliquid.csv");
         _titleFont = TryLoad("speed-vel.csv");
-        _digitsFont = TryLoad("speed-digits.csv");
 
         SpeedBitmapFont? TryLoad(string file)
         {
@@ -51,16 +47,13 @@ internal sealed unsafe class AltitudeReadoutRenderer
         _textures[id] = texture;
         switch (id)
         {
-            case "KSI2SpeedModeFont": _modeFont?.SetTexture(texture); break;
             case "KSI2SpeedVelFont": _titleFont?.SetTexture(texture); break;
-            case "KSI2SpeedDigitsFont": _digitsFont?.SetTexture(texture); break;
         }
     }
 
     internal void Draw()
     {
-        if (!KSA.Program.DrawUI || _modeFont?.Ready != true || _titleFont?.Ready != true
-            || _digitsFont?.Ready != true) return;
+        if (!KSA.Program.DrawUI || _titleFont?.Ready != true) return;
         var vehicle = KSA.Program.ControlledVehicle;
         if (vehicle is null || vehicle.IsDisposed) return;
         if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
@@ -135,29 +128,19 @@ internal sealed unsafe class AltitudeReadoutRenderer
         var modeText = mode == AltitudeReadoutMode.GroundLevel ? "GROUND" : "SEA";
         var icon = mode == AltitudeReadoutMode.GroundLevel
             ? "KSI2AltitudeGround" : "KSI2AltitudeSeaLevel";
-        var modeSpacing = mode == AltitudeReadoutMode.GroundLevel ? 9f : 8f;
-        var (modeInkTop, modeInkBottom) = _modeFont.InkVerticalBounds(modeText, 10f);
-        var modeTop = y + (11.5f - (modeInkTop + modeInkBottom) / 2f) * scale;
-        _modeFont.Draw(draw, modeText, x + 23f * scale, modeTop,
-            10f * scale, FrameTint, modeSpacing);
+        ReadoutLcdText.Draw(draw, modeText, x + 23f * scale, x + 71f * scale,
+            y + 8f * scale, y + 16f * scale, 10f, scale, false, FrameTint);
         DrawImage(icon, x + 12f * scale, y + 8f * scale,
             8f * scale, 8f * scale, FrameTint);
 
-        var numberSize = 23f;
-        while (numberSize > 18f && _digitsFont.Width(displayed.Number, numberSize, -5f) > 65f)
-            numberSize = MathF.Max(18f, numberSize - 0.05f);
-        var (numberInkTop, numberInkBottom) =
-            _digitsFont.InkVerticalBounds(displayed.Number, numberSize);
-        var numberTop = y + (30f - (numberInkTop + numberInkBottom) / 2f) * scale;
-        _digitsFont.Draw(draw, displayed.Number, x + 11f * scale, numberTop,
-            numberSize * scale, NumberTint, -5f);
+        ReadoutNumberText.Draw(draw, displayed.Number, x + 11f * scale,
+            x + 75f * scale, y + 30f * scale, scale, false, NumberTint);
 
         DrawTiledImage("KSI2AltitudeUnitsTile", x + 13.5f * scale, y + 44f * scale,
             48f, 10f, 16f, 10f, UnitsTileTint);
-        var (unitsInkTop, unitsInkBottom) = _modeFont.InkVerticalBounds(displayed.Units, 14f);
-        var unitsTop = y + (49f - (unitsInkTop + unitsInkBottom) / 2f) * scale;
-        _modeFont.Draw(draw, displayed.Units, x + 13f * scale, unitsTop,
-            14f * scale, FrameTint);
+        ReadoutLcdText.Draw(draw, displayed.Units, x + 13.5f * scale,
+            x + 61.5f * scale, y + 44f * scale, y + 54f * scale,
+            14f, scale, false, FrameTint);
 
         void DrawImage(string id, float left, float top, float width, float height, uint tint)
         {

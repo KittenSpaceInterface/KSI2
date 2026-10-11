@@ -1,0 +1,73 @@
+using System.Text;
+using Brutal.ImGuiApi;
+using Brutal.Numerics;
+using KSA;
+
+namespace KSI2;
+
+internal static unsafe class ReadoutLcdText
+{
+    internal static void Draw(ImDrawListPtr draw, string value, float left, float right,
+        float top, float bottom, float fontSize, float scale, bool alignRight, uint tint)
+    {
+        // KSA can rebuild its font atlas when display font settings change.
+        // Resolve the face each frame, as the bottom controls do.
+        var font = FontManager.Fonts.TryGetValue(NavballBottomControls.FontKey, out var loaded)
+            ? loaded : ImGui.GetFont();
+        var bytes = Encoding.UTF8.GetBytes(value);
+        fixed (byte* text = bytes)
+        {
+            var size = fontSize * scale;
+            var measured = ImGui.PInvoke.ImFont_CalcTextSizeA(font.Ptr,
+                size, 1000f, -1f, text, text + bytes.Length, null);
+            var ink = InkBounds(font, value, measured);
+            var width = MathF.Max(measured.X, ink.Right - ink.Left);
+            var height = ink.Bottom - ink.Top;
+            var fit = MathF.Min(1f, MathF.Min((right - left) / width,
+                (bottom - top) / height));
+            if (fit < 1f)
+            {
+                size *= fit;
+                measured = ImGui.PInvoke.ImFont_CalcTextSizeA(font.Ptr,
+                    size, 1000f, -1f, text, text + bytes.Length, null);
+                ink = InkBounds(font, value, measured);
+            }
+
+            // Position the visible strokes inside the backing tile, rather
+            // than centering ImGui's line box with its font ascent padding.
+            var position = new float2(alignRight ? right - ink.Right : left - ink.Left,
+                (top + bottom - ink.Top - ink.Bottom) / 2f);
+            ImGui.PInvoke.ImDrawList_AddText_1(draw.Ptr, font.Ptr, size,
+                &position, tint, text, text + bytes.Length, 0f, null);
+        }
+    }
+
+    private static (float Left, float Top, float Right, float Bottom) InkBounds(
+        ImFontPtr font, string value, float2 measured)
+    {
+        var baked = font.LastBaked;
+        if (baked.IsNull()) return (0f, 0f, measured.X, measured.Y);
+
+        var lookup = baked.IndexLookup.Span;
+        var glyphs = baked.Glyphs.Span;
+        var left = float.PositiveInfinity;
+        var top = float.PositiveInfinity;
+        var right = float.NegativeInfinity;
+        var bottom = float.NegativeInfinity;
+        var advance = 0f;
+        foreach (var character in value)
+        {
+            if (character >= lookup.Length || lookup[character] >= glyphs.Length)
+                continue;
+            var glyph = glyphs[lookup[character]];
+            left = MathF.Min(left, advance + glyph.X0);
+            right = MathF.Max(right, advance + glyph.X1);
+            top = MathF.Min(top, glyph.Y0);
+            bottom = MathF.Max(bottom, glyph.Y1);
+            advance += glyph.AdvanceX;
+        }
+        return float.IsFinite(left)
+            ? (left, top, right, bottom)
+            : (0f, 0f, measured.X, measured.Y);
+    }
+}

@@ -15,15 +15,11 @@ internal sealed unsafe class SpeedReadoutRenderer
         ("KSI2SpeedSurface", "[asset]"),
         ("KSI2SpeedOrbit", "[asset]"),
         ("KSI2SpeedTarget", "[asset]"),
-        ("KSI2SpeedModeFont", "[asset]"),
-        ("KSI2SpeedVelFont", "[asset]"),
-        ("KSI2SpeedDigitsFont", "[asset]")
+        ("KSI2SpeedVelFont", "[asset]")
     ];
 
     private readonly Dictionary<string, TextureReference> _textures = new();
-    private readonly SpeedBitmapFont? _modeFont;
     private readonly SpeedBitmapFont? _velFont;
-    private readonly SpeedBitmapFont? _digitsFont;
     private SpeedReadoutValue? _lastValue;
 
 // FUTURE USE ONLY: keep this preview disabled in the flight screen. If an
@@ -40,9 +36,7 @@ internal sealed unsafe class SpeedReadoutRenderer
     {
         var directory = Path.Combine(Path.GetDirectoryName(typeof(SpeedReadoutRenderer).Assembly.Location)!,
             "assets", "navball");
-        _modeFont = TryLoad("speed-sbliquid.csv");
         _velFont = TryLoad("speed-vel.csv");
-        _digitsFont = TryLoad("speed-digits.csv");
 
         SpeedBitmapFont? TryLoad(string file)
         {
@@ -56,16 +50,13 @@ internal sealed unsafe class SpeedReadoutRenderer
         _textures[id] = texture;
         switch (id)
         {
-            case "KSI2SpeedModeFont": _modeFont?.SetTexture(texture); break;
             case "KSI2SpeedVelFont": _velFont?.SetTexture(texture); break;
-            case "KSI2SpeedDigitsFont": _digitsFont?.SetTexture(texture); break;
         }
     }
 
     internal void Draw()
     {
-        if (!KSA.Program.DrawUI || _modeFont?.Ready != true || _velFont?.Ready != true
-            || _digitsFont?.Ready != true) return;
+        if (!KSA.Program.DrawUI || _velFont?.Ready != true) return;
         var vehicle = KSA.Program.ControlledVehicle;
         if (vehicle is null || vehicle.IsDisposed) return;
         if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
@@ -124,34 +115,16 @@ internal sealed unsafe class SpeedReadoutRenderer
             SpeedReadoutMode.Target => ("TARGET", "KSI2SpeedTarget"),
             _ => ("ORBIT", "KSI2SpeedOrbit")
         };
-        var labelSpacing = mode == SpeedReadoutMode.Orbit ? 13f : 8f;
-        // The bitmap draw does not render spacing after the final glyph.
-        // Exclude that advance when right-aligning the visible mode title.
-        var labelWidth = _modeFont.Width(label, 10f * scale, labelSpacing)
-            - labelSpacing * 10f * scale * 0.01f;
-        var labelRight = x + 63f * scale;
-        var (labelInkTop, labelInkBottom) = _modeFont.InkVerticalBounds(label, 10f);
-        var labelTop = y + (12f - (labelInkTop + labelInkBottom) / 2f) * scale;
-        _modeFont.Draw(draw, label, labelRight - labelWidth,
-            labelTop, 10f * scale, 0xFF00ABCCu, labelSpacing);
+        ReadoutLcdText.Draw(draw, label, x + 15f * scale, x + 63f * scale,
+            y + 8f * scale, y + 16f * scale, 10f, scale, true, 0xFF00ABCCu);
         DrawImage(icon, x + 66f * scale, y + 8f * scale,
             8f * scale, 8f * scale, 0xFF00ABCCu);
 
-        var numberSize = 23f;
-        while (numberSize > 18f && _digitsFont.Width(displayed.Number, numberSize, -5f) > 65f)
-            numberSize = MathF.Max(18f, numberSize - 0.05f);
-        var numberWidth = _digitsFont.Width(displayed.Number, numberSize * scale, -5f);
-        var (numberInkTop, numberInkBottom) =
-            _digitsFont.InkVerticalBounds(displayed.Number, numberSize);
-        var numberTop = y + (30f - (numberInkTop + numberInkBottom) / 2f) * scale;
-        _digitsFont.Draw(draw, displayed.Number, x + 75f * scale - numberWidth,
-            numberTop, numberSize * scale, 0xFFFFDFD5u, -5f);
-        var unitsWidth = _modeFont.Width(displayed.Units, 14f * scale);
-        var (unitsInkTop, unitsInkBottom) =
-            _modeFont.InkVerticalBounds(displayed.Units, 14f);
-        var unitsTop = y + (48f - (unitsInkTop + unitsInkBottom) / 2f) * scale;
-        _modeFont.Draw(draw, displayed.Units, x + 75f * scale - unitsWidth,
-            unitsTop, 14f * scale, 0xFF00ABCCu);
+        ReadoutNumberText.Draw(draw, displayed.Number, x + 10f * scale,
+            x + 75f * scale, y + 30f * scale, scale, true, 0xFFFFDFD5u);
+        ReadoutLcdText.Draw(draw, displayed.Units, x + 26.5f * scale,
+            x + 74.5f * scale, y + 43f * scale, y + 53f * scale,
+            14f, scale, true, 0xFF00ABCCu);
 
         void DrawImage(string id, float left, float top, float width, float height, uint tint)
         {
