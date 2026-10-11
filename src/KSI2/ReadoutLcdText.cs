@@ -7,8 +7,31 @@ namespace KSI2;
 
 internal static unsafe class ReadoutLcdText
 {
+    internal static void DrawVerticalTitle(ImDrawListPtr draw, string value, float centerX,
+        float centerY, float stripLeft, float stripRight, float fontSize,
+        float lineStep, float scale, uint tint)
+    {
+        // Match the former title strip height while the LCD glyphs use their own ink bounds.
+        var halfHeight = (0.75f * fontSize + (value.Length - 1) * lineStep) / 2f;
+        var stripMin = new float2(stripLeft, centerY - (halfHeight + 2f) * scale);
+        var stripMax = new float2(stripRight, centerY + (halfHeight + 2f) * scale);
+        ImGui.PInvoke.ImDrawList_AddRectFilled(draw.Ptr, &stripMin, &stripMax,
+            0xFF000000u, 0f, ImDrawFlags.None);
+
+        var halfWidth = (stripRight - stripLeft) / 2f;
+        for (var i = 0; i < value.Length; i++)
+        {
+            var letterCenterY = centerY + (i - (value.Length - 1) / 2f) * lineStep * scale;
+            Draw(draw, value[i].ToString(), centerX - halfWidth, centerX + halfWidth,
+                letterCenterY - fontSize * scale / 2f,
+                letterCenterY + fontSize * scale / 2f,
+                fontSize, scale, false, tint, true);
+        }
+    }
+
     internal static void Draw(ImDrawListPtr draw, string value, float left, float right,
-        float top, float bottom, float fontSize, float scale, bool alignRight, uint tint)
+        float top, float bottom, float fontSize, float scale, bool alignRight, uint tint,
+        bool alignCenter = false)
     {
         // KSA can rebuild its font atlas when display font settings change.
         // Resolve the face each frame, as the bottom controls do.
@@ -35,7 +58,8 @@ internal static unsafe class ReadoutLcdText
 
             // Position the visible strokes inside the backing tile, rather
             // than centering ImGui's line box with its font ascent padding.
-            var position = new float2(alignRight ? right - ink.Right : left - ink.Left,
+            var position = new float2(alignCenter ? (left + right - ink.Left - ink.Right) / 2f
+                : alignRight ? right - ink.Right : left - ink.Left,
                 (top + bottom - ink.Top - ink.Bottom) / 2f);
             ImGui.PInvoke.ImDrawList_AddText_1(draw.Ptr, font.Ptr, size,
                 &position, tint, text, text + bytes.Length, 0f, null);

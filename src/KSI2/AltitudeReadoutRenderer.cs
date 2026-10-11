@@ -24,36 +24,18 @@ internal sealed unsafe class AltitudeReadoutRenderer
     private const uint UnitsTileTint = 0x70591E59u;
 
     private readonly Dictionary<string, TextureReference> _textures = new();
-    private readonly SpeedBitmapFont? _titleFont;
     private AltitudeReadoutValue? _lastValue;
     private Vehicle? _selectedVehicle;
     private AltitudeReadoutMode _selectedMode;
 
-    internal AltitudeReadoutRenderer()
-    {
-        var directory = Path.Combine(Path.GetDirectoryName(typeof(AltitudeReadoutRenderer).Assembly.Location)!,
-            "assets", "navball");
-        _titleFont = TryLoad("speed-vel.csv");
-
-        SpeedBitmapFont? TryLoad(string file)
-        {
-            var path = Path.Combine(directory, file);
-            return File.Exists(path) ? new SpeedBitmapFont(path) : null;
-        }
-    }
-
     internal void SetTexture(string id, TextureReference texture)
     {
         _textures[id] = texture;
-        switch (id)
-        {
-            case "KSI2SpeedVelFont": _titleFont?.SetTexture(texture); break;
-        }
     }
 
     internal void Draw()
     {
-        if (!KSA.Program.DrawUI || _titleFont?.Ready != true) return;
+        if (!KSA.Program.DrawUI) return;
         var vehicle = KSA.Program.ControlledVehicle;
         if (vehicle is null || vehicle.IsDisposed) return;
         if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
@@ -100,26 +82,12 @@ internal sealed unsafe class AltitudeReadoutRenderer
 
         DrawNineSlice("KSI2AltitudeBackground", x, y, 86f, 64f, FrameTint);
 
-        // The ALT title is live SB Liquid TMP text. Its opaque black label
-        // overlays the right frame line in the prefab.
+        // The title's black label overlays the right frame line.
         const float titleSize = 11f;
         const float titleLineStep = 70.8f / 59f * titleSize - 16f * titleSize * 0.01f;
-        var (titleInkTop, titleInkBottom) = _titleFont.InkVerticalBounds("A", titleSize);
-        var titleInkHeight = titleInkBottom - titleInkTop + 2f * titleLineStep;
-        var firstTitleTop = y + (32f - titleInkHeight / 2f - titleInkTop) * scale;
-        var stripTop = y + (32f - titleInkHeight / 2f - 2f) * scale;
-        var stripBottom = y + (32f + titleInkHeight / 2f + 2f) * scale;
-        var stripMin = new float2(x + 75f * scale, stripTop);
-        var stripMax = new float2(x + 85f * scale, stripBottom);
-        ImGui.PInvoke.ImDrawList_AddRectFilled(draw.Ptr, &stripMin, &stripMax,
-            0xFF000000u, 0f, ImDrawFlags.None);
-        for (var i = 0; i < 3; i++)
-        {
-            var letter = "ALT"[i].ToString();
-            var width = _titleFont.Width(letter, titleSize * scale);
-            _titleFont.Draw(draw, letter, x + 80f * scale - width / 2f,
-                firstTitleTop + i * titleLineStep * scale, titleSize * scale, FrameTint);
-        }
+        ReadoutLcdText.DrawVerticalTitle(draw, "ALT", x + 80f * scale,
+            y + 32f * scale, x + 75f * scale, x + 85f * scale,
+            titleSize, titleLineStep, scale, FrameTint);
 
         // Each mode's LCD squares are a tiled sprite behind the live text.
         DrawTiledImage("KSI2AltitudeModeTile", x + 23f * scale, y + 8f * scale,
