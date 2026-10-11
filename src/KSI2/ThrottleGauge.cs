@@ -14,7 +14,8 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     private bool _loggedAssetError;
     private bool _artworkAttempted;
     private bool _dragging;
-    private Point _dragOffset;
+    private Point _layoutMouseStart;
+    private Point _layoutThrottleStart;
     private float _throttleDragOffsetY;
     private bool _disposed;
     private RasterArtwork? _artwork;
@@ -31,7 +32,11 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     internal bool BlurPanelBackgrounds => _blurCrashGuard.Enabled;
     internal float BlurOpacity => _settings.BlurOpacityTicks / 400f;
 
-    internal ThrottleGauge() => _blurCrashGuard = new BlurCrashGuard(_settings);
+    internal ThrottleGauge()
+    {
+        _blurCrashGuard = new BlurCrashGuard(_settings);
+        NavballClusterLayout.Configure(_settings);
+    }
 
     internal void SetBgTexture(TextureReference texture) => _bgTexture = texture;
     internal void SetBarsTexture(TextureReference texture) => _barsTexture = texture;
@@ -108,7 +113,11 @@ internal sealed unsafe class ThrottleGauge : IDisposable
             ImGui.Checkbox("Preview throttle", ref _useTestThrottle);
         }
 
-        if (ImGui.Button("Reset layout")) _settings.Reset();
+        if (ImGui.Button("Reset layout"))
+        {
+            _dragging = false;
+            _settings.Reset();
+        }
         ImGui.Text("Experimental");
         var blurPanelBackgrounds = BlurPanelBackgrounds;
         if (ImGui.Checkbox("Blur panel backgrounds", ref blurPanelBackgrounds))
@@ -147,20 +156,11 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     private void DrawGauge(float throttle, Func<PanelBackgroundBlur?> getBlur)
     {
         var viewport = ImGui.GetMainViewport();
-        var scale = MathF.Min(viewport.Size.X / 1920f, viewport.Size.Y / 1080f) * _settings.Scale;
-        // One transform for all artwork, masks, handle and text. ImGui's backend
-        // applies framebuffer scaling; do not multiply by DPI again here.
-        scale = MathF.Min(scale, MathF.Min(viewport.Size.X / 175, viewport.Size.Y / 318));
-        var frameWidth = 175f * scale;
-        var frameHeight = 318f * scale;
-        var availableX = Math.Max(0, viewport.Size.X - frameWidth);
-        var availableY = Math.Max(0, viewport.Size.Y - frameHeight);
-        var frame = _settings.PositionSet
-            ? new Point(viewport.Pos.X + _settings.X * availableX, viewport.Pos.Y + _settings.Y * availableY)
-            : new Point(viewport.Pos.X + Math.Min(24 * scale, availableX), viewport.Pos.Y + Math.Max(0, availableY - 24 * scale));
-        if (_settings.Editing) HandleLayoutDrag(frame, frameWidth, frameHeight, viewport, availableX, availableY);
+        var layout = ThrottleLayout.Calculate(viewport.Pos.X, viewport.Pos.Y,
+            viewport.Size.X, viewport.Size.Y, _settings);
+        var scale = layout.Scale;
+        var frame = layout.Position;
         var draw = ImGui.GetForegroundDrawList(viewport);
-        if (_settings.Editing) DrawRect(draw, frame, new Point(frame.X + frameWidth, frame.Y + frameHeight), 0xDD66FF00);
 
         var left = frame.X + 25 * scale;
         var top = frame.Y + 14 * scale;
@@ -229,27 +229,47 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         ImGui.PopStyleVar();
     }
 
-    private void HandleLayoutDrag(Point frame, float width, float height, ImGuiViewportPtr viewport, float px, float py)
+    internal void DrawLayoutEditor()
     {
+        if (!_settings.Editing || !KSA.Program.DrawUI) return;
+        var viewport = ImGui.GetMainViewport();
+        var cluster = NavballClusterLayout.Calculate(viewport.Pos.X, viewport.Pos.Y,
+            viewport.Size.X, viewport.Size.Y);
+        var throttle = ThrottleLayout.Calculate(viewport.Pos.X, viewport.Pos.Y,
+            viewport.Size.X, viewport.Size.Y, _settings);
+        var scale = cluster.Scale;
+        var min = new Point(
+            MathF.Min(throttle.Position.X, cluster.Min.X - 37f * scale),
+            MathF.Min(throttle.Position.Y, cluster.Min.Y - 22f * scale));
+        var max = new Point(
+            MathF.Max(throttle.Position.X + throttle.Width, cluster.Min.X + 364f * scale),
+            MathF.Max(throttle.Position.Y + throttle.Height, cluster.Min.Y + 300f * scale));
+        var size = new float2(max.X - min.X, max.Y - min.Y);
+
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new float2(0, 0));
-        ImGui.SetNextWindowPos(new float2(frame.X, frame.Y), ImGuiCond.Always);
-        ImGui.SetNextWindowSize(new float2(width, height), ImGuiCond.Always);
+        ImGui.SetNextWindowPos(new float2(min.X, min.Y), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(size, ImGuiCond.Always);
         var flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
                     ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
                     ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
         ImGui.Begin("##KSI2-LayoutEdit", flags);
-        ImGui.InvisibleButton("drag overlay", new float2(width, height));
+        ImGui.InvisibleButton("drag interface", size);
         var mouse = ImGui.GetMousePos();
         if (ImGui.IsItemActivated())
         {
             _dragging = true;
             _settings.PositionSet = true;
-            _dragOffset = new(mouse.X - frame.X, mouse.Y - frame.Y);
+            _layoutMouseStart = new(mouse.X, mouse.Y);
+            _layoutThrottleStart = throttle.Position;
         }
         if (_dragging && ImGui.IsItemActive() && ImGui.IsMouseDown(ImGuiMouseButton.Left))
         {
-            _settings.X = px == 0 ? 0 : Math.Clamp((mouse.X - _dragOffset.X - viewport.Pos.X) / px, 0, 1);
-            _settings.Y = py == 0 ? 0 : Math.Clamp((mouse.Y - _dragOffset.Y - viewport.Pos.Y) / py, 0, 1);
+            _settings.X = throttle.AvailableX == 0 ? 0 : Math.Clamp(
+                (_layoutThrottleStart.X + mouse.X - _layoutMouseStart.X - viewport.Pos.X)
+                    / throttle.AvailableX, 0, 1);
+            _settings.Y = throttle.AvailableY == 0 ? 0 : Math.Clamp(
+                (_layoutThrottleStart.Y + mouse.Y - _layoutMouseStart.Y - viewport.Pos.Y)
+                    / throttle.AvailableY, 0, 1);
         }
         if (_dragging && ImGui.IsMouseReleased(ImGuiMouseButton.Left))
         {
@@ -258,6 +278,9 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         }
         ImGui.End();
         ImGui.PopStyleVar();
+
+        var draw = ImGui.GetForegroundDrawList(viewport);
+        DrawRect(draw, min, max, 0xDD66FF00);
     }
 
     private static void DrawStaticLayer(ImDrawListPtr draw, TextureReference? textureRef, RasterArtwork art, string fallbackName, Point origin, float scale, uint tint)

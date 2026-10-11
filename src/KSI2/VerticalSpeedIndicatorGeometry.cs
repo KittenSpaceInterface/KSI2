@@ -32,7 +32,7 @@ internal static class VerticalSpeedIndicatorGeometry
     internal static Point WidgetOrigin(float viewportX, float viewportY, float viewportWidth, float viewportHeight)
     {
         var atmosphere = AtmosphericIndicatorGeometry.WidgetOrigin(viewportX, viewportY, viewportWidth, viewportHeight);
-        var scale = MathF.Min(viewportWidth / 1920f, viewportHeight / 1080f);
+        var scale = NavballClusterLayout.Calculate(viewportX, viewportY, viewportWidth, viewportHeight).Scale;
         return new Point(atmosphere.X, atmosphere.Y - (WidgetHeight + GapAboveAtmosphere) * scale);
     }
 

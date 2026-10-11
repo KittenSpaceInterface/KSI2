@@ -17,6 +17,11 @@ clusterTop = viewportY + viewportHeight - (33.05 + 300) × s
 clusterCenter = (clusterLeft + 150 × s, clusterTop + 150 × s)
 ```
 
+The live calculation multiplies `s` by the saved Scale control and limits the
+panel to the viewport. A saved edit position adds the throttle's displacement
+from its initial anchor to the cluster position. In edit mode, one invisible
+overlay covers the complete interface and drags all components together.
+
 `112.85 = 49 + (94 - 30.15)` and `33.05 = 38 + (82 - 86.95)`. These offsets
 preserve the separation between KSP2's navball and throttle after placing
 KSI2's separately controlled throttle. KSP2's own `group_navball / Container`
@@ -67,8 +72,9 @@ widgetTop = clusterTop + (300 - (87 - 82) - widgetHeight) × s
 ```
 
 The vertical-speed widget then sits one widget height plus an 8-unit gap above
-the atmosphere widget. The throttle has independent user-controlled placement
-and scale in `ThrottleGauge`; it does not inherit the cluster transform.
+the atmosphere widget. The Scale control changes the throttle and all navball
+components together. Edit layout moves the complete interface through its
+single overlay; Reset layout restores the initial anchors.
 
 ## Where this calculation applies
 
