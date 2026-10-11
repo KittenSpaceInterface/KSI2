@@ -22,6 +22,20 @@ internal static class ThrottleGeometry
         return new(42.5f + pose.Position.X, 290 * (1 - t) - pose.Position.Y);
     }
 
+    internal static float ThrottleAtHandleY(float widgetY)
+    {
+        if (!float.IsFinite(widgetY)) return 0;
+        var low = 0f;
+        var high = 1f;
+        for (var i = 0; i < 24; i++)
+        {
+            var middle = (low + high) * 0.5f;
+            if (HandleCenter(middle).Y > widgetY) low = middle;
+            else high = middle;
+        }
+        return Math.Clamp((low + high) * 0.5f, 0f, 1f);
+    }
+
     // Clip the pre-masked artwork against the continuously moving sector edge.
     // Unity Radial360, origin Bottom, clockwise, with local rotation -44 degrees.
     internal static int ClipFill(float x, float y, float width, float height, float throttle, Span<Point> output)

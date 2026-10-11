@@ -11,6 +11,7 @@ internal sealed class ThrottleSettings
     public float Y { get; set; } = 0.97f;
     public bool Editing { get; set; }
     public bool PositionSet { get; set; }
+    public bool MouseThrottleControl { get; set; }
 
     private static string ModDirectory => Path.GetDirectoryName(typeof(ThrottleSettings).Assembly.Location) ?? AppContext.BaseDirectory;
     private static string FilePath => Path.Combine(ModDirectory, "ksi2.settings.json");
