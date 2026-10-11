@@ -120,10 +120,10 @@ public sealed class KSI2Mod
     public void OnAfterGui(double dt)
     {
         if (ImGui.GetCurrentContext().IsNull()) return;
-        _gauge.Draw(GetPanelBlur);
         var blur = _gauge.BlurPanelBackgrounds ? GetPanelBlur() : null;
         var opacity = _gauge.BlurOpacity;
         _navballClusterBackground.Draw(blur, opacity);
+        _gauge.Draw(GetPanelBlur);
         _navballSpike.Draw();
         _sideDials.Draw();
         _speedReadout.Draw();
