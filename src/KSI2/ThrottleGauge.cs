@@ -8,11 +8,13 @@ namespace KSI2;
 internal sealed unsafe class ThrottleGauge : IDisposable
 {
     private readonly ThrottleSettings _settings = ThrottleSettings.Load();
+    private readonly ThrottleMouseController _mouseControl = new();
     private string? _assetError;
     private bool _loggedAssetError;
     private bool _artworkAttempted;
     private bool _dragging;
     private Point _dragOffset;
+    private float _throttleDragOffsetY;
     private bool _disposed;
     private RasterArtwork? _artwork;
     private TextureReference? _bgTexture;
@@ -36,10 +38,16 @@ internal sealed unsafe class ThrottleGauge : IDisposable
 
     internal void Draw()
     {
-        if (_disposed || ImGui.GetCurrentContext().IsNull()) return;
-        if (!KSA.Program.DrawUI) return;
+        if (_disposed || ImGui.GetCurrentContext().IsNull() || !KSA.Program.DrawUI)
+        {
+            _mouseControl.Cancel();
+            return;
+        }
         _snapshot = KsaThrottleSource.TryRead(out var snapshot) ? snapshot : null;
         DrawSettingsWindow();
+        if (!_settings.Show || !_settings.MouseThrottleControl || _settings.Editing || _snapshot is null ||
+            !ThrottleMouseController.CanControl(KSA.Program.ControlledVehicle))
+            _mouseControl.Cancel();
         if (!_settings.Show) return;
         var throttle = _settings.Editing && _useTestThrottle
             ? _testThrottle / 100f
@@ -47,6 +55,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         if (throttle is null) return;
         EnsureArtwork();
         if (_artwork is not null) DrawGauge(throttle.Value);
+        else _mouseControl.Cancel();
     }
 
     private void EnsureArtwork()
@@ -95,6 +104,16 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         }
 
         if (ImGui.Button("Reset layout")) _settings.Reset();
+        ImGui.Text("Experimental");
+        var mouseThrottle = _settings.MouseThrottleControl;
+        if (ImGui.Checkbox("Mouse throttle control", ref mouseThrottle))
+        {
+            _settings.MouseThrottleControl = mouseThrottle;
+            if (!mouseThrottle) _mouseControl.Cancel();
+            _settings.Save();
+        }
+        if (_mouseControl.UnavailableReason is { } reason)
+            ImGui.TextWrapped($"Mouse throttle control unavailable until restart: {reason}");
         ImGui.Text(_settings.Editing && _useTestThrottle ? $"Preview throttle: {_testThrottle:0}" : (_snapshot is { } value ? $"Live manual throttle: {ThrottleGeometry.Percent(value.Value)}" : "No controlled vehicle"));
         if (_settings.Editing)
         {
@@ -126,6 +145,9 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         var left = frame.X + 25 * scale;
         var top = frame.Y + 14 * scale;
         var origin = new Point(left, top);
+        if (_settings.MouseThrottleControl && !_settings.Editing && _snapshot is not null &&
+            ThrottleMouseController.CanControl(KSA.Program.ControlledVehicle))
+            HandleThrottleDrag(origin, scale, throttle);
         var art = _artwork!;
         DrawStaticLayer(draw, _bgTexture, art, "[asset]", origin, scale, 0xFD190B03u);
         DrawStaticLayer(draw, _barsTexture, art, "[asset]", origin, scale, 0xFF99413Eu);
@@ -148,6 +170,39 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         else
             art.DrawHandle(draw, new(hx, hy), scale, angle);
         DrawHandleText(draw, ThrottleGeometry.Percent(throttle), hx, hy, scale, angle);
+    }
+
+    private void HandleThrottleDrag(Point origin, float scale, float throttle)
+    {
+        var vehicle = KSA.Program.ControlledVehicle;
+        if (vehicle is null) return;
+        var center = ThrottleGeometry.HandleCenter(throttle);
+        var x = origin.X + center.X * scale;
+        var y = origin.Y + center.Y * scale;
+        var hitRadius = 42f * scale;
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new float2(0, 0));
+        ImGui.SetNextWindowPos(new float2(x - hitRadius, y - hitRadius), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new float2(hitRadius * 2, hitRadius * 2), ImGuiCond.Always);
+        var flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
+                    ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
+                    ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
+        ImGui.Begin("##KSI2-ThrottleDrag", flags);
+        ImGui.InvisibleButton("##handle", new float2(hitRadius * 2, hitRadius * 2));
+        var active = ImGui.IsItemActive() && ImGui.IsMouseDown(ImGuiMouseButton.Left);
+        var mouse = ImGui.GetMousePos();
+        if (ImGui.IsItemActivated())
+        {
+            _throttleDragOffsetY = mouse.Y - y;
+            _mouseControl.Begin(vehicle, throttle);
+        }
+        else if (_mouseControl.IsDragging && active)
+        {
+            var widgetY = (mouse.Y - _throttleDragOffsetY - origin.Y) / scale;
+            _mouseControl.Update(vehicle, ThrottleGeometry.ThrottleAtHandleY(widgetY));
+        }
+        if (_mouseControl.IsDragging && !active) _mouseControl.Cancel();
+        ImGui.End();
+        ImGui.PopStyleVar();
     }
 
     private void HandleLayoutDrag(Point frame, float width, float height, ImGuiViewportPtr viewport, float px, float py)
@@ -288,5 +343,9 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         }
     }
 
-    public void Dispose() => _disposed = true;
+    public void Dispose()
+    {
+        _mouseControl.Dispose();
+        _disposed = true;
+    }
 }

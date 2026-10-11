@@ -28,7 +28,13 @@ Build output is written to `src/KSI2/bin/Release/net10.0`.
 
 ## Throttle gauge
 
-The throttle gauge is a display-only overlay that follows the controlled vehicle's manual throttle by default. Its settings window lets you show or hide it and adjust its scale and position. **Edit layout** offers a temporary throttle preview; turning off edit mode returns to live readings. Settings are saved beside the mod.
+The throttle gauge follows the controlled vehicle's manual throttle. Drag its
+handle to change throttle through KSA's input actions at KSA's normal rate.
+The **Experimental** setting **Mouse throttle control** enables direct control;
+it is off by default. The settings window also lets you show or hide the gauge
+and adjust its scale and position.
+**Edit layout** offers a display-only throttle preview. Settings are saved
+beside the mod.
 
 ## Geometry checks
 

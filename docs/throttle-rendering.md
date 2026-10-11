@@ -117,7 +117,9 @@ Rather than uploading raw Vulkan textures manually (which caused `VK_ERROR_DEVIC
 The movable bounds include the entire handle sweep and percentage column.
 The default margin is 24 logical units; all elements share one layout scale.
 The percentage intentionally uses KSA's font and stays visible. Edit mode
-offers a display-only preview; it never sends throttle commands.
+offers a display-only preview. Outside edit mode, dragging the handle sends
+throttle commands; see `throttle-mouse-control-plan.md` for the control path
+and remaining in-game validation.
 
 ## Verification
 
