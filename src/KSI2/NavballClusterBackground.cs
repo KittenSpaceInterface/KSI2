@@ -25,7 +25,7 @@ internal sealed unsafe class NavballClusterBackground
         var max = min + new float2(size, size);
         var uvMin = new float2(0f, 0f);
         var uvMax = new float2(1f, 1f);
-        var draw = ImGui.GetBackgroundDrawList(viewport);
+        var draw = ImGui.GetForegroundDrawList(viewport);
 
         var blurQueued = blur?.Queue(draw, min, max, _backgroundTexture!, opacity) == true;
         if (!blurQueued)
