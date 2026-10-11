@@ -2,7 +2,9 @@
 
 Mouse throttle control is implemented as described in
 [throttle-mouse-control-plan.md](throttle-mouse-control-plan.md); in-game
-validation remains. Blurred panel backgrounds remain deferred. Experimental
+validation remains. The atmospheric blur prototype is implemented and its
+remaining validation is tracked in
+[blur-phase1-plan.md](blur-phase1-plan.md). Experimental
 switches belong under the **Experimental** section of the KSI2 UI
 configuration and default to disabled. Mouse control is off unless its switch
 is enabled. Blur uses the current solid background when disabled or
@@ -32,34 +34,35 @@ is no alternate input path. In-game input behavior still needs validation.
 
 The separate `interface-investigation/blur-panel-rendering-investigation.md`
 identifies KSP2's scene-sampled `UIBlur2` material on the atmospheric,
-vertical-speed, and throttle gauges and the navball cluster. KSI2 currently
-uses their masks with a solid fill. A dynamic KSA implementation would need a
-custom Vulkan draw path, scene texture sampling, shader and pipeline resource
-management, and correct cleanup. The original blur kernel and live render
+vertical-speed, and throttle gauges and the navball cluster. KSI2 uses their
+masks with a solid fill by default. The first atmospheric prototype adds a
+custom Vulkan draw path with scene texture sampling, shader and pipeline
+resources, and cleanup. The original blur kernel and live render
 parameters are not fully established, so the initial result would be an
 approximation.
 
-Keep blur opt-in. Apply it consistently to the identified panels only after
-the render path is validated in game. If the required scene texture, shader,
+Keep blur opt-in. The shared prototype now applies it to all four identified
+panel backgrounds when enabled; the broader path still needs in-game
+validation. If the required scene texture, shader,
 pipeline, or callback is unavailable, draw the solid backgrounds for that
 session and report the failure once. Preserve the current masks and panel
 visibility behavior in either mode.
 
-### Crash recovery before broad release
+### Crash recovery
 
-Add crash protection before making the blur option broadly available:
+The blur switch and opacity are saved in `ksi2.settings.json`. Blur remains
+disabled by default for a new installation. When blur is enabled, KSI2 writes
+`ksi2.blur-active` before saving the enabled setting or creating the blur
+renderer. The marker remains for the entire enabled run and is removed only
+after normal mod cleanup. If it is present at the next launch, KSI2 saves
+`BlurPanelBackgrounds: false` before rendering and reports the recovery in
+the settings UI. A crash at any point while blur is enabled therefore resets
+the switch on the next launch, including crashes after many rendered frames.
 
-1. Warn users when they enable blur that the experimental Vulkan path could
-   crash KSA, and explain manual recovery.
-2. Before the first blur render, persist a startup-pending marker. Clear it only
-   after several consecutive frames have rendered successfully.
-3. On the next launch, check for a leftover marker before initializing the blur
-   path. If one remains, turn blur off, clear the marker, and tell the user
-   that the option was disabled after an unsuccessful startup.
-4. Document manual recovery by setting the blur option to `false` in
-   `ksi2.settings.json` under the KSI2 mod folder. This is the recovery route
-   when the mod cannot reach its startup check or cannot write its settings.
-
-The option remains disabled by default. Automatic rollback handles a crash
-between enabling blur and confirming stable frames; it cannot run at the moment
-of a device-loss crash, so the pending marker must survive process termination.
+The UI warns that the Vulkan path is experimental. If startup cannot reach
+the recovery code or settings cannot be written, manual recovery is to set
+`BlurPanelBackgrounds` to `false` in `ksi2.settings.json` and remove
+`ksi2.blur-active` from the KSI2 mod folder. If the marker cannot be created,
+KSI2 does not enable blur for that run. Normal shutdown is identified by the
+mod unload callback; if KSA skips that callback on an otherwise clean exit,
+the next launch will safely disable blur.

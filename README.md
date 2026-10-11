@@ -36,6 +36,12 @@ and adjust its scale and position.
 **Edit layout** offers a display-only throttle preview. Settings are saved
 beside the mod.
 
+The **Experimental** setting **Blur panel backgrounds** covers the four flight
+panel backings. Its switch and opacity are saved in `ksi2.settings.json`. If
+KSA exits unexpectedly while blur is enabled, KSI2 turns it off on the next
+launch. To recover manually, set `BlurPanelBackgrounds` to `false` in that
+settings file and remove `ksi2.blur-active` from the mod folder.
+
 ## Geometry checks
 
 Run the focused handle, fill, telemetry, and settings checks with:

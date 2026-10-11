@@ -12,8 +12,10 @@ internal sealed class ThrottleSettings
     public bool Editing { get; set; }
     public bool PositionSet { get; set; }
     public bool MouseThrottleControl { get; set; }
+    public bool BlurPanelBackgrounds { get; set; }
+    public int BlurOpacityTicks { get; set; } = 398;
 
-    private static string ModDirectory => Path.GetDirectoryName(typeof(ThrottleSettings).Assembly.Location) ?? AppContext.BaseDirectory;
+    internal static string ModDirectory => Path.GetDirectoryName(typeof(ThrottleSettings).Assembly.Location) ?? AppContext.BaseDirectory;
     private static string FilePath => Path.Combine(ModDirectory, "ksi2.settings.json");
 
     internal static ThrottleSettings Load()
@@ -39,21 +41,26 @@ internal sealed class ThrottleSettings
             settings.Scale = Math.Clamp(settings.Scale, 0.5f, 2f);
             settings.X = Math.Clamp(settings.X, 0, 1);
             settings.Y = Math.Clamp(settings.Y, 0, 1);
+            settings.BlurOpacityTicks = Math.Clamp(settings.BlurOpacityTicks, 0, 400);
             settings.Editing = false;
             return settings;
         }
         catch (JsonException) { return new(); }
     }
 
-    internal void Save()
+    internal bool Save()
     {
+        var temporaryPath = FilePath + ".tmp";
         try
         {
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(temporaryPath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+            File.Move(temporaryPath, FilePath, overwrite: true);
+            return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Console.Error.WriteLine($"KSI2: could not save settings: {ex.Message}");
+            return false;
         }
     }
 

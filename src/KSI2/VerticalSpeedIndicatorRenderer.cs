@@ -22,7 +22,7 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
 
     internal void SetTexture(string id, TextureReference texture) => _textures[id] = texture;
 
-    internal void Draw()
+    internal void Draw(PanelBackgroundBlur? blur, float opacity)
     {
         if (!KSA.Program.DrawUI || !KsaVerticalSpeedSource.TryRead(out var speed)) return;
         if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture) && texture.ImguiTextureRef is not null)) return;
@@ -36,7 +36,11 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
         var origin = new float2(widgetOrigin.X, widgetOrigin.Y);
         var draw = ImGui.GetForegroundDrawList(viewport);
 
-        DrawLayer("KSI2AtmoFill", 0xFD190B03u, flipVertically: true);
+        var blurQueued = blur?.Queue(draw, origin,
+            origin + new float2(VerticalSpeedIndicatorGeometry.WidgetWidth * scale,
+                VerticalSpeedIndicatorGeometry.WidgetHeight * scale),
+            _textures["KSI2AtmoFill"], opacity, flipVertically: true) == true;
+        if (!blurQueued) DrawLayer("KSI2AtmoFill", 0xFD190B03u, flipVertically: true);
         DrawLayer("KSI2VertSpeedColors", 0xFFFFFFFFu);
         DrawLayer("KSI2VertSpeedNumbers", 0xFFFF6D69u);
         DrawLayer("KSI2AtmoBorder", 0x33FF6C68u, flipVertically: true);
