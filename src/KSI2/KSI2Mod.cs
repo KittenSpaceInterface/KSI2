@@ -16,6 +16,7 @@ public sealed class KSI2Mod
     private readonly AltitudeReadoutRenderer _altitudeReadout = new();
     private readonly AtmosphericIndicatorRenderer _atmosphericIndicator = new();
     private readonly VerticalSpeedIndicatorRenderer _verticalSpeedIndicator = new();
+    private readonly NavballBottomControls _bottomControls = new();
 
     [StarMapBeforeMain]
     public void OnBeforeMain() => Console.WriteLine("KSI2 loaded.");
@@ -91,6 +92,10 @@ public sealed class KSI2Mod
         foreach (var (id, file) in AltitudeReadoutRenderer.Assets)
             if (File.Exists(Path.Combine(navballDirectory, file)))
                 RegisterTexture(id, tex => _altitudeReadout.SetTexture(id, tex));
+        foreach (var (id, file) in NavballBottomControls.Assets)
+            if (File.Exists(Path.Combine(navballDirectory, file)))
+                RegisterTexture(id, tex => _bottomControls.SetTexture(id, tex));
+        _bottomControls.LoadFont(Path.Combine(navballDirectory, "LCD_Solid.ttf"));
     }
 
     private static void RegisterTexture(string id, Action<TextureReference> assign)
@@ -121,6 +126,7 @@ public sealed class KSI2Mod
         _atmosphericIndicator.Draw();
         _verticalSpeedIndicator.Draw();
         _altitudeReadout.Draw();
+        _bottomControls.Draw();
     }
 
 
