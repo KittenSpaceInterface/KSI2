@@ -63,14 +63,14 @@ internal sealed unsafe class NavballBottomControls
         var rcsTopLeft = new float2(x + 63f * scale, y + 240f * scale);
         var sasTopLeft = new float2(x + 189f * scale, y + 240f * scale);
         var buttonSize = new float2(48f * scale, 48f * scale);
-        if (Button("SCR", rcsTopLeft, buttonSize)) vehicle.FlightComputer.ToggleRCSMode();
-        if (Button("SAE", sasTopLeft, buttonSize)) vehicle.ToggleStabilization();
+        if (Button("RCS", rcsTopLeft, buttonSize)) vehicle.FlightComputer.ToggleRCSMode();
+        if (Button("SAS", sasTopLeft, buttonSize)) vehicle.ToggleStabilization();
 
         var draw = ImGui.GetForegroundDrawList(viewport);
         var rcsOn = vehicle.FlightComputer.RCSMode == FlightComputerRCSMode.Enabled;
         var sasOn = vehicle.IsStabilizationOn();
-        DrawToggle(draw, "SCR", rcsTopLeft, scale, rcsOn);
-        DrawToggle(draw, "SAE", sasTopLeft, scale, sasOn);
+        DrawToggle(draw, "RCS", rcsTopLeft, scale, rcsOn);
+        DrawToggle(draw, "SAS", sasTopLeft, scale, sasOn);
 
         // KSA has vessel cycling, but no KSP2 CommNet state. Its controllable
         // flag drives the control icon; the cycle icon reflects vessel count.

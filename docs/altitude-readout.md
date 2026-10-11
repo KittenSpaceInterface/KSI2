@@ -26,7 +26,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/Prepare-SpeedReadoutAs
 The script copies the SEA/GROUND icons into ignored
 `external asset package/navball/`, along with the shared tile and ALT title atlas. The
 number uses KSA's current ImGui font, matching the heading popup. The SEA/GROUND
-mode and units use the `LCD_Solid.ttf` face loaded for the SCR/SAE buttons. Build
+mode and units use the `LCD_Solid.ttf` face loaded for the RCS/SAS buttons. Build
 normally afterward. The source prefab IDs and exact binder behavior are in
 `interface-investigation/altitude-readout-investigation.md` in the companion
 repository.
