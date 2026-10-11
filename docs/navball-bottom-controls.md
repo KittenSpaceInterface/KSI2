@@ -4,7 +4,7 @@
 cluster. Its coordinates, state colors, and roles come from the investigation
 in `interface-investigation/navball-bottom-icons-investigation.md`.
 
-- SCR and SAE are clickable. They call KSA's `FlightComputer.ToggleRCSMode()`
+- RCS and SAS are clickable. They call KSA's `FlightComputer.ToggleRCSMode()`
   and `Vehicle.ToggleStabilization()` and read the resulting game state each
   frame. The outline includes the dots above and below the circle.
 - The object-cycle glyph is a status indicator, bright blue when more than one
@@ -14,7 +14,7 @@ in `interface-investigation/navball-bottom-icons-investigation.md`.
   controlled KSA vehicle is controllable and dim blue otherwise. It reports
   local vehicle control, not a simulated radio link.
 
-SCR and SAE labels are drawn from `LCD_Solid.ttf` through KSA's ImGui font
+RCS and SAS labels are drawn from `LCD_Solid.ttf` through KSA's ImGui font
 manager, so they are rasterized at display density rather than scaled from a
 small PNG. The existing speed and altitude PNG font atlases are unchanged.
 

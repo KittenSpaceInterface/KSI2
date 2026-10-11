@@ -2,7 +2,7 @@
 
 `SpeedReadoutRenderer` draws the active `GRP-VEL/Container/DataContainer` side card from KSP2's `group_navball.prefab`. Its position follows `NavballClusterLayout`, so the two existing side dials and any future navball placement change move with it. The alternate `DataContainer (1)` above the cluster center is inactive in the saved prefab and is not drawn.
 
-The KSP2 readout uses separate TextMeshPro fields for `VEL`, the mode title, speed digits, and units. KSI2 draws the number with KSA's current ImGui font, matching the heading popup. The mode title and units use the `LCD_Solid.ttf` face already loaded for the SCR/SAE buttons. The vertical VEL title uses a locally prepared glyph atlas and TMP metrics. The source SB Liquid font files are absent from the inspected bundles. `Prepare-SpeedReadoutAssets.ps1` converts the VEL SDF atlas to an ordinary alpha texture for ImGui.
+The KSP2 readout uses separate TextMeshPro fields for `VEL`, the mode title, speed digits, and units. KSI2 draws the number with KSA's current ImGui font, matching the heading popup. The mode title and units use the `LCD_Solid.ttf` face already loaded for the RCS/SAS buttons. The vertical VEL title uses a locally prepared glyph atlas and TMP metrics. The source SB Liquid font files are absent from the inspected bundles. `Prepare-SpeedReadoutAssets.ps1` converts the VEL SDF atlas to an ordinary alpha texture for ImGui.
 
 Prepare the local artwork after a Unity Project export of the KSP2 UI bundles:
 
