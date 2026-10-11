@@ -44,3 +44,22 @@ the render path is validated in game. If the required scene texture, shader,
 pipeline, or callback is unavailable, draw the solid backgrounds for that
 session and report the failure once. Preserve the current masks and panel
 visibility behavior in either mode.
+
+### Crash recovery before broad release
+
+Add crash protection before making the blur option broadly available:
+
+1. Warn users when they enable blur that the experimental Vulkan path could
+   crash KSA, and explain manual recovery.
+2. Before the first blur render, persist a startup-pending marker. Clear it only
+   after several consecutive frames have rendered successfully.
+3. On the next launch, check for a leftover marker before initializing the blur
+   path. If one remains, turn blur off, clear the marker, and tell the user
+   that the option was disabled after an unsuccessful startup.
+4. Document manual recovery by setting the blur option to `false` in
+   `ksi2.settings.json` under the KSI2 mod folder. This is the recovery route
+   when the mod cannot reach its startup check or cannot write its settings.
+
+The option remains disabled by default. Automatic rollback handles a crash
+between enabling blur and confirming stable frames; it cannot run at the moment
+of a device-loss crash, so the pending marker must survive process termination.
