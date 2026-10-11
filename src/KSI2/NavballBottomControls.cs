@@ -63,7 +63,15 @@ internal sealed unsafe class NavballBottomControls
         var rcsTopLeft = new float2(x + 63f * scale, y + 240f * scale);
         var sasTopLeft = new float2(x + 189f * scale, y + 240f * scale);
         var buttonSize = new float2(48f * scale, 48f * scale);
-        if (Button("RCS", rcsTopLeft, buttonSize)) vehicle.FlightComputer.ToggleRCSMode();
+        if (Button("RCS", rcsTopLeft, buttonSize))
+        {
+            InputEvents.FlightComputerInputBuffer.Add(new InputEvents.FlightComputerInputData
+            {
+                Vehicle = vehicle,
+                Toggle = true,
+                EnumValue = FlightComputerRCSMode.Enabled
+            });
+        }
         if (Button("SAS", sasTopLeft, buttonSize)) vehicle.ToggleStabilization();
 
         var draw = ImGui.GetForegroundDrawList(viewport);
