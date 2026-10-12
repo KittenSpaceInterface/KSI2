@@ -16,7 +16,6 @@ internal sealed unsafe class NavballBottomControls
     ];
 
     private readonly Dictionary<string, TextureReference> _textures = new();
-    private readonly Dictionary<string, StatusIconRaster> _statusIcons = new();
     private readonly ToggleVisual _rcsVisual = new();
     private readonly ToggleVisual _sasVisual = new();
 
@@ -36,19 +35,7 @@ internal sealed unsafe class NavballBottomControls
 
     private readonly record struct ButtonInput(bool Clicked, bool Hovered, bool Pressed);
 
-    internal void SetTexture(string id, TextureReference texture)
-    {
-        _textures[id] = texture;
-        if (id is not ("KSI2BottomObjectCycle" or "KSI2BottomCommNet")) return;
-        try
-        {
-            _statusIcons[id] = StatusIconRaster.FromSource(texture);
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException)
-        {
-            Console.Error.WriteLine($"KSI2: could not prepare {id} at display size: {ex.Message}");
-        }
-    }
+    internal void SetTexture(string id, TextureReference texture) => _textures[id] = texture;
 
     internal void LoadFont(string path)
     {
@@ -136,10 +123,17 @@ internal sealed unsafe class NavballBottomControls
             });
         }
         var draw = ImGui.GetWindowDrawList();
-        DrawStatusIcon(draw, "KSI2BottomObjectCycle",
-            new float2(MathF.Round(x + 121f * scale), MathF.Round(y + 255f * scale)), scale);
-        DrawStatusIcon(draw, "KSI2BottomCommNet",
-            new float2(MathF.Round(x + 155f * scale), MathF.Round(y + 255f * scale)), scale);
+        // KSA has vessel cycling, but no KSP2 CommNet state. Its controllable
+        // flag drives the control icon; the cycle icon reflects vessel count.
+        var vesselCount = 0;
+        foreach (var candidate in KSA.Program.VehiclesInFrame)
+            if (!candidate.IsDisposed) vesselCount++;
+        DrawImage(draw, "KSI2BottomObjectCycle",
+            new float2(x + 121f * scale, y + 255f * scale), 24f * scale,
+            vesselCount > 1 ? 0xFFFF6D69u : 0xFF99413Eu);
+        DrawImage(draw, "KSI2BottomCommNet",
+            new float2(x + 155f * scale, y + 255f * scale), 24f * scale,
+            vehicle.IsControllable ? 0xFF52CC00u : 0xFF99413Eu);
     }
 
     private ButtonInput DrawButton(string label, float2 topLeft, float2 size,
@@ -292,13 +286,5 @@ internal sealed unsafe class NavballBottomControls
         var uvMax = new float2(1f, 1f);
         ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, texture,
             &topLeft, &max, &uvMin, &uvMax, tint);
-    }
-
-    private void DrawStatusIcon(ImDrawListPtr draw, string id, float2 topLeft, float scale)
-    {
-        if (_statusIcons.TryGetValue(id, out var raster))
-            raster.Draw(draw, topLeft, scale, 0xFFFFFFFFu);
-        else
-            DrawImage(draw, id, topLeft, 24f * scale, 0xFFFFFFFFu);
     }
 }

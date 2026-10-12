@@ -8,7 +8,8 @@ KSP2 gives them 24 × 24 UI rects, and the user saw sharp KSI2 icons at 48
 screen pixels but saw the problem when one was reduced to 24 screen pixels.
 The diagnostic comparison drew Object Cycle at 48 screen pixels and CommNet at
 24, both white, with mipmaps enabled in its final build. The result of that
-last mipmap-on comparison has not been reported.
+last mipmap-on comparison was not measured separately. The user later reported
+that the smaller direct-texture icon looked better than a solid-pixel trial.
 
 ## Recommended implementation path
 
@@ -16,15 +17,11 @@ last mipmap-on comparison has not been reported.
    after the comparison is complete. Keep the layout size distinct from the
    48 × 48 source texture size. Restore their state colors only after the
    sampling issue is resolved; white tint is useful for the current check.
-2. For each small raster icon with 1 px source strokes, prepare a display-size
-   version and inspect it at 1:1. At the 1920 × 1080 reference viewport and
-   Scale 1, that means a 24 × 24 output for these icons. The present fix
-   resolves each 2 × 2 source block to its strongest alpha, then draws the
-   24 × 24 result as filled ImGui rectangles. This preserves coverage for
-   these white, binary-alpha icons. Use alpha-aware area filtering for assets
-   with gradients or partial transparency; a maximum-alpha rule can thicken
-   strokes, bridge gaps, and change their intended appearance. Compare with
-   KSP2, including the border and center glyph.
+2. Compare KSP2's sprite import, filtering, mipmaps, alpha treatment, and
+   final screen-space sampling with KSA's direct texture path. A trial that
+   took the strongest alpha from every 2 × 2 source block and drew solid
+   rectangles increased brightness but lost detail, so it was reverted.
+   Do not use maximum-alpha reduction as the general icon fix.
 3. Render the prepared version at an integer number of screen pixels and
    align its bounds consistently. For other Scale values or viewport sizes,
    select or generate a version near the final pixel dimensions. Cache
@@ -39,14 +36,13 @@ last mipmap-on comparison has not been reported.
    KSP2 reference, including fullscreen. Use screenshots and sampled pixels
    only as supporting evidence; inspect the visible shape and contrast too.
 
-The KSA ImGui texture path uses a linear sampler. Drawing a prepared 24 px
-result as 24 screen-aligned rectangles avoids another texture reduction at the
-reference size. At arbitrary fractional scales, rasterization still has to
-choose which screen pixels to cover; scale-specific preparation makes this
-choice more deliberate. If an essential feature is narrower than one
-destination pixel, no sampler can preserve all of its original shape and
-brightness. It may need a larger drawn size, a thicker asset variant, or
-geometry/vector drawing.
+The KSA ImGui texture path uses a linear sampler. The reverted solid-rectangle
+trial showed that avoiding texture filtering can erase fine detail even when
+it makes lines brighter. At arbitrary fractional scales, rasterization still
+has to choose which screen pixels to cover. If an essential feature is
+narrower than one destination pixel, no sampler can preserve all of its
+original shape and brightness. It may need a larger drawn size, a carefully
+filtered asset variant, or geometry/vector drawing after comparison with KSP2.
 
 ## Apply to the rest of the pilot interface
 
