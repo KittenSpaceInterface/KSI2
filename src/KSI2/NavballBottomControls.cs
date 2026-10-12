@@ -153,23 +153,11 @@ internal sealed unsafe class NavballBottomControls
     private static void UpdateInput(ToggleVisual visual, ButtonInput input, bool active)
     {
         if (input.Hovered && !visual.Hovered)
-            PlaySound("KSI2SasRcsHover");
+            FlightUiSounds.Play("KSI2SasRcsHover");
         if (input.Pressed && !visual.Pressed)
-            PlaySound(active ? "KSI2SasRcsDisable" : "KSI2SasRcsEnable");
+            FlightUiSounds.Play(active ? "KSI2SasRcsDisable" : "KSI2SasRcsEnable");
         visual.Hovered = input.Hovered;
         visual.Pressed = input.Pressed;
-    }
-
-    private static void PlaySound(string id)
-    {
-        try
-        {
-            GameAudio.Play2DSound(ModLibrary.Get<SoundBehavior>(id), out _, 1f);
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"KSI2: could not play '{id}': {ex.Message}");
-        }
     }
 
     private static void UpdateColors(ToggleVisual visual, bool active, float dt)

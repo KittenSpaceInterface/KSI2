@@ -27,6 +27,7 @@ internal sealed unsafe class AltitudeReadoutRenderer
     private AltitudeReadoutValue? _lastValue;
     private Vehicle? _selectedVehicle;
     private AltitudeReadoutMode _selectedMode;
+    private bool _hovered;
 
     internal void SetTexture(string id, TextureReference texture)
     {
@@ -35,11 +36,23 @@ internal sealed unsafe class AltitudeReadoutRenderer
 
     internal void Draw()
     {
-        if (!KSA.Program.DrawUI) return;
+        if (!KSA.Program.DrawUI)
+        {
+            _hovered = false;
+            return;
+        }
         var vehicle = KSA.Program.ControlledVehicle;
-        if (vehicle is null || vehicle.IsDisposed) return;
+        if (vehicle is null || vehicle.IsDisposed)
+        {
+            _hovered = false;
+            return;
+        }
         if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
-            && texture.ImguiTextureRef is not null)) return;
+            && texture.ImguiTextureRef is not null))
+        {
+            _hovered = false;
+            return;
+        }
 
         if (!ReferenceEquals(_selectedVehicle, vehicle))
         {
@@ -67,9 +80,15 @@ internal sealed unsafe class AltitudeReadoutRenderer
                     ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
         ImGui.Begin("##KSI2-AltitudeMode", flags);
         ImGui.InvisibleButton("cycle altitude mode", new float2(86f * scale, 64f * scale));
+        var hovered = ImGui.IsItemHovered();
+        if (hovered && !_hovered) FlightUiSounds.Play("KSI2AltitudeModeHover");
+        _hovered = hovered;
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+        {
+            FlightUiSounds.Play("KSI2AltitudeModeSelect");
             _selectedMode = _selectedMode == AltitudeReadoutMode.SeaLevel
                 ? AltitudeReadoutMode.GroundLevel : AltitudeReadoutMode.SeaLevel;
+        }
         ImGui.End();
         ImGui.PopStyleVar();
 
