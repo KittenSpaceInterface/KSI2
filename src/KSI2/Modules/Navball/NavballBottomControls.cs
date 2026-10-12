@@ -131,21 +131,10 @@ internal sealed unsafe class NavballBottomControls
             if (!candidate.IsDisposed) vesselCount++;
         var planeTint = vesselCount > 1 ? 0xFFFF6D69u : 0xFF99413Eu;
         var commTint = vehicle.IsControllable ? 0xFF52CC00u : 0xFF99413Eu;
-        var cycleMin = new float2(x + 121f * scale, y + 255f * scale);
-        var framebufferScale = ImGui.GetIO().DisplayFramebufferScale;
-        var viewportOrigin = ImGui.GetMainViewport().Pos;
-        cycleMin = new float2(
-            SnapToFramebufferPixel(cycleMin.X, viewportOrigin.X, framebufferScale.X),
-            SnapToFramebufferPixel(cycleMin.Y, viewportOrigin.Y, framebufferScale.Y));
-        var cycleMax = new float2(
-            SnapToFramebufferPixel(x + 145f * scale, viewportOrigin.X, framebufferScale.X),
-            SnapToFramebufferPixel(y + 279f * scale, viewportOrigin.Y, framebufferScale.Y));
-        var commMin = new float2(
-            SnapToFramebufferPixel(x + 155f * scale, viewportOrigin.X, framebufferScale.X),
-            SnapToFramebufferPixel(y + 255f * scale, viewportOrigin.Y, framebufferScale.Y));
-        var commMax = new float2(
-            SnapToFramebufferPixel(x + 179f * scale, viewportOrigin.X, framebufferScale.X),
-            SnapToFramebufferPixel(y + 279f * scale, viewportOrigin.Y, framebufferScale.Y));
+        var cycleMin = NavballPixelAlignment.Snap(new float2(x + 121f * scale, y + 255f * scale));
+        var cycleMax = NavballPixelAlignment.Snap(new float2(x + 145f * scale, y + 279f * scale));
+        var commMin = NavballPixelAlignment.Snap(new float2(x + 155f * scale, y + 255f * scale));
+        var commMax = NavballPixelAlignment.Snap(new float2(x + 179f * scale, y + 279f * scale));
         DrawImage(draw, "KSI2BottomObjectCycle", cycleMin, cycleMax, planeTint);
         DrawImage(draw, "KSI2BottomCommNet",
             commMin, commMax, commTint);
@@ -246,15 +235,9 @@ internal sealed unsafe class NavballBottomControls
     private void DrawToggle(ImDrawListPtr draw, string label, float2 topLeft,
         float scale, ToggleVisual visual)
     {
-        var framebufferScale = ImGui.GetIO().DisplayFramebufferScale;
-        var viewportOrigin = ImGui.GetMainViewport().Pos;
         var bottomRight = topLeft + new float2(48f * scale, 48f * scale);
-        var outlineMin = new float2(
-            SnapToFramebufferPixel(topLeft.X, viewportOrigin.X, framebufferScale.X),
-            SnapToFramebufferPixel(topLeft.Y, viewportOrigin.Y, framebufferScale.Y));
-        var outlineMax = new float2(
-            SnapToFramebufferPixel(bottomRight.X, viewportOrigin.X, framebufferScale.X),
-            SnapToFramebufferPixel(bottomRight.Y, viewportOrigin.Y, framebufferScale.Y));
+        var outlineMin = NavballPixelAlignment.Snap(topLeft);
+        var outlineMax = NavballPixelAlignment.Snap(bottomRight);
         DrawImage(draw, "KSI2BottomToggleOutline", outlineMin, outlineMax,
             visual.BorderColor);
         // KSA clears its font dictionary when display font settings change.
@@ -303,12 +286,6 @@ internal sealed unsafe class NavballBottomControls
     private void DrawImage(ImDrawListPtr draw, string id, float2 topLeft,
         float size, uint tint)
         => DrawImage(draw, id, topLeft, topLeft + new float2(size, size), tint);
-
-    private static float SnapToFramebufferPixel(float coordinate, float viewportOrigin,
-        float framebufferScale)
-        => float.IsFinite(framebufferScale) && framebufferScale > 0f
-            ? viewportOrigin + MathF.Round((coordinate - viewportOrigin) * framebufferScale) / framebufferScale
-            : viewportOrigin + MathF.Round(coordinate - viewportOrigin);
 
     private void DrawImage(ImDrawListPtr draw, string id, float2 topLeft,
         float2 bottomRight, uint tint)
