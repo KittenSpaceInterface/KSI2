@@ -7,15 +7,7 @@ internal sealed class RightIndicatorsModule : IPilotUiModule
     public string Id => "right-indicators";
     internal const string AtmosphereId = "atmosphere";
     internal const string VerticalSpeedId = "vertical-speed";
-    internal static readonly PilotLayoutDefinition[] Definitions =
-    [
-        new(AtmosphereId, (layout, _) => new(AtmosphericIndicatorGeometry.WidgetOrigin(layout.Navball),
-            layout.Navball.Scale, AtmosphericIndicatorGeometry.WidgetWidth,
-            AtmosphericIndicatorGeometry.WidgetHeight), true),
-        new(VerticalSpeedId, (layout, _) => new(VerticalSpeedIndicatorGeometry.WidgetOrigin(layout.Navball),
-            layout.Navball.Scale, VerticalSpeedIndicatorGeometry.WidgetWidth,
-            VerticalSpeedIndicatorGeometry.WidgetHeight), true)
-    ];
+    internal static readonly PilotLayoutDefinition[] Definitions = [];
     public IReadOnlyList<PilotLayoutDefinition> LayoutDefinitions => Definitions;
     public IReadOnlyList<PilotUiLayer> Layers { get; }
     public RightIndicatorsModule()

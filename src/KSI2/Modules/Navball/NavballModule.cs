@@ -12,38 +12,29 @@ internal sealed class NavballModule : IPilotUiModule
     public string Id => "navball";
     internal const string SpeedCardId = "speed-card";
     internal const string AltitudeCardId = "altitude-card";
-    internal static readonly PilotLayoutDefinition[] Definitions =
-    [
-        new("navball-cluster", (layout, _) =>
-            new(new(layout.Navball.Min.X - 37f * layout.Navball.Scale,
-                layout.Navball.Min.Y - 22f * layout.Navball.Scale),
-                layout.Navball.Scale, 401f, 322f), true),
-        new(SpeedCardId, (layout, _) => new(SpeedReadoutGeometry.TopLeft(layout.Navball),
-            layout.Navball.Scale, SpeedReadoutGeometry.Width, SpeedReadoutGeometry.Height)),
-        new(AltitudeCardId, (layout, _) => new(AltitudeReadoutGeometry.TopLeft(layout.Navball),
-            layout.Navball.Scale, AltitudeReadoutGeometry.Width, AltitudeReadoutGeometry.Height))
-    ];
+    internal static readonly PilotLayoutDefinition[] Definitions = [];
     public IReadOnlyList<PilotLayoutDefinition> LayoutDefinitions => Definitions;
     public IReadOnlyList<PilotUiLayer> Layers { get; }
     public NavballModule()
     {
         Layers =
         [
-            new(PilotLayerOrder.ClusterBackground, (l,c) => _navballClusterBackground.Draw(l.Navball,c.Blur,c.Opacity)),
-            new(PilotLayerOrder.NavballSphere, (l,c) => _navballSpike.Draw(l.Navball,_speedReadout.SelectedMode)),
-            new(PilotLayerOrder.SideDials, (l,c) => _sideDials.Draw(l.Navball)),
+            new(PilotLayerOrder.ClusterBackground, (l,c) => _navballClusterBackground.Draw(l.Component("cluster-background"),c.Blur,c.Opacity)),
+            new(PilotLayerOrder.NavballSphere, (l,c) => _navballSpike.Draw(l.Component("navball-sphere"),_speedReadout.SelectedMode)),
+            new(PilotLayerOrder.SideDials, (l,c) => _sideDials.Draw(l.Component("side-dials"))),
             new(PilotLayerOrder.SpeedCard,
                 (l,c) => _speedReadout.Draw(l.Component(SpeedCardId).Position, l.Component(SpeedCardId).Scale),
                 (l,m) => _speedReadout.UpdateMode(l.Component(SpeedCardId).Position,
                     l.Component(SpeedCardId).Scale, m == PilotInteractionMode.Instruments)),
-            new(PilotLayerOrder.HeadingDial, (l,c) => _headingDial.Draw(l.Navball)),
+            new(PilotLayerOrder.HeadingDial, (l,c) => _headingDial.DrawDial(l.Component("heading-dial"))),
+            new(PilotLayerOrder.HeadingReadout, (l,c) => _headingDial.DrawReadout(l.Component("heading-readout"))),
             new(PilotLayerOrder.AltitudeCard,
                 (l,c) => _altitudeReadout.Draw(l.Component(AltitudeCardId).Position, l.Component(AltitudeCardId).Scale),
                 (l,m) => _altitudeReadout.UpdateMode(l.Component(AltitudeCardId).Position,
                     l.Component(AltitudeCardId).Scale, m == PilotInteractionMode.Instruments)),
             new(PilotLayerOrder.BottomControls,
-                (l,c) => _bottomControls.Draw(l.Navball,c.DeltaTime),
-                (l,m) => _bottomControls.ProcessInteraction(l.Navball,
+                (l,c) => _bottomControls.Draw(l.Component("bottom-controls"),c.DeltaTime),
+                (l,m) => _bottomControls.ProcessInteraction(l.Component("bottom-controls"),
                     m == PilotInteractionMode.Instruments))
         ];
     }

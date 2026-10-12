@@ -10,6 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Layout\PilotLayoutDefaults.json" LogicalName="KSI2.Layout.PilotLayoutDefaults.json" />
+    <Content Include="Layout\PilotLayoutDefaults.json" Link="ksi2.layout.defaults.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
     <Content Include="assets\shaders\*.vert;assets\shaders\*.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>

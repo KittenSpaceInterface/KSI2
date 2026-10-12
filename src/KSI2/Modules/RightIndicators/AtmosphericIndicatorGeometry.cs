@@ -21,11 +21,9 @@ internal static class AtmosphericIndicatorGeometry
 
     internal static Point WidgetOrigin(NavballClusterBounds cluster)
     {
-        // KSP2: navball Container bottom-left (94, 82); atmosphere widget
-        // bottom-left (373, 87). Keep that (279, 5) offset when KSI2 moves
-        // the navball cluster relative to the viewport.
-        return new Point(cluster.Min.X + 279f * cluster.Scale,
-            cluster.Min.Y + (NavballClusterLayout.PanelSize - 5f - WidgetHeight) * cluster.Scale);
+        var offset = PilotLayoutConfig.Current.Node("atmosphere").Offset;
+        return new Point(cluster.Min.X + offset[0] * cluster.Scale,
+            cluster.Min.Y + offset[1] * cluster.Scale);
     }
 
     internal static AtmosphereMarkerPose NeedleOnWidget(float gauge)

@@ -18,10 +18,11 @@ internal sealed class PilotUiController : IDisposable
         _editor = new LayoutEditor(_settings.Settings, _settings.Save);
         _throttle = new ThrottleModule(_settings.Settings);
         _modules = [_throttle, new NavballModule(), new RightIndicatorsModule()];
-        _layers = _modules.SelectMany(module => module.Layers).OrderBy(layer => layer.Order).ToArray();
-        if (_layers.Select(layer => layer.Order).Distinct().Count() != _layers.Length)
+        _layers = _modules.SelectMany(module => module.Layers)
+            .OrderBy(layer => PilotLayoutConfig.Current.Order(layer.Order)).ToArray();
+        if (_layers.Select(layer => PilotLayoutConfig.Current.Order(layer.Order)).Distinct().Count() != _layers.Length)
             throw new InvalidOperationException("Pilot UI layers must have distinct orders.");
-        if (_layers.Any(layer => layer.Order >= PilotLayerOrder.LayoutEditor))
+        if (_layers.Any(layer => PilotLayoutConfig.Current.Order(layer.Order) >= PilotLayoutConfig.Current.Order(PilotLayerOrder.LayoutEditor)))
             throw new InvalidOperationException("Pilot UI layers must remain below the layout editor.");
         _layoutDefinitions = _modules.SelectMany(module => module.LayoutDefinitions).ToArray();
     }

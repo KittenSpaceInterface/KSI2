@@ -31,8 +31,9 @@ internal static class VerticalSpeedIndicatorGeometry
 
     internal static Point WidgetOrigin(NavballClusterBounds cluster)
     {
-        var atmosphere = AtmosphericIndicatorGeometry.WidgetOrigin(cluster);
-        return new Point(atmosphere.X, atmosphere.Y - (WidgetHeight + GapAboveAtmosphere) * cluster.Scale);
+        var offset = PilotLayoutConfig.Current.Node("vertical-speed").Offset;
+        return new Point(cluster.Min.X + offset[0] * cluster.Scale,
+            cluster.Min.Y + offset[1] * cluster.Scale);
     }
 
     private static float Lerp(float start, float end, float t) => start + (end - start) * t;

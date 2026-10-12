@@ -57,7 +57,7 @@ internal sealed unsafe class NavballSpike
     internal void SetRadialOutTexture(TextureReference texture) => _radialOutTexture = texture;
     internal void SetRadialInTexture(TextureReference texture) => _radialInTexture = texture;
     internal void SetBurnTexture(TextureReference texture) => _burnTexture = texture;
-    internal void Draw(NavballClusterBounds bounds, SpeedReadoutMode mode)
+    internal void Draw(PilotComponentBounds bounds, SpeedReadoutMode mode)
     {
         var texture = mode switch
         {
@@ -70,14 +70,16 @@ internal sealed unsafe class NavballSpike
         if (_mesh is null) return;
 
         var viewport = ImGui.GetMainViewport();
-        var center = new Vector2(bounds.Center.X, bounds.Center.Y);
+        var center = new Vector2(bounds.Position.X + bounds.Width * bounds.Scale / 2f,
+            bounds.Position.Y + bounds.Height * bounds.Scale / 2f);
+        var radius = bounds.Width * bounds.Scale / 2f;
         var draw = ImGui.GetForegroundDrawList(viewport);
         ProjectSphere();
-        if (!_supersampler.TryDraw(draw, texture, center, bounds.BallRadius, _mesh, _vertices!))
-            DrawProjectedSphere(draw, _filtering.GetTexture(texture), center, bounds.BallRadius);
+        if (!_supersampler.TryDraw(draw, texture, center, radius, _mesh, _vertices!))
+            DrawProjectedSphere(draw, _filtering.GetTexture(texture), center, radius);
         DrawShadow(draw, center, bounds.Scale);
-        DrawMarkers(draw, center, bounds.BallRadius);
-        DrawCrosshair(draw, center, bounds.BallRadius);
+        DrawMarkers(draw, center, radius);
+        DrawCrosshair(draw, center, radius);
     }
 
 

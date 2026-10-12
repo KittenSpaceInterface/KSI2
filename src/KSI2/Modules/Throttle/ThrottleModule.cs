@@ -6,10 +6,7 @@ internal sealed class ThrottleModule : IPilotUiModule
     internal ThrottleUiState UiState { get; } = new();
     internal void UpdateSnapshot() => _gauge.UpdateSnapshot();
     public string Id => "throttle";
-    internal static readonly PilotLayoutDefinition[] Definitions =
-    [
-        new("throttle", (layout, _) => new(layout.Throttle.Position, layout.Throttle.Scale, 175f, 318f), true)
-    ];
+    internal static readonly PilotLayoutDefinition[] Definitions = [];
     public IReadOnlyList<PilotLayoutDefinition> LayoutDefinitions => Definitions;
     public IReadOnlyList<PilotUiLayer> Layers { get; }
     internal void Draw(PilotFrameLayout layout, PilotRenderContext context) =>
