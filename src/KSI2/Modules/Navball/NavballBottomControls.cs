@@ -82,16 +82,26 @@ internal sealed unsafe class NavballBottomControls
         var rcsTopLeft = new float2(x + 63f * scale, y + 240f * scale);
         var sasTopLeft = new float2(x + 189f * scale, y + 240f * scale);
         var buttonSize = new float2(48f * scale, 48f * scale);
-        var rcsOn = vehicle.FlightComputer.RCSMode == FlightComputerRCSMode.Enabled;
         var eva = vehicle as KittenEva;
-        var sasDisabled = eva?.IsFlightComputerDisabled(KittenEvaAction.RateTrim) == true;
+        var rcsDisabled = eva is null
+            ? vehicle.IsFlightComputerDisabled(FlightComputerRCSMode.Enabled)
+            : eva.IsFlightComputerDisabled(KittenEvaAction.Rcs);
+        var rcsOn = !rcsDisabled &&
+            vehicle.FlightComputer.RCSMode == FlightComputerRCSMode.Enabled;
+        var sasDisabled = eva is null
+            ? vehicle.IsFlightComputerDisabled(FlightComputerAttitudeMode.Auto)
+            : eva.IsFlightComputerDisabled(KittenEvaAction.RateTrim);
         var sasOn = !sasDisabled && (eva?.IsSet(KittenEvaAction.RateTrim, clicked: false) ??
             vehicle.IsStabilizationOn());
         var rcsInput = DrawButton("RCS", rcsTopLeft, buttonSize,
-            _rcsVisual, rcsOn, (float)dt, allowInteraction);
+            _rcsVisual, rcsOn, (float)dt, allowInteraction, rcsDisabled,
+            "No vehicle control module"u8);
+        var sasTooltip = eva?.ControlMode == KittenControlMode.View
+            ? "Enables auto trim: the flight computer damps body rates. Not applicable in View mode."u8
+            : "No vehicle control module"u8;
         var sasInput = DrawButton("SAS", sasTopLeft, buttonSize,
             _sasVisual, sasOn, (float)dt, allowInteraction, sasDisabled,
-            "Enables auto trim: the flight computer damps body rates. Not applicable in View mode."u8);
+            sasTooltip);
         if (rcsInput.Clicked)
         {
             InputEvents.FlightComputerInputBuffer.Add(new InputEvents.FlightComputerInputData
