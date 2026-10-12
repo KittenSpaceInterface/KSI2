@@ -69,11 +69,10 @@ internal sealed unsafe class NavballSpike
         EnsureMesh();
         if (_mesh is null) return;
 
-        var viewport = ImGui.GetMainViewport();
         var center = new Vector2(bounds.Position.X + bounds.Width * bounds.Scale / 2f,
             bounds.Position.Y + bounds.Height * bounds.Scale / 2f);
         var radius = bounds.Width * bounds.Scale / 2f;
-        var draw = ImGui.GetForegroundDrawList(viewport);
+        var draw = ImGui.GetWindowDrawList();
         ProjectSphere();
         if (!_supersampler.TryDraw(draw, texture, center, radius, _mesh, _vertices!))
             DrawProjectedSphere(draw, _filtering.GetTexture(texture), center, radius);

@@ -85,7 +85,7 @@ internal sealed unsafe class SpeedReadoutRenderer
                     ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
                     ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
         ImGui.Begin("##KSI2-SpeedMode", flags);
-        PilotImGui.BringCurrentWindowToFront();
+        PilotImGui.PlaceCurrentWindow();
         ImGui.InvisibleButton("cycle speed mode", new float2(86f * scale, 64f * scale));
         var hovered = ImGui.IsItemHovered();
         if (hovered && !_hovered) FlightUiSounds.Play("KSI2SpeedModeHover");
@@ -113,7 +113,6 @@ internal sealed unsafe class SpeedReadoutRenderer
         if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
             && texture.ImguiTextureRef is not null)) return;
 
-        var viewport = ImGui.GetMainViewport();
         var x = origin.X;
         var y = origin.Y;
 
@@ -127,7 +126,7 @@ internal sealed unsafe class SpeedReadoutRenderer
         if (value is not null) _lastValue = value;
         if (_lastValue is not { } displayed) return;
 
-        var draw = ImGui.GetForegroundDrawList(viewport);
+        var draw = ImGui.GetWindowDrawList();
 
         // The authored frame has a transparent center; the visible KSP2 card
         // has a black backing that covers the rotating dial labels beneath it.

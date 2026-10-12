@@ -72,7 +72,7 @@ internal sealed unsafe class AltitudeReadoutRenderer
                     ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
                     ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
         ImGui.Begin("##KSI2-AltitudeMode", flags);
-        PilotImGui.BringCurrentWindowToFront();
+        PilotImGui.PlaceCurrentWindow();
         ImGui.InvisibleButton("cycle altitude mode", new float2(86f * scale, 64f * scale));
         var hovered = ImGui.IsItemHovered();
         if (hovered && !_hovered) FlightUiSounds.Play("KSI2AltitudeModeHover");
@@ -94,10 +94,9 @@ internal sealed unsafe class AltitudeReadoutRenderer
         if (vehicle is null || vehicle.IsDisposed) return;
         if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
             && texture.ImguiTextureRef is not null)) return;
-        var viewport = ImGui.GetMainViewport();
         var x = origin.X;
         var y = origin.Y;
-        var draw = ImGui.GetForegroundDrawList(viewport);
+        var draw = ImGui.GetWindowDrawList();
 
         var value = AltitudeReadoutGeometry.Format(
             _selectedMode == AltitudeReadoutMode.GroundLevel

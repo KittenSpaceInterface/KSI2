@@ -96,10 +96,9 @@ internal sealed unsafe class ThrottleGauge : IDisposable
 
     private void DrawGauge(float throttle, ThrottleBounds layout, PanelBackgroundBlur? blur, float blurOpacity)
     {
-        var viewport = ImGui.GetMainViewport();
         var scale = layout.Scale;
         var frame = layout.Position;
-        var draw = ImGui.GetForegroundDrawList(viewport);
+        var draw = ImGui.GetWindowDrawList();
 
         var left = frame.X + 25 * scale;
         var top = frame.Y + 14 * scale;
@@ -147,7 +146,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
                     ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
                     ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
         ImGui.Begin("##KSI2-ThrottleDrag", flags);
-        PilotImGui.BringCurrentWindowToFront();
+        PilotImGui.PlaceCurrentWindow();
         ImGui.InvisibleButton("##handle", new float2(hitRadius * 2, hitRadius * 2));
         var active = ImGui.IsItemActive() && ImGui.IsMouseDown(ImGuiMouseButton.Left);
         var mouse = ImGui.GetMousePos();

@@ -42,11 +42,10 @@ internal sealed unsafe class HeadingDialRenderer
             && texture.ImguiTextureRef is not null)) return;
         if (!readout && !EnsureMask()) return;
 
-        var viewport = ImGui.GetMainViewport();
         var center = new float2(bounds.Position.X + bounds.Width * bounds.Scale / 2f,
             bounds.Position.Y + bounds.Height * bounds.Scale / 2f);
         var scale = bounds.Scale;
-        var draw = ImGui.GetForegroundDrawList(viewport);
+        var draw = ImGui.GetWindowDrawList();
 
         if (readout)
         {

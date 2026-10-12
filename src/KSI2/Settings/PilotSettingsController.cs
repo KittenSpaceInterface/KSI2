@@ -21,7 +21,7 @@ internal sealed class PilotSettingsController : IDisposable
             ImGui.End();
             return;
         }
-        PilotImGui.BringCurrentWindowToFront();
+        PilotImGui.PlaceCurrentWindow();
         var show = _settings.Show;
         if (ImGui.Checkbox("Show throttle", ref show)) { _settings.Show = show; Save(); }
         var editing = _settings.Editing;
