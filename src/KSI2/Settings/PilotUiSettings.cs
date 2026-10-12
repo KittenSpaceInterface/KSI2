@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace KSI2;
 
-internal sealed class ThrottleSettings
+internal sealed class PilotUiSettings
 {
     private static readonly JsonSerializerOptions ReadOptions = new() { PropertyNameCaseInsensitive = true };
     public bool Show { get; set; } = true;
@@ -15,10 +15,10 @@ internal sealed class ThrottleSettings
     public bool BlurPanelBackgrounds { get; set; }
     public int BlurOpacityTicks { get; set; } = 398;
 
-    internal static string ModDirectory => Path.GetDirectoryName(typeof(ThrottleSettings).Assembly.Location) ?? AppContext.BaseDirectory;
+    internal static string ModDirectory => Path.GetDirectoryName(typeof(PilotUiSettings).Assembly.Location) ?? AppContext.BaseDirectory;
     private static string FilePath => Path.Combine(ModDirectory, "ksi2.settings.json");
 
-    internal static ThrottleSettings Load()
+    internal static PilotUiSettings Load()
     {
         try
         {
@@ -32,11 +32,11 @@ internal sealed class ThrottleSettings
         }
     }
 
-    internal static ThrottleSettings Parse(string json)
+    internal static PilotUiSettings Parse(string json)
     {
         try
         {
-            var settings = JsonSerializer.Deserialize<ThrottleSettings>(json, ReadOptions);
+            var settings = JsonSerializer.Deserialize<PilotUiSettings>(json, ReadOptions);
             if (settings is null || !float.IsFinite(settings.Scale) || !float.IsFinite(settings.X) || !float.IsFinite(settings.Y)) return new();
             settings.Scale = Math.Clamp(settings.Scale, 0.5f, 2f);
             settings.X = Math.Clamp(settings.X, 0, 1);
@@ -71,7 +71,6 @@ internal sealed class ThrottleSettings
         X = 0.01355f;
         Y = 0.97f;
         PositionSet = false;
-        Save();
     }
 
 }

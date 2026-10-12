@@ -33,7 +33,7 @@ internal sealed unsafe class HeadingDialRenderer
 
     internal void SetTexture(string id, TextureReference texture) => _textures[id] = texture;
 
-    internal void Draw()
+    internal void Draw(NavballClusterBounds bounds)
     {
         if (!KSA.Program.DrawUI || !TryReadHeading(out var heading)) return;
         if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
@@ -41,8 +41,6 @@ internal sealed unsafe class HeadingDialRenderer
         if (!EnsureMask()) return;
 
         var viewport = ImGui.GetMainViewport();
-        var bounds = NavballClusterLayout.Calculate(viewport.Pos.X, viewport.Pos.Y,
-            viewport.Size.X, viewport.Size.Y);
         var center = new float2(bounds.Center.X, bounds.Center.Y);
         var scale = bounds.Scale;
         var draw = ImGui.GetForegroundDrawList(viewport);

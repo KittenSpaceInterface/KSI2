@@ -22,7 +22,7 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
 
     internal void SetTexture(string id, TextureReference texture) => _textures[id] = texture;
 
-    internal void Draw(PanelBackgroundBlur? blur, float opacity)
+    internal void Draw(Point widgetOrigin, float scale, PanelBackgroundBlur? blur, float opacity)
     {
         if (!KSA.Program.DrawUI || !KsaVerticalSpeedSource.TryRead(out var speed)) return;
         if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture) && texture.ImguiTextureRef is not null)) return;
@@ -30,10 +30,6 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
         if (!EnsureMask()) return;
 
         var viewport = ImGui.GetMainViewport();
-        var scale = NavballClusterLayout.Calculate(viewport.Pos.X, viewport.Pos.Y,
-            viewport.Size.X, viewport.Size.Y).Scale;
-        var widgetOrigin = VerticalSpeedIndicatorGeometry.WidgetOrigin(
-            viewport.Pos.X, viewport.Pos.Y, viewport.Size.X, viewport.Size.Y);
         var origin = new float2(widgetOrigin.X, widgetOrigin.Y);
         var draw = ImGui.GetForegroundDrawList(viewport);
 

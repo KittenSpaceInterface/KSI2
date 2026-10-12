@@ -19,9 +19,8 @@ internal static class AtmosphericIndicatorGeometry
         Interpolate(gauge, new Point(44.2f, -24.4f), new Point(-27.2f, -16.8f),
             new Point(-65.7f, 25.5f), 4.7118416f, 41.395893f);
 
-    internal static Point WidgetOrigin(float viewportX, float viewportY, float viewportWidth, float viewportHeight)
+    internal static Point WidgetOrigin(NavballClusterBounds cluster)
     {
-        var cluster = NavballClusterLayout.Calculate(viewportX, viewportY, viewportWidth, viewportHeight);
         // KSP2: navball Container bottom-left (94, 82); atmosphere widget
         // bottom-left (373, 87). Keep that (279, 5) offset when KSI2 moves
         // the navball cluster relative to the viewport.

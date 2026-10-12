@@ -57,7 +57,7 @@ internal sealed unsafe class NavballSpike
     internal void SetRadialOutTexture(TextureReference texture) => _radialOutTexture = texture;
     internal void SetRadialInTexture(TextureReference texture) => _radialInTexture = texture;
     internal void SetBurnTexture(TextureReference texture) => _burnTexture = texture;
-    internal void Draw(SpeedReadoutMode mode)
+    internal void Draw(NavballClusterBounds bounds, SpeedReadoutMode mode)
     {
         var texture = mode switch
         {
@@ -70,7 +70,6 @@ internal sealed unsafe class NavballSpike
         if (_mesh is null) return;
 
         var viewport = ImGui.GetMainViewport();
-        var bounds = NavballClusterLayout.Calculate(viewport.Pos.X, viewport.Pos.Y, viewport.Size.X, viewport.Size.Y);
         var center = new Vector2(bounds.Center.X, bounds.Center.Y);
         var draw = ImGui.GetForegroundDrawList(viewport);
         ProjectSphere();
