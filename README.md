@@ -17,7 +17,7 @@ Deferred experimental controls and panel blur are recorded in
 
 ## Build
 
-Local builds use KSA reference assemblies from an `Import` directory next to this repository. You can set `KsaReferencePath` to use a different directory.
+Local builds use KSA reference assemblies from an `Import` directory next to this repository. To use a different directory, change the default `KsaReferencePath` in [`Directory.Build.props`](Directory.Build.props) at the repository root, or pass it as an MSBuild property, for example `-p:KsaReferencePath="D:\path\to\KSA\assemblies"`.
 
 ```shell
 dotnet restore KSI2.sln
@@ -72,7 +72,7 @@ Copy these files from the Release output:
 - `KSI2Assets.xml`
 - `assets/` (the complete folder)
 
-Enable `KSI2` in KSA's user `manifest.toml`, then launch the game through StarMap.
+Enable `KSI2` in KSA's user `manifest.toml`, then open the game through StarMap. Current StarMap versions look for installed mods and show them when the game opens. If StarMap does not recognize the mod automatically, check that `KSI2` is in the user manifest and installed under the user `mods/` directory.
 
 ## License
 
