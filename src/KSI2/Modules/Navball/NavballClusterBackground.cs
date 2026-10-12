@@ -12,14 +12,11 @@ internal sealed unsafe class NavballClusterBackground
     internal void SetBackgroundTexture(TextureReference texture) => _backgroundTexture = texture;
     internal void SetBorderTexture(TextureReference texture) => _borderTexture = texture;
 
-    internal void Draw(PanelBackgroundBlur? blur, float opacity)
+    internal void Draw(NavballClusterBounds bounds, PanelBackgroundBlur? blur, float opacity)
     {
         if (!KSA.Program.DrawUI || _backgroundTexture?.ImguiTextureRef is not { } background) return;
 
         var viewport = ImGui.GetMainViewport();
-        // KSP2's host canvas uses Scale With Screen Size, Expand. KSI2's
-        // throttle uses the same viewport scale, so the spacing tracks it.
-        var bounds = NavballClusterLayout.Calculate(viewport.Pos.X, viewport.Pos.Y, viewport.Size.X, viewport.Size.Y);
         var size = bounds.PanelSize;
         var min = new float2(bounds.Min.X, bounds.Min.Y);
         var max = min + new float2(size, size);

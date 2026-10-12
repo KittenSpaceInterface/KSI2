@@ -28,13 +28,14 @@ internal sealed unsafe class AltitudeReadoutRenderer
     private Vehicle? _selectedVehicle;
     private AltitudeReadoutMode _selectedMode;
     private bool _hovered;
+    internal void CancelInteraction() => _hovered = false;
 
     internal void SetTexture(string id, TextureReference texture)
     {
         _textures[id] = texture;
     }
 
-    internal void Draw()
+    internal void UpdateMode(Point origin, float scale, bool allowInteraction)
     {
         if (!KSA.Program.DrawUI)
         {
@@ -60,18 +61,10 @@ internal sealed unsafe class AltitudeReadoutRenderer
             _selectedMode = AltitudeReadoutGeometry.Mode(vehicle.NavBallData.Frame);
             _lastValue = null;
         }
-
-        var viewport = ImGui.GetMainViewport();
-        var cluster = NavballClusterLayout.Calculate(viewport.Pos.X, viewport.Pos.Y,
-            viewport.Size.X, viewport.Size.Y);
-        var origin = AltitudeReadoutGeometry.TopLeft(cluster);
         var x = origin.X;
         var y = origin.Y;
-        var scale = cluster.Scale;
-        var draw = ImGui.GetForegroundDrawList(viewport);
-
-        // KSP2 cycles this display mode independently of the navball's frame.
-        // The complete card cycles altitude mode, matching KSP2's mode switch.
+        if (!allowInteraction) { _hovered = false; return; }
+        // The complete card cycles altitude mode independently of the navball.
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new float2(0f, 0f));
         ImGui.SetNextWindowPos(new float2(x, y), ImGuiCond.Always);
         ImGui.SetNextWindowSize(new float2(86f * scale, 64f * scale), ImGuiCond.Always);
@@ -91,6 +84,19 @@ internal sealed unsafe class AltitudeReadoutRenderer
         }
         ImGui.End();
         ImGui.PopStyleVar();
+    }
+
+    internal void Draw(Point origin, float scale)
+    {
+        if (!KSA.Program.DrawUI) return;
+        var vehicle = KSA.Program.ControlledVehicle;
+        if (vehicle is null || vehicle.IsDisposed) return;
+        if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
+            && texture.ImguiTextureRef is not null)) return;
+        var viewport = ImGui.GetMainViewport();
+        var x = origin.X;
+        var y = origin.Y;
+        var draw = ImGui.GetForegroundDrawList(viewport);
 
         var value = AltitudeReadoutGeometry.Format(
             _selectedMode == AltitudeReadoutMode.GroundLevel

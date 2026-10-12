@@ -63,9 +63,9 @@ internal sealed unsafe class NavballBottomControls
         }
     }
 
-    internal void Draw(double dt)
+    internal void ProcessInteraction(NavballClusterBounds cluster, bool allowInteraction)
     {
-        if (!KSA.Program.DrawUI)
+        if (!KSA.Program.DrawUI || !allowInteraction)
         {
             ResetInput();
             return;
@@ -77,9 +77,6 @@ internal sealed unsafe class NavballBottomControls
             return;
         }
 
-        var viewport = ImGui.GetMainViewport();
-        var cluster = NavballClusterLayout.Calculate(viewport.Pos.X, viewport.Pos.Y,
-            viewport.Size.X, viewport.Size.Y);
         var scale = cluster.Scale;
         var x = cluster.Min.X;
         var y = cluster.Min.Y;
@@ -105,6 +102,20 @@ internal sealed unsafe class NavballBottomControls
             });
         }
         if (sasInput.Clicked) vehicle.ToggleStabilization();
+    }
+
+    internal void Draw(NavballClusterBounds cluster, double dt)
+    {
+        if (!KSA.Program.DrawUI) return;
+        var vehicle = KSA.Program.ControlledVehicle;
+        if (vehicle is null || vehicle.IsDisposed) return;
+        var viewport = ImGui.GetMainViewport();
+        var scale = cluster.Scale;
+        var x = cluster.Min.X;
+        var y = cluster.Min.Y;
+        var rcsTopLeft = new float2(x + 63f * scale, y + 240f * scale);
+        var sasTopLeft = new float2(x + 189f * scale, y + 240f * scale);
+        var rcsOn = vehicle.FlightComputer.RCSMode == FlightComputerRCSMode.Enabled;
 
         var draw = ImGui.GetForegroundDrawList(viewport);
         UpdateColors(_rcsVisual, rcsOn, (float)dt);
@@ -144,7 +155,7 @@ internal sealed unsafe class NavballBottomControls
         return new ButtonInput(clicked, hovered, pressed);
     }
 
-    private void ResetInput()
+    internal void ResetInput()
     {
         _rcsVisual.Hovered = _rcsVisual.Pressed = false;
         _sasVisual.Hovered = _sasVisual.Pressed = false;

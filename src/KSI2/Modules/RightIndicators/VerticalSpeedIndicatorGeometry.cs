@@ -29,11 +29,10 @@ internal static class VerticalSpeedIndicatorGeometry
             2f * MathF.Atan2(sine, cosine) * 180f / MathF.PI);
     }
 
-    internal static Point WidgetOrigin(float viewportX, float viewportY, float viewportWidth, float viewportHeight)
+    internal static Point WidgetOrigin(NavballClusterBounds cluster)
     {
-        var atmosphere = AtmosphericIndicatorGeometry.WidgetOrigin(viewportX, viewportY, viewportWidth, viewportHeight);
-        var scale = NavballClusterLayout.Calculate(viewportX, viewportY, viewportWidth, viewportHeight).Scale;
-        return new Point(atmosphere.X, atmosphere.Y - (WidgetHeight + GapAboveAtmosphere) * scale);
+        var atmosphere = AtmosphericIndicatorGeometry.WidgetOrigin(cluster);
+        return new Point(atmosphere.X, atmosphere.Y - (WidgetHeight + GapAboveAtmosphere) * cluster.Scale);
     }
 
     private static float Lerp(float start, float end, float t) => start + (end - start) * t;

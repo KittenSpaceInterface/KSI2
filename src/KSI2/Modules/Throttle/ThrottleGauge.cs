@@ -7,15 +7,12 @@ namespace KSI2;
 
 internal sealed unsafe class ThrottleGauge : IDisposable
 {
-    private readonly ThrottleSettings _settings = ThrottleSettings.Load();
-    private readonly BlurCrashGuard _blurCrashGuard;
+    private readonly PilotUiSettings _settings;
+    private readonly ThrottleUiState _uiState;
     private readonly ThrottleMouseController _mouseControl = new();
     private string? _assetError;
     private bool _loggedAssetError;
     private bool _artworkAttempted;
-    private bool _dragging;
-    private Point _layoutMouseStart;
-    private Point _layoutThrottleStart;
     private float _throttleDragOffsetY;
     private bool _disposed;
     private RasterArtwork? _artwork;
@@ -26,16 +23,32 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     private TextureReference? _handleTexture;
     private TextureReference? _percentGlyphTexture;
     private TextureReference? _fillTexture;
-    private bool _useTestThrottle;
-    private float _testThrottle = 100f;
-    private ThrottleSnapshot? _snapshot;
-    internal bool BlurPanelBackgrounds => _blurCrashGuard.Enabled;
-    internal float BlurOpacity => _settings.BlurOpacityTicks / 400f;
-
-    internal ThrottleGauge()
+    internal void CancelInteraction() => _mouseControl.Cancel();
+    internal void UpdateSnapshot()
     {
-        _blurCrashGuard = new BlurCrashGuard(_settings);
-        NavballClusterLayout.Configure(_settings);
+        _uiState.Snapshot = KsaThrottleSource.TryRead(out var snapshot) ? snapshot : null;
+        _uiState.MouseUnavailableReason = _mouseControl.UnavailableReason;
+    }
+
+    internal void ProcessInteraction(ThrottleBounds layout, bool allowInteraction)
+    {
+        if (_disposed || !KSA.Program.DrawUI || !_settings.Show || !_settings.MouseThrottleControl ||
+            !allowInteraction || _uiState.Snapshot is null ||
+            !ThrottleMouseController.CanControl(KSA.Program.ControlledVehicle))
+        {
+            _mouseControl.Cancel();
+            return;
+        }
+        EnsureArtwork();
+        if (_artwork is null) { _mouseControl.Cancel(); return; }
+        HandleThrottleDrag(new Point(layout.Position.X + 25f * layout.Scale,
+            layout.Position.Y + 14f * layout.Scale), layout.Scale, _uiState.Snapshot.Value.Value);
+    }
+
+    internal ThrottleGauge(PilotUiSettings settings, ThrottleUiState uiState)
+    {
+        _settings = settings;
+        _uiState = uiState;
     }
 
     internal void SetBgTexture(TextureReference texture) => _bgTexture = texture;
@@ -46,25 +59,20 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     internal void SetPercentGlyphTexture(TextureReference texture) => _percentGlyphTexture = texture;
     internal void SetFillTexture(TextureReference texture) => _fillTexture = texture;
 
-    internal void Draw(Func<PanelBackgroundBlur?> getBlur)
+    internal void Draw(ThrottleBounds layout, PanelBackgroundBlur? blur, float blurOpacity)
     {
         if (_disposed || ImGui.GetCurrentContext().IsNull() || !KSA.Program.DrawUI)
         {
             _mouseControl.Cancel();
             return;
         }
-        _snapshot = KsaThrottleSource.TryRead(out var snapshot) ? snapshot : null;
-        DrawSettingsWindow();
-        if (!_settings.Show || !_settings.MouseThrottleControl || _settings.Editing || _snapshot is null ||
-            !ThrottleMouseController.CanControl(KSA.Program.ControlledVehicle))
-            _mouseControl.Cancel();
         if (!_settings.Show) return;
-        var throttle = _settings.Editing && _useTestThrottle
-            ? _testThrottle / 100f
-            : _snapshot?.Value;
+        var throttle = _settings.Editing && _uiState.UsePreview
+            ? _uiState.PreviewPercent / 100f
+            : _uiState.Snapshot?.Value;
         if (throttle is null) return;
         EnsureArtwork();
-        if (_artwork is not null) DrawGauge(throttle.Value, getBlur);
+        if (_artwork is not null) DrawGauge(throttle.Value, layout, blur, blurOpacity);
         else _mouseControl.Cancel();
     }
 
@@ -81,83 +89,16 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             _assetError = ex.Message;
+            _uiState.AssetError = _assetError;
             if (_loggedAssetError) return;
             Console.Error.WriteLine($"KSI2: artwork unavailable; gauge hidden: {ex.Message}");
             _loggedAssetError = true;
         }
     }
 
-    private void DrawSettingsWindow()
-    {
-        ImGui.SetNextWindowPos(new float2(24, 72), ImGuiCond.FirstUseEver);
-        if (!ImGui.Begin("KSI2", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings))
-        {
-            ImGui.End();
-            return;
-        }
-        var show = _settings.Show;
-        if (ImGui.Checkbox("Show throttle", ref show)) { _settings.Show = show; _settings.Save(); }
-        var editing = _settings.Editing;
-        if (ImGui.Checkbox("Edit layout", ref editing))
-        {
-            _settings.Editing = editing;
-            if (!editing) { _dragging = false; _useTestThrottle = false; _settings.Save(); }
-        }
-        var scale = _settings.Scale;
-        if (ImGui.SliderFloat("Scale", ref scale, 0.5f, 2f, "%.2fx")) _settings.Scale = scale;
-        if (ImGui.IsItemDeactivatedAfterEdit()) _settings.Save();
-        if (_settings.Editing)
-        {
-            if (ImGui.SliderFloat("Preview throttle (0-100)", ref _testThrottle, 0f, 100f, "%.0f"))
-                _useTestThrottle = true;
-            ImGui.Checkbox("Preview throttle", ref _useTestThrottle);
-        }
-
-        if (ImGui.Button("Reset layout"))
-        {
-            _dragging = false;
-            _settings.Reset();
-        }
-        ImGui.Text("Experimental");
-        var blurPanelBackgrounds = BlurPanelBackgrounds;
-        if (ImGui.Checkbox("Blur panel backgrounds", ref blurPanelBackgrounds))
-            _blurCrashGuard.SetEnabled(blurPanelBackgrounds);
-        if (BlurPanelBackgrounds)
-        {
-            ImGui.Text($"Blur opacity: {_settings.BlurOpacityTicks / 4f:0.00}%");
-            var blurOpacityTicks = _settings.BlurOpacityTicks;
-            if (ImGui.SliderInt("##KSI2BlurOpacity", ref blurOpacityTicks, 0, 400, ""))
-                _settings.BlurOpacityTicks = blurOpacityTicks;
-            if (ImGui.IsItemDeactivatedAfterEdit()) _settings.Save();
-            ImGui.TextWrapped("Experimental blur uses Vulkan. If KSA exits unexpectedly while it is enabled, KSI2 disables it on the next launch.");
-        }
-        if (_blurCrashGuard.RecoveredAfterCrash)
-            ImGui.TextWrapped("Panel blur was disabled after the previous run ended unexpectedly.");
-        if (_blurCrashGuard.Error is { } blurError) ImGui.TextWrapped(blurError);
-        var mouseThrottle = _settings.MouseThrottleControl;
-        if (ImGui.Checkbox("Mouse throttle control", ref mouseThrottle))
-        {
-            _settings.MouseThrottleControl = mouseThrottle;
-            if (!mouseThrottle) _mouseControl.Cancel();
-            _settings.Save();
-        }
-        if (_mouseControl.UnavailableReason is { } reason)
-            ImGui.TextWrapped($"Mouse throttle control unavailable until restart: {reason}");
-        ImGui.Text(_settings.Editing && _useTestThrottle ? $"Preview throttle: {_testThrottle:0}" : (_snapshot is { } value ? $"Live manual throttle: {ThrottleGeometry.Percent(value.Value)}" : "No controlled vehicle"));
-        if (_settings.Editing)
-        {
-            var io = ImGui.GetIO();
-            ImGui.Text($"Display: {io.DisplaySize.X:0} x {io.DisplaySize.Y:0}; framebuffer scale: {io.DisplayFramebufferScale.X:0.##} x {io.DisplayFramebufferScale.Y:0.##}");
-        }
-        if (_assetError is not null) ImGui.TextWrapped($"Throttle artwork unavailable: {_assetError}\nReimport the assets into [asset package] beside KSI2.dll.");
-        ImGui.End();
-    }
-
-    private void DrawGauge(float throttle, Func<PanelBackgroundBlur?> getBlur)
+    private void DrawGauge(float throttle, ThrottleBounds layout, PanelBackgroundBlur? blur, float blurOpacity)
     {
         var viewport = ImGui.GetMainViewport();
-        var layout = ThrottleLayout.Calculate(viewport.Pos.X, viewport.Pos.Y,
-            viewport.Size.X, viewport.Size.Y, _settings);
         var scale = layout.Scale;
         var frame = layout.Position;
         var draw = ImGui.GetForegroundDrawList(viewport);
@@ -165,14 +106,11 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         var left = frame.X + 25 * scale;
         var top = frame.Y + 14 * scale;
         var origin = new Point(left, top);
-        if (_settings.MouseThrottleControl && !_settings.Editing && _snapshot is not null &&
-            ThrottleMouseController.CanControl(KSA.Program.ControlledVehicle))
-            HandleThrottleDrag(origin, scale, throttle);
         var art = _artwork!;
-        var blurQueued = BlurPanelBackgrounds && _bgTexture is { } mask &&
-            getBlur()?.Queue(draw, new float2(origin.X, origin.Y),
+        var blurQueued = _bgTexture is { } mask &&
+            blur?.Queue(draw, new float2(origin.X, origin.Y),
                 new float2(origin.X + 85f * scale, origin.Y + 290f * scale),
-                mask, BlurOpacity) == true;
+                mask, blurOpacity) == true;
         if (!blurQueued) DrawStaticLayer(draw, _bgTexture, art, "[asset]", origin, scale, 0xFD190B03u);
         DrawStaticLayer(draw, _barsTexture, art, "[asset]", origin, scale, 0xFF99413Eu);
         DrawStaticLayer(draw, _borderTexture, art, "[asset]", origin, scale, 0xFF662B29u);
@@ -227,60 +165,6 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         if (_mouseControl.IsDragging && !active) _mouseControl.Cancel();
         ImGui.End();
         ImGui.PopStyleVar();
-    }
-
-    internal void DrawLayoutEditor()
-    {
-        if (!_settings.Editing || !KSA.Program.DrawUI) return;
-        var viewport = ImGui.GetMainViewport();
-        var cluster = NavballClusterLayout.Calculate(viewport.Pos.X, viewport.Pos.Y,
-            viewport.Size.X, viewport.Size.Y);
-        var throttle = ThrottleLayout.Calculate(viewport.Pos.X, viewport.Pos.Y,
-            viewport.Size.X, viewport.Size.Y, _settings);
-        var scale = cluster.Scale;
-        var min = new Point(
-            MathF.Min(throttle.Position.X, cluster.Min.X - 37f * scale),
-            MathF.Min(throttle.Position.Y, cluster.Min.Y - 22f * scale));
-        var max = new Point(
-            MathF.Max(throttle.Position.X + throttle.Width, cluster.Min.X + 364f * scale),
-            MathF.Max(throttle.Position.Y + throttle.Height, cluster.Min.Y + 300f * scale));
-        var size = new float2(max.X - min.X, max.Y - min.Y);
-
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new float2(0, 0));
-        ImGui.SetNextWindowPos(new float2(min.X, min.Y), ImGuiCond.Always);
-        ImGui.SetNextWindowSize(size, ImGuiCond.Always);
-        var flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-                    ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
-                    ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
-        ImGui.Begin("##KSI2-LayoutEdit", flags);
-        ImGui.InvisibleButton("drag interface", size);
-        var mouse = ImGui.GetMousePos();
-        if (ImGui.IsItemActivated())
-        {
-            _dragging = true;
-            _settings.PositionSet = true;
-            _layoutMouseStart = new(mouse.X, mouse.Y);
-            _layoutThrottleStart = throttle.Position;
-        }
-        if (_dragging && ImGui.IsItemActive() && ImGui.IsMouseDown(ImGuiMouseButton.Left))
-        {
-            _settings.X = throttle.AvailableX == 0 ? 0 : Math.Clamp(
-                (_layoutThrottleStart.X + mouse.X - _layoutMouseStart.X - viewport.Pos.X)
-                    / throttle.AvailableX, 0, 1);
-            _settings.Y = throttle.AvailableY == 0 ? 0 : Math.Clamp(
-                (_layoutThrottleStart.Y + mouse.Y - _layoutMouseStart.Y - viewport.Pos.Y)
-                    / throttle.AvailableY, 0, 1);
-        }
-        if (_dragging && ImGui.IsMouseReleased(ImGuiMouseButton.Left))
-        {
-            _dragging = false;
-            _settings.Save();
-        }
-        ImGui.End();
-        ImGui.PopStyleVar();
-
-        var draw = ImGui.GetForegroundDrawList(viewport);
-        DrawRect(draw, min, max, 0xDD66FF00);
     }
 
     private static void DrawStaticLayer(ImDrawListPtr draw, TextureReference? textureRef, RasterArtwork art, string fallbackName, Point origin, float scale, uint tint)
@@ -362,13 +246,6 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         }
     }
 
-    private static void DrawRect(ImDrawListPtr draw, Point min, Point max, uint color)
-    {
-        var a = new float2(min.X, min.Y);
-        var b = new float2(max.X, max.Y);
-        ImGui.PInvoke.ImDrawList_AddRect(draw.Ptr, &a, &b, color, 0, ImDrawFlags.None, 1.5f);
-    }
-
     private static void DrawHandleText(ImDrawListPtr draw, string value, float x, float y, float scale, float angle)
     {
         var bytes = Encoding.UTF8.GetBytes(value);
@@ -393,7 +270,6 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     public void Dispose()
     {
         _mouseControl.Dispose();
-        _blurCrashGuard.OnCleanUnload();
         _disposed = true;
     }
 }

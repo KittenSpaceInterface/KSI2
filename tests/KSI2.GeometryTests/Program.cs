@@ -1,12 +1,40 @@
 using KSI2;
 using System.Text.Json;
 
+PilotLayoutDefinition[] definitions =
+[
+    .. ThrottleModule.Definitions,
+    .. NavballModule.Definitions,
+    .. RightIndicatorsModule.Definitions
+];
+PilotFrameLayout Resolve(float x, float y, float width, float height, PilotUiSettings settings) =>
+    PilotFrameLayout.Resolve(x, y, width, height, settings, definitions);
+
+var speedState = new SpeedModeState();
+var firstVehicle = new object();
+var secondVehicle = new object();
+if (!speedState.Observe(firstVehicle, SpeedReadoutMode.Orbit, false) ||
+    speedState.Mode != SpeedReadoutMode.Orbit)
+    throw new Exception("initial speed mode did not follow the vehicle frame");
+if (speedState.SelectNext(false) != SpeedReadoutMode.Surface ||
+    speedState.Mode != SpeedReadoutMode.Surface)
+    throw new Exception("speed selector did not cycle without a target");
+if (speedState.Observe(firstVehicle, SpeedReadoutMode.Surface, false) ||
+    speedState.Mode != SpeedReadoutMode.Surface)
+    throw new Exception("speed mode changed while observing the same frame");
+if (!speedState.Observe(secondVehicle, SpeedReadoutMode.Target, true) ||
+    speedState.Mode != SpeedReadoutMode.Target)
+    throw new Exception("speed mode did not follow a new vehicle while editing");
+speedState.Observe(secondVehicle, SpeedReadoutMode.Target, false);
+if (speedState.Mode != SpeedReadoutMode.Orbit)
+    throw new Exception("speed mode retained a lost target while editing");
+
 static void Near(float expected, float actual, string name, float epsilon = 0.001f)
 {
     if (MathF.Abs(expected - actual) > epsilon) throw new Exception($"{name}: expected {expected}, received {actual}");
 }
 
-var cluster = NavballClusterLayout.Calculate(0, 0, 1920, 1080);
+var cluster = Resolve(0, 0, 1920, 1080, new PilotUiSettings()).Navball;
 var speedOrigin = SpeedReadoutGeometry.TopLeft(cluster);
 Near(75.85f, speedOrigin.X, "speed card follows current navball x");
 Near(864.95f, speedOrigin.Y, "speed card follows current navball y");
@@ -52,14 +80,14 @@ Near(-25.5f, rocketEnd.Position.Y, "rocket maximum screen y");
 Near(-41.395893f, rocketEnd.AngleDegrees, "rocket maximum quaternion rotation");
 Near(rocketEnd.Position.X, AtmosphericIndicatorGeometry.Rocket(1.2f).Position.X,
     "rocket path clamps beyond maximum");
-var widgetOrigin = AtmosphericIndicatorGeometry.WidgetOrigin(0, 0, 1920, 1080);
+var widgetOrigin = AtmosphericIndicatorGeometry.WidgetOrigin(cluster);
 Near(391.85f, widgetOrigin.X, "atmosphere widget follows navball cluster x");
 Near(901.95f, widgetOrigin.Y, "atmosphere widget follows navball cluster y");
-var clusterOrigin = NavballClusterLayout.Calculate(0, 0, 1920, 1080);
+var clusterOrigin = Resolve(0, 0, 1920, 1080, new PilotUiSettings()).Navball;
 Near(279f, widgetOrigin.X - clusterOrigin.Min.X, "authored atmosphere offset from navball x");
 Near(5f, clusterOrigin.Min.Y + clusterOrigin.PanelSize - widgetOrigin.Y - AtmosphericIndicatorGeometry.WidgetHeight,
     "authored atmosphere offset from navball bottom");
-var verticalSpeedOrigin = VerticalSpeedIndicatorGeometry.WidgetOrigin(0, 0, 1920, 1080);
+var verticalSpeedOrigin = VerticalSpeedIndicatorGeometry.WidgetOrigin(cluster);
 Near(widgetOrigin.X, verticalSpeedOrigin.X, "vertical speed aligns with atmosphere");
 Near(8f, widgetOrigin.Y - verticalSpeedOrigin.Y - VerticalSpeedIndicatorGeometry.WidgetHeight,
     "vertical speed gap above atmosphere");
@@ -100,10 +128,68 @@ Near(896.95f, cluster.Center.Y, "navball center y");
 Near(88f, cluster.BallRadius, "navball radius");
 if (NavballClusterLayout.BackgroundColor != 0xFF190B03u)
     throw new Exception("cluster background color mismatch");
-var scaledCluster = NavballClusterLayout.Calculate(10, 20, 1280, 720);
+var scaledCluster = Resolve(10, 20, 1280, 720, new PilotUiSettings()).Navball;
 Near(10f + cluster.Min.X * 2f / 3f, scaledCluster.Min.X, "scaled cluster left");
 Near(20f + cluster.Min.Y * 2f / 3f, scaledCluster.Min.Y, "scaled cluster top");
 Near(88f * 2f / 3f, scaledCluster.BallRadius, "scaled navball radius");
+
+// Saved offsets move every module by the same screen-space delta, including
+// when the host viewport begins away from (0, 0).
+foreach (var (vx, vy, width, height) in new[]
+    { (0f, 0f, 1920f, 1080f), (120f, 45f, 1280f, 720f), (75f, 90f, 900f, 1200f) })
+{
+    var baseline = Resolve(vx, vy, width, height, new PilotUiSettings());
+    var saved = new PilotUiSettings { PositionSet = true, X = 0.35f, Y = 0.62f };
+    var moved = Resolve(vx, vy, width, height, saved);
+    var dx = moved.Throttle.Position.X - baseline.Throttle.Position.X;
+    var dy = moved.Throttle.Position.Y - baseline.Throttle.Position.Y;
+    Near(vx + 0.35f * moved.Throttle.AvailableX, moved.Throttle.Position.X, "saved throttle x");
+    Near(vy + 0.62f * moved.Throttle.AvailableY, moved.Throttle.Position.Y, "saved throttle y");
+    Near(baseline.Navball.Min.X + dx, moved.Navball.Min.X, "saved navball x");
+    Near(baseline.Navball.Min.Y + dy, moved.Navball.Min.Y, "saved navball y");
+    Near(baseline.Component(RightIndicatorsModule.AtmosphereId).Position.X + dx,
+        moved.Component(RightIndicatorsModule.AtmosphereId).Position.X, "saved atmosphere x");
+    Near(baseline.Component(RightIndicatorsModule.VerticalSpeedId).Position.Y + dy,
+        moved.Component(RightIndicatorsModule.VerticalSpeedId).Position.Y, "saved vertical speed y");
+    Near(MathF.Min(moved.Throttle.Position.X, moved.Navball.Min.X - 37f * moved.Navball.Scale),
+        moved.EditorMin.X, "editor includes module extents");
+    var duringDrag = baseline.Translate(new Point(dx, dy));
+    Near(moved.Throttle.Position.X, duringDrag.Throttle.Position.X, "drag moves throttle before drawing");
+    Near(moved.Component(NavballModule.SpeedCardId).Position.Y,
+        duringDrag.Component(NavballModule.SpeedCardId).Position.Y, "drag moves speed card before drawing");
+    Near(moved.EditorMax.X, duringDrag.EditorMax.X, "drag moves editor extent before drawing");
+}
+foreach (var scale in new[] { 0.5f, 1f, 2f })
+{
+    var layout = Resolve(20, 30, 1920, 1080, new PilotUiSettings { Scale = scale });
+    Near(scale, layout.Throttle.Scale, "shared throttle scale");
+    Near(scale, layout.Navball.Scale, "shared navball scale");
+}
+var constrained = Resolve(10, 20, 160, 240, new PilotUiSettings { Scale = 2 });
+if (constrained.Throttle.Width > 160 || constrained.Throttle.Height > 240 ||
+    constrained.Navball.PanelSize > 160 || constrained.Navball.PanelSize > 240)
+    throw new Exception("scale did not fit a small viewport");
+var extendedDefinitions = definitions.Append(new PilotLayoutDefinition("new-panel",
+    (layout, _) => new(new(layout.ViewportOrigin.X + 600f, layout.ViewportOrigin.Y + 100f),
+        layout.Navball.Scale, 120f, 80f), true)).ToArray();
+var extended = PilotFrameLayout.Resolve(50, 20, 1920, 1080, new PilotUiSettings(), extendedDefinitions);
+Near(650f, extended.Component("new-panel").Position.X, "registered panel uses viewport origin");
+Near(770f, extended.EditorMax.X, "registered panel extends combined editor bounds");
+Near(cluster.Min.X + 50f, extended.Navball.Min.X, "new panel leaves existing roots unchanged");
+var dragLayout = Resolve(120, 45, 1280, 720, new PilotUiSettings());
+var drag = new CombinedLayoutDrag();
+drag.Begin(new(300, 400), dragLayout.Throttle);
+var dragged = drag.Move(new(400, 450), dragLayout.ViewportOrigin, dragLayout.Throttle);
+Near((dragLayout.Throttle.Position.X + 100f - 120f) / dragLayout.Throttle.AvailableX,
+    dragged.X, "combined drag saves normalized x");
+Near(Math.Clamp((dragLayout.Throttle.Position.Y + 50f - 45f) / dragLayout.Throttle.AvailableY, 0f, 1f),
+    dragged.Y, "combined drag saves normalized y");
+Near(1f, drag.Move(new(10000, 10000), dragLayout.ViewportOrigin, dragLayout.Throttle).X,
+    "combined drag clamps at viewport edge");
+if (!drag.End() || drag.End()) throw new Exception("completed drag persisted more than once");
+drag.Begin(new(300, 400), dragLayout.Throttle);
+drag.Cancel();
+if (drag.End()) throw new Exception("cancelled drag was treated as complete");
 
 // Verify that equator clipping normalization produces an exact unit circle silhouette.
 for (var angleDeg = 0; angleDeg < 360; angleDeg += 15)
@@ -154,11 +240,44 @@ if (!KsaThrottleSource.TryNormalize(1, out var full) || full.Value != 1) throw n
 if (KsaThrottleSource.TryNormalize(float.NaN, out _)) throw new Exception("NaN telemetry was accepted");
 if (!KsaThrottleSource.TryNormalize(-3, out var low) || low.Value != 0) throw new Exception("low throttle was not clamped");
 if (!KsaThrottleSource.TryNormalize(4, out var high) || high.Value != 1) throw new Exception("high throttle was not clamped");
-var malformedSettings = ThrottleSettings.Parse("{ not valid json");
+var malformedSettings = PilotUiSettings.Parse("{ not valid json");
 if (!malformedSettings.Show || malformedSettings.Scale != 1 || malformedSettings.Editing) throw new Exception("malformed settings did not use defaults");
-var clampedSettings = ThrottleSettings.Parse("{\"show\":false,\"scale\":5,\"x\":-2,\"y\":3,\"editing\":true}");
+var clampedSettings = PilotUiSettings.Parse("{\"show\":false,\"scale\":5,\"x\":-2,\"y\":3,\"editing\":true}");
 if (clampedSettings.Show || clampedSettings.Scale != 2 || clampedSettings.X != 0 || clampedSettings.Y != 1 || clampedSettings.Editing)
     throw new Exception("settings were not clamped or edit mode did not start locked");
+var serialized = JsonSerializer.Serialize(new PilotUiSettings
+{
+    Show = false, Scale = 1.75f, X = 0.35f, Y = 0.62f, PositionSet = true,
+    MouseThrottleControl = true, BlurOpacityTicks = 240, Editing = true
+});
+foreach (var field in new[] { "Show", "Scale", "X", "Y", "PositionSet", "MouseThrottleControl", "BlurOpacityTicks" })
+    if (!serialized.Contains($"\"{field}\"", StringComparison.Ordinal))
+        throw new Exception($"settings field {field} changed name");
+var reloaded = PilotUiSettings.Parse(serialized);
+if (reloaded.Show || reloaded.Scale != 1.75f || reloaded.X != 0.35f || reloaded.Y != 0.62f ||
+    !reloaded.PositionSet || !reloaded.MouseThrottleControl || reloaded.BlurOpacityTicks != 240 || reloaded.Editing)
+    throw new Exception("saved settings did not survive reload");
+reloaded.Reset();
+if (!reloaded.Show || reloaded.Scale != 1f || reloaded.PositionSet ||
+    reloaded.X != 0.01355f || reloaded.Y != 0.97f || !reloaded.MouseThrottleControl)
+    throw new Exception("reset changed settings outside the existing layout fields");
+var marker = Path.Combine(Path.GetTempPath(), $"ksi2-blur-test-{Guid.NewGuid():N}");
+try
+{
+    var blurSettings = new PilotUiSettings { BlurPanelBackgrounds = true };
+    var blurGuard = new BlurCrashGuard(blurSettings, () => true, marker);
+    if (!File.Exists(marker) || !blurGuard.Enabled) throw new Exception("blur marker was not armed");
+    blurGuard.OnCleanUnload();
+    if (File.Exists(marker)) throw new Exception("clean unload retained the blur marker");
+    File.WriteAllText(marker, "unclean exit");
+    var recovered = new BlurCrashGuard(blurSettings, () => true, marker);
+    if (recovered.Enabled || !recovered.RecoveredAfterCrash || File.Exists(marker))
+        throw new Exception("unclean blur session was not recovered");
+}
+finally
+{
+    if (File.Exists(marker)) File.Delete(marker);
+}
 
 Console.WriteLine("Throttle geometry and telemetry checks passed.");
 

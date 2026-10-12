@@ -4,21 +4,24 @@ namespace KSI2;
 // behind, so the next launch disables blur before any Vulkan blur setup.
 internal sealed class BlurCrashGuard
 {
-    private readonly ThrottleSettings _settings;
-    private static string MarkerPath => Path.Combine(ThrottleSettings.ModDirectory, "ksi2.blur-active");
+    private readonly PilotUiSettings _settings;
+    private readonly Func<bool> _save;
+    private readonly string _markerPath;
 
     internal bool Enabled => _settings.BlurPanelBackgrounds;
     internal bool RecoveredAfterCrash { get; private set; }
     internal string? Error { get; private set; }
 
-    internal BlurCrashGuard(ThrottleSettings settings)
+    internal BlurCrashGuard(PilotUiSettings settings, Func<bool> save, string? markerPath = null)
     {
         _settings = settings;
-        if (File.Exists(MarkerPath))
+        _save = save;
+        _markerPath = markerPath ?? Path.Combine(PilotUiSettings.ModDirectory, "ksi2.blur-active");
+        if (File.Exists(_markerPath))
         {
             RecoveredAfterCrash = _settings.BlurPanelBackgrounds;
             _settings.BlurPanelBackgrounds = false;
-            if (_settings.Save()) ClearMarker();
+            if (_save()) ClearMarker();
             else Error = "Could not save the recovered blur setting; blur stays off for this run.";
             if (RecoveredAfterCrash)
                 Console.Error.WriteLine("KSI2: disabled panel blur after an unclean exit while blur was enabled.");
@@ -26,7 +29,7 @@ internal sealed class BlurCrashGuard
         else if (_settings.BlurPanelBackgrounds && !ArmMarker())
         {
             _settings.BlurPanelBackgrounds = false;
-            _settings.Save();
+            _save();
             Error = "Could not arm blur crash recovery; blur stays off for this run.";
         }
     }
@@ -41,7 +44,7 @@ internal sealed class BlurCrashGuard
         }
 
         _settings.BlurPanelBackgrounds = enabled;
-        if (_settings.Save())
+        if (_save())
         {
             if (!enabled) ClearMarker();
             Error = null;
@@ -62,7 +65,7 @@ internal sealed class BlurCrashGuard
     {
         try
         {
-            File.WriteAllText(MarkerPath, "Blur active. Remove this file only after a normal KSI2 unload.");
+            File.WriteAllText(_markerPath, "Blur active. Remove this file only after a normal KSI2 unload.");
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -72,9 +75,9 @@ internal sealed class BlurCrashGuard
         }
     }
 
-    private static void ClearMarker()
+    private void ClearMarker()
     {
-        try { File.Delete(MarkerPath); }
+        try { File.Delete(_markerPath); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Console.Error.WriteLine($"KSI2: could not clear blur crash marker: {ex.Message}");
