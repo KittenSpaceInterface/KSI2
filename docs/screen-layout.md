@@ -88,3 +88,7 @@ change the rect's screen position.
 
 The KSP2 source geometry and bindings for the two side dials are recorded in
 the sibling investigation repository's `side-dials-investigation.md`.
+
+For the separate problem of reducing source artwork into these screen-space
+rectangles, including the small navball status icons, see
+[Raster artwork at pilot UI scale](raster-scaling.md).
