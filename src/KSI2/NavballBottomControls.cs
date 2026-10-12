@@ -174,16 +174,23 @@ internal sealed unsafe class NavballBottomControls
 
     private static void UpdateColors(ToggleVisual visual, bool active, float dt)
     {
-        var targetText = active ? 0xFF66FF00u : 0xFFCCB2AAu;
-        var targetBorder = active ? 0xFF59FF6Du : 0x99CCB2AAu;
+        // KSP2 fades each graphic independently when the selection state changes.
+        // The label shrinks on press, while only its colors animate on hover.
+        var targetText = active
+            ? (visual.Hovered && !visual.Pressed ? 0xFF52CC00u : 0xFF66FF00u)
+            : (visual.Hovered && !visual.Pressed ? 0xFFFFDFD5u : 0xFFCCB2AAu);
+        var targetBorder = active
+            ? (visual.Pressed ? 0xFF66FF00u : visual.Hovered ? 0xFF52CC00u : 0xFF59FF6Du)
+            : (visual.Hovered || visual.Pressed ? 0xFFFFDFD5u : 0x99CCB2AAu);
         if (!visual.Initialized)
         {
             visual.Initialized = true;
-            visual.TextColor = visual.StartTextColor = visual.TargetTextColor = targetText;
-            visual.BorderColor = visual.StartBorderColor = visual.TargetBorderColor = targetBorder;
-            return;
+            visual.TextColor = visual.StartTextColor = visual.TargetTextColor =
+                active ? 0xFF66FF00u : 0xFFCCB2AAu;
+            visual.BorderColor = visual.StartBorderColor = visual.TargetBorderColor =
+                active ? 0xFF59FF6Du : 0x99CCB2AAu;
         }
-        if (targetText != visual.TargetTextColor)
+        if (targetText != visual.TargetTextColor || targetBorder != visual.TargetBorderColor)
         {
             visual.StartTextColor = visual.TextColor;
             visual.StartBorderColor = visual.BorderColor;
