@@ -7,6 +7,7 @@ internal sealed class PilotUiController : IDisposable
     private readonly PilotSettingsController _settings = new();
     private readonly LayoutEditor _editor;
     private readonly ThrottleModule _throttle;
+    private readonly NavballModule _navball = new();
     private readonly IPilotUiModule[] _modules;
     private readonly PilotUiLayer[] _layers;
     private readonly PilotLayoutDefinition[] _layoutDefinitions;
@@ -17,7 +18,7 @@ internal sealed class PilotUiController : IDisposable
     {
         _editor = new LayoutEditor(_settings.Settings, _settings.Save);
         _throttle = new ThrottleModule(_settings.Settings);
-        _modules = [_throttle, new NavballModule(), new RightIndicatorsModule()];
+        _modules = [_throttle, _navball, new RightIndicatorsModule()];
         _layers = _modules.SelectMany(module => module.Layers)
             .OrderBy(layer => PilotLayoutConfig.Current.Order(layer.Order)).ToArray();
         if (_layers.Select(layer => PilotLayoutConfig.Current.Order(layer.Order)).Distinct().Count() != _layers.Length)
@@ -45,6 +46,7 @@ internal sealed class PilotUiController : IDisposable
         var viewport = ImGui.GetMainViewport();
         _throttle.UpdateSnapshot();
         _settings.DrawWindow(_throttle.UiState, _editor, _throttle.CancelInteraction);
+        _navball.SetStatusIconMipmaps(_settings.Settings.StatusIconMipmaps);
         var layout = PilotFrameLayout.Resolve(viewport.Pos.X, viewport.Pos.Y,
             viewport.Size.X, viewport.Size.Y, _settings.Settings, _layoutDefinitions);
         var mode = _settings.Settings.Editing ? PilotInteractionMode.LayoutEditing : PilotInteractionMode.Instruments;

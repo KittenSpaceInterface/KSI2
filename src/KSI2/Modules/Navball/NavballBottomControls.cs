@@ -12,12 +12,15 @@ internal sealed unsafe class NavballBottomControls
     [
         ("KSI2BottomToggleOutline", "[asset]"),
         ("KSI2BottomObjectCycle", "[asset]"),
-        ("KSI2BottomCommNet", "[asset]")
+        ("KSI2BottomCommNet", "[asset]"),
+        ("KSI2BottomObjectCycleNoMipMaps", "[asset]"),
+        ("KSI2BottomCommNetNoMipMaps", "[asset]")
     ];
 
     private readonly Dictionary<string, TextureReference> _textures = new();
     private readonly ToggleVisual _rcsVisual = new();
     private readonly ToggleVisual _sasVisual = new();
+    private bool _statusIconMipmaps = true;
 
     private sealed class ToggleVisual
     {
@@ -36,6 +39,7 @@ internal sealed unsafe class NavballBottomControls
     private readonly record struct ButtonInput(bool Clicked, bool Hovered, bool Pressed);
 
     internal void SetTexture(string id, TextureReference texture) => _textures[id] = texture;
+    internal void SetStatusIconMipmaps(bool enabled) => _statusIconMipmaps = enabled;
 
     internal void LoadFont(string path)
     {
@@ -123,17 +127,36 @@ internal sealed unsafe class NavballBottomControls
             });
         }
         var draw = ImGui.GetWindowDrawList();
-        // KSA has vessel cycling, but no KSP2 CommNet state. Its controllable
-        // flag drives the control icon; the cycle icon reflects vessel count.
+        // The two status icons use the authored 24-unit layout. CommNet snaps
+        // both edges to physical framebuffer pixels.
+        // Restore the icon state colors used before the raster investigation.
         var vesselCount = 0;
         foreach (var candidate in KSA.Program.VehiclesInFrame)
             if (!candidate.IsDisposed) vesselCount++;
-        DrawImage(draw, "KSI2BottomObjectCycle",
-            new float2(x + 121f * scale, y + 255f * scale), 24f * scale,
-            vesselCount > 1 ? 0xFFFF6D69u : 0xFF99413Eu);
-        DrawImage(draw, "KSI2BottomCommNet",
-            new float2(x + 155f * scale, y + 255f * scale), 24f * scale,
-            vehicle.IsControllable ? 0xFF52CC00u : 0xFF99413Eu);
+        var planeTint = vesselCount > 1 ? 0xFFFF6D69u : 0xFF99413Eu;
+        var commTint = vehicle.IsControllable ? 0xFF52CC00u : 0xFF99413Eu;
+        var cycleMin = new float2(x + 121f * scale, y + 255f * scale);
+        var framebufferScale = ImGui.GetIO().DisplayFramebufferScale;
+        var viewportOrigin = ImGui.GetMainViewport().Pos;
+        cycleMin = new float2(
+            SnapToFramebufferPixel(cycleMin.X, viewportOrigin.X, framebufferScale.X),
+            SnapToFramebufferPixel(cycleMin.Y, viewportOrigin.Y, framebufferScale.Y));
+        var cycleMax = new float2(
+            SnapToFramebufferPixel(x + 145f * scale, viewportOrigin.X, framebufferScale.X),
+            SnapToFramebufferPixel(y + 279f * scale, viewportOrigin.Y, framebufferScale.Y));
+        var commMin = new float2(
+            SnapToFramebufferPixel(x + 155f * scale, viewportOrigin.X, framebufferScale.X),
+            SnapToFramebufferPixel(y + 255f * scale, viewportOrigin.Y, framebufferScale.Y));
+        var commMax = new float2(
+            SnapToFramebufferPixel(x + 179f * scale, viewportOrigin.X, framebufferScale.X),
+            SnapToFramebufferPixel(y + 279f * scale, viewportOrigin.Y, framebufferScale.Y));
+        var cycleTexture = _statusIconMipmaps
+            ? "KSI2BottomObjectCycle" : "KSI2BottomObjectCycleNoMipMaps";
+        var commTexture = _statusIconMipmaps
+            ? "KSI2BottomCommNet" : "KSI2BottomCommNetNoMipMaps";
+        DrawImage(draw, cycleTexture, cycleMin, cycleMax, planeTint);
+        DrawImage(draw, commTexture,
+            commMin, commMax, commTint);
     }
 
     private ButtonInput DrawButton(string label, float2 topLeft, float2 size,
@@ -278,13 +301,22 @@ internal sealed unsafe class NavballBottomControls
 
     private void DrawImage(ImDrawListPtr draw, string id, float2 topLeft,
         float size, uint tint)
+        => DrawImage(draw, id, topLeft, topLeft + new float2(size, size), tint);
+
+    private static float SnapToFramebufferPixel(float coordinate, float viewportOrigin,
+        float framebufferScale)
+        => float.IsFinite(framebufferScale) && framebufferScale > 0f
+            ? viewportOrigin + MathF.Round((coordinate - viewportOrigin) * framebufferScale) / framebufferScale
+            : viewportOrigin + MathF.Round(coordinate - viewportOrigin);
+
+    private void DrawImage(ImDrawListPtr draw, string id, float2 topLeft,
+        float2 bottomRight, uint tint)
     {
         if (!_textures.TryGetValue(id, out var reference) ||
             reference.ImguiTextureRef is not { } texture) return;
-        var max = topLeft + new float2(size, size);
         var uvMin = new float2(0f, 0f);
         var uvMax = new float2(1f, 1f);
         ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, texture,
-            &topLeft, &max, &uvMin, &uvMax, tint);
+            &topLeft, &bottomRight, &uvMin, &uvMax, tint);
     }
 }

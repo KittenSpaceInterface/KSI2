@@ -106,5 +106,6 @@ internal sealed class NavballModule : IPilotUiModule
         _altitudeReadout.CancelInteraction();
         _bottomControls.ResetInput();
     }
+    internal void SetStatusIconMipmaps(bool enabled) => _bottomControls.SetStatusIconMipmaps(enabled);
     public void Dispose() => _navballSpike.Dispose();
 }

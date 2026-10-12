@@ -33,6 +33,12 @@ internal sealed class PilotSettingsController : IDisposable
         var scale = _settings.Scale;
         if (ImGui.SliderFloat("Scale", ref scale, 0.5f, 2f, "%.2fx")) _settings.Scale = scale;
         if (ImGui.IsItemDeactivatedAfterEdit()) Save();
+        var statusIconMipmaps = _settings.StatusIconMipmaps;
+        if (ImGui.Checkbox("Mipmaps on status icons", ref statusIconMipmaps))
+        {
+            _settings.StatusIconMipmaps = statusIconMipmaps;
+            Save();
+        }
         if (ImGui.Button("Reset layout"))
         {
             editor.Cancel();
