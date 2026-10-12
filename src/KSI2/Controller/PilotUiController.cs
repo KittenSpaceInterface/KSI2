@@ -42,6 +42,12 @@ internal sealed class PilotUiController : IDisposable
             _editor.Cancel();
             return;
         }
+        if (KSA.Program.IsEditorOpen)
+        {
+            foreach (var module in _modules) module.CancelInteraction();
+            _editor.Cancel();
+            return;
+        }
         var viewport = ImGui.GetMainViewport();
         _throttle.UpdateSnapshot();
         _settings.DrawWindow(_throttle.UiState, _editor, _throttle.CancelInteraction);
