@@ -17,14 +17,14 @@ internal sealed class RightIndicatorsModule : IPilotUiModule
             VerticalSpeedIndicatorGeometry.WidgetHeight), true)
     ];
     public IReadOnlyList<PilotLayoutDefinition> LayoutDefinitions => Definitions;
-    public IReadOnlyList<PilotRenderEntry> RenderEntries { get; }
+    public IReadOnlyList<PilotUiLayer> Layers { get; }
     public RightIndicatorsModule()
     {
-        RenderEntries =
+        Layers =
         [
-            new(60, (l,c) => _atmosphericIndicator.Draw(l.Component(AtmosphereId).Position,
+            new(PilotLayerOrder.Atmosphere, (l,c) => _atmosphericIndicator.Draw(l.Component(AtmosphereId).Position,
                 l.Component(AtmosphereId).Scale, c.Blur, c.Opacity)),
-            new(70, (l,c) => _verticalSpeedIndicator.Draw(l.Component(VerticalSpeedId).Position,
+            new(PilotLayerOrder.VerticalSpeed, (l,c) => _verticalSpeedIndicator.Draw(l.Component(VerticalSpeedId).Position,
                 l.Component(VerticalSpeedId).Scale, c.Blur, c.Opacity))
         ];
     }
@@ -42,7 +42,6 @@ internal sealed class RightIndicatorsModule : IPilotUiModule
             if (File.Exists(Path.Combine(atmosphereDirectory, file)))
                 assets.Register(id, tex => _verticalSpeedIndicator.SetTexture(id, tex));
     }
-    public void Update(PilotFrameLayout layout, PilotInteractionMode mode) { }
     public void CancelInteraction() { }
     public void Dispose() { }
 }

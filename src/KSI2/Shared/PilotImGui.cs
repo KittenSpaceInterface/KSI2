@@ -4,9 +4,9 @@ namespace KSI2;
 
 internal static class PilotImGui
 {
-    // KSI2 artwork is submitted to the viewport foreground draw list. Keep its
-    // corresponding ImGui windows above KSA's full-canvas gauge windows too,
-    // so their invisible hit targets receive the same pointer priority.
+    // The controller visits input windows in visual layer order. Move each one
+    // above earlier windows without taking keyboard focus; foreground artwork
+    // alone does not affect ImGui hit testing.
     internal static void BringCurrentWindowToFront() =>
         ImGui.Internal.BringWindowToDisplayFront(ImGui.Internal.GetCurrentWindow());
 }

@@ -24,18 +24,27 @@ internal sealed class NavballModule : IPilotUiModule
             layout.Navball.Scale, AltitudeReadoutGeometry.Width, AltitudeReadoutGeometry.Height))
     ];
     public IReadOnlyList<PilotLayoutDefinition> LayoutDefinitions => Definitions;
-    public IReadOnlyList<PilotRenderEntry> RenderEntries { get; }
+    public IReadOnlyList<PilotUiLayer> Layers { get; }
     public NavballModule()
     {
-        RenderEntries =
+        Layers =
         [
-            new(0, (l,c) => _navballClusterBackground.Draw(l.Navball,c.Blur,c.Opacity)),
-            new(20, (l,c) => _navballSpike.Draw(l.Navball,_speedReadout.SelectedMode)),
-            new(30, (l,c) => _sideDials.Draw(l.Navball)),
-            new(40, (l,c) => _speedReadout.Draw(l.Component(SpeedCardId).Position, l.Component(SpeedCardId).Scale)),
-            new(50, (l,c) => _headingDial.Draw(l.Navball)),
-            new(80, (l,c) => _altitudeReadout.Draw(l.Component(AltitudeCardId).Position, l.Component(AltitudeCardId).Scale)),
-            new(90, (l,c) => _bottomControls.Draw(l.Navball,c.DeltaTime))
+            new(PilotLayerOrder.ClusterBackground, (l,c) => _navballClusterBackground.Draw(l.Navball,c.Blur,c.Opacity)),
+            new(PilotLayerOrder.NavballSphere, (l,c) => _navballSpike.Draw(l.Navball,_speedReadout.SelectedMode)),
+            new(PilotLayerOrder.SideDials, (l,c) => _sideDials.Draw(l.Navball)),
+            new(PilotLayerOrder.SpeedCard,
+                (l,c) => _speedReadout.Draw(l.Component(SpeedCardId).Position, l.Component(SpeedCardId).Scale),
+                (l,m) => _speedReadout.UpdateMode(l.Component(SpeedCardId).Position,
+                    l.Component(SpeedCardId).Scale, m == PilotInteractionMode.Instruments)),
+            new(PilotLayerOrder.HeadingDial, (l,c) => _headingDial.Draw(l.Navball)),
+            new(PilotLayerOrder.AltitudeCard,
+                (l,c) => _altitudeReadout.Draw(l.Component(AltitudeCardId).Position, l.Component(AltitudeCardId).Scale),
+                (l,m) => _altitudeReadout.UpdateMode(l.Component(AltitudeCardId).Position,
+                    l.Component(AltitudeCardId).Scale, m == PilotInteractionMode.Instruments)),
+            new(PilotLayerOrder.BottomControls,
+                (l,c) => _bottomControls.Draw(l.Navball,c.DeltaTime),
+                (l,m) => _bottomControls.ProcessInteraction(l.Navball,
+                    m == PilotInteractionMode.Instruments))
         ];
     }
     public void Initialize(TextureRegistry assets)
@@ -99,15 +108,6 @@ internal sealed class NavballModule : IPilotUiModule
             if (File.Exists(Path.Combine(navballDirectory, file)))
                 assets.Register(id, tex => _bottomControls.SetTexture(id, tex));
         _bottomControls.LoadFont(Path.Combine(fontsDirectory, "LCD_Solid.ttf"));
-    }
-    public void Update(PilotFrameLayout layout, PilotInteractionMode mode)
-    {
-        var allowInteraction = mode == PilotInteractionMode.Instruments;
-        var speed = layout.Component(SpeedCardId);
-        var altitude = layout.Component(AltitudeCardId);
-        _speedReadout.UpdateMode(speed.Position, speed.Scale, allowInteraction);
-        _altitudeReadout.UpdateMode(altitude.Position, altitude.Scale, allowInteraction);
-        _bottomControls.ProcessInteraction(layout.Navball, allowInteraction);
     }
     public void CancelInteraction()
     {

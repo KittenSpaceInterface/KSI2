@@ -11,13 +11,15 @@ internal sealed class ThrottleModule : IPilotUiModule
         new("throttle", (layout, _) => new(layout.Throttle.Position, layout.Throttle.Scale, 175f, 318f), true)
     ];
     public IReadOnlyList<PilotLayoutDefinition> LayoutDefinitions => Definitions;
-    public IReadOnlyList<PilotRenderEntry> RenderEntries { get; }
+    public IReadOnlyList<PilotUiLayer> Layers { get; }
     internal void Draw(PilotFrameLayout layout, PilotRenderContext context) =>
         _gauge.Draw(layout.Throttle, context.Blur, context.Opacity);
     internal ThrottleModule(PilotUiSettings settings)
     {
         _gauge = new ThrottleGauge(settings, UiState);
-        RenderEntries = [new(10, Draw)];
+        Layers = [new(PilotLayerOrder.Throttle, Draw,
+            (layout, mode) => _gauge.ProcessInteraction(layout.Throttle,
+                mode == PilotInteractionMode.Instruments))];
     }
     public void Initialize(TextureRegistry assets)
     {
@@ -29,8 +31,6 @@ internal sealed class ThrottleModule : IPilotUiModule
         assets.Register("KSI2ThrottlePercentGlyph", tex => _gauge.SetPercentGlyphTexture(tex));
         assets.Register("KSI2ThrottleFill", tex => _gauge.SetFillTexture(tex));
     }
-    public void Update(PilotFrameLayout layout, PilotInteractionMode mode) =>
-        _gauge.ProcessInteraction(layout.Throttle, mode == PilotInteractionMode.Instruments);
     public void CancelInteraction() => _gauge.CancelInteraction();
     public void Dispose() => _gauge.Dispose();
 }
