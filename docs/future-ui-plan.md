@@ -38,6 +38,58 @@ models parent-child layout within KSI2 rather than assuming ImGui draw lists
 automatically inherit transforms. See [screen-layout.md](screen-layout.md)
 for the current coordinates.
 
+## UI compositing and input architecture
+
+The earlier pilot artwork used ImGui's viewport foreground draw list. That was
+simple, but it bypassed KSA's normal window stack: the pause backdrop did not
+dim our interface. The current implementation draws artwork in a transparent,
+input-free ImGui window and uses separate windows for KSI2 controls and
+settings. It places those windows behind KSA's modal pause menu. In-game testing
+confirmed that the backdrop now covers KSI2 and the pause menu receives clicks.
+These are the reasons for the informal architecture ratings of 5/10 for the
+earlier approach and 7/10 for the current one; the numbers are design judgments,
+not measured performance scores.
+
+The full-screen artwork window passes pointer input through to KSA. KSI2's
+dedicated control windows capture input over their own bounds. KSA windows also
+order themselves by focus: among KSA elements, the last clicked one remains on
+top. That normal KSA behavior is separate from KSI2's placement. The current
+weakness is that visual order and hit testing are managed by different windows,
+while `PilotImGui` moves KSI2 windows in ImGui's display stack each frame.
+This repeated placement is expected to have a small cost with the current
+window count, but has not been profiled. Its main concern is the coupling to
+ImGui's internal window-order API and the possibility of visual and input order
+diverging when KSA windows change focus.
+
+### Practical target: around 9/10
+
+1. Map the exact KSA UI draw, focus, and modal sequence, then use the most stable
+   integration point available for ordinary gauges, KSI2 controls, settings, and
+   the pause menu. Keep any unavoidable display-stack adjustment in one adapter
+   and document when it must run.
+2. Define artwork bounds, hit regions, intended click-through areas, and overlap
+   priority together for each component. Keep JSON `z` values for ordering
+   within KSI2; do not treat them as KSA window priorities.
+3. Validate the input and visual contract in game: ordinary KSA controls remain
+   usable through noninteractive KSI2 artwork, KSI2 controls take clicks inside
+   their hit regions, overlapping controls select the intended target, and pause
+   and other KSA modals cover and block KSI2 controls and the layout editor.
+   Include KSA focus changes, viewport sizes, and opening and closing menus.
+4. Profile window placement and draw-list cost before optimizing it. Change the
+   per-frame ordering only if the integration map or measurements show a safer
+   or clearer approach.
+
+### Ideal direction: closer to 10/10
+
+A perfect-world integration would give mod gauges a supported KSA compositing
+layer with one authoritative order for drawing, focus, hit testing, and modal
+behavior. KSI2 could register components and their hit regions declaratively,
+without manipulating ImGui's internal window list or depending on call order.
+That depends on capabilities KSA may not expose to mods, so 10/10 is a direction
+to approach, not a completion criterion for this plan. If those capabilities
+remain unavailable, isolate the compatibility code, document its assumptions,
+and recheck them when KSA updates.
+
 ## Mouse throttle control
 
 The separate `interface-investigation/throttle-indicator-map.md` found no
