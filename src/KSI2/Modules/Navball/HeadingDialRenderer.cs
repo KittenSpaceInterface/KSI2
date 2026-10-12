@@ -42,8 +42,10 @@ internal sealed unsafe class HeadingDialRenderer
             && texture.ImguiTextureRef is not null)) return;
         if (!readout && !EnsureMask()) return;
 
-        var center = new float2(bounds.Position.X + bounds.Width * bounds.Scale / 2f,
+        var center = new float2(
+            bounds.Position.X + bounds.Width * bounds.Scale / 2f,
             bounds.Position.Y + bounds.Height * bounds.Scale / 2f);
+        center = NavballPixelAlignment.Snap(center);
         var scale = bounds.Scale;
         var draw = ImGui.GetWindowDrawList();
 
@@ -102,7 +104,9 @@ internal sealed unsafe class HeadingDialRenderer
         {
             var texture = _textures[id].ImguiTextureRef!.Value;
             var min = new float2(x, y);
-            var max = min + new float2(width * scale, height * scale);
+            var max = new float2(x + width * scale, y + height * scale);
+            min = NavballPixelAlignment.Snap(min);
+            max = NavballPixelAlignment.Snap(max);
             var uvMin = new float2(0f, 0f);
             var uvMax = new float2(1f, 1f);
             ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, texture,

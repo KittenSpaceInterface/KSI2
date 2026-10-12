@@ -40,18 +40,23 @@ internal sealed unsafe class SideDialRenderer
         if (!required.All(id => _textures.TryGetValue(id, out var texture)
             && texture.ImguiTextureRef is not null)) return;
 
-        var center = new float2(bounds.Position.X + bounds.Width * bounds.Scale / 2f,
-            bounds.Position.Y + bounds.Height * bounds.Scale / 2f);
+        var center = NavballPixelAlignment.Snap(new float2(
+            bounds.Position.X + bounds.Width * bounds.Scale / 2f,
+            bounds.Position.Y + bounds.Height * bounds.Scale / 2f));
         var scale = bounds.Scale;
         var draw = ImGui.GetWindowDrawList();
         var speed = (float)vehicle.NavBallData.Speed;
         var altitude = (float)vehicle.NavBallData.Altitude;
         if (float.IsFinite(speed))
+        {
             DrawDial(speed, MathF.PI / 2f, true, 0xFF00D6FFu, 0xFF005566u,
                 0xFF00ABCCu, 0xFF008099u, "KSI2VelocityDialFrame");
+        }
         if (float.IsFinite(altitude))
+        {
             DrawDial(altitude, -MathF.PI / 2f, false, 0xFF7D62F9u, 0xFF591E59u,
                 0xFF8C2F8Cu, 0xFF8C2F8Cu, "KSI2HeadingFrame");
+        }
 
         void DrawDial(float value, float sideAngle, bool clockwise, uint background,
             uint numberHash, uint smallHash, uint frameTint, string frameId)
