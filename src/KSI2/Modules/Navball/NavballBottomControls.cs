@@ -101,7 +101,17 @@ internal sealed unsafe class NavballBottomControls
                 EnumValue = FlightComputerRCSMode.Enabled
             });
         }
-        if (sasInput.Clicked) vehicle.ToggleStabilization();
+        if (sasInput.Clicked)
+        {
+            // Toggle the flight computer's Auto/Manual state without changing
+            // its selected attitude frame or tracking target.
+            InputEvents.FlightComputerInputBuffer.Add(new InputEvents.FlightComputerInputData
+            {
+                Vehicle = vehicle,
+                Toggle = true,
+                EnumValue = FlightComputerAttitudeMode.Auto
+            });
+        }
     }
 
     internal void Draw(NavballClusterBounds cluster, double dt)
