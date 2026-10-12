@@ -33,7 +33,7 @@ handle to change throttle through KSA's input actions at KSA's normal rate.
 The **Experimental** setting **Mouse throttle control** enables direct control;
 it is off by default. The settings window also lets you show or hide the gauge
 and adjust its scale and position.
-**Edit layout** offers a display-only throttle preview. Settings are saved
+**Edit layout** lets you drag the interface as a group. Settings are saved
 beside the mod.
 
 The default instrument positions and draw order are in

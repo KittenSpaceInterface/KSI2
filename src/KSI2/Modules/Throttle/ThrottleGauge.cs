@@ -67,9 +67,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
             return;
         }
         if (!_settings.Show) return;
-        var throttle = _settings.Editing && _uiState.UsePreview
-            ? _uiState.PreviewPercent / 100f
-            : _uiState.Snapshot?.Value;
+        var throttle = _uiState.Snapshot?.Value;
         if (throttle is null) return;
         EnsureArtwork();
         if (_artwork is not null) DrawGauge(throttle.Value, layout, blur, blurOpacity);

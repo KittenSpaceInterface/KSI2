@@ -29,8 +29,8 @@ Most layer values are 100 apart to leave room for intermediate components.
 KSA has no matching layer value or default zero; placing KSI2 artwork behind KSA
 would require a change to the ImGui draw channel, not a lower `PilotLayerOrder`.
 The speed state follows vehicle and frame changes even while layout editing
-blocks instrument clicks. The settings window reads throttle diagnostics and
-preview values from the throttle module's state object.
+blocks instrument clicks. The settings window reads throttle diagnostics from
+the throttle module's state object.
 
 The packaged `ksi2.layout.defaults.json` defines the throttle and navball
 cluster roots, their viewport anchors, child offsets, artwork bounds, and draw
@@ -58,7 +58,7 @@ a separate adapter and investigation before being added.
 Compatibility baseline: the default 1920 x 1080 navball root is
 `(112.85, 746.95)` and throttle uses its existing 175 x 318 frame, 24 pixel
 margin, normalized saved position, and 0.5-2 user scale. The settings window
-still offers combined dragging, reset, preview throttle, mouse throttle control,
+still offers combined dragging, reset, mouse throttle control,
 and guarded experimental blur. `Editing` resets to false on load. The existing
 JSON names and meanings are unchanged. Checks cover default and saved positions,
 viewport origins, aspect ratios, scale limits, drag cancellation, speed mode
