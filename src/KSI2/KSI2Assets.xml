@@ -1,4 +1,5 @@
 <Assets>
+  <Texture Id="KSI2TooltipFrame" Path="assets/tooltip/[asset]" />
   <Shader Id="KSI2PanelBlurVert" Path="assets/shaders/panel-blur.vert" />
   <Shader Id="KSI2PanelBlurFrag" Path="assets/shaders/panel-blur.frag" />
 </Assets>

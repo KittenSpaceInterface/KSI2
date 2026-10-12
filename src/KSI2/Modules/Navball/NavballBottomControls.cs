@@ -95,10 +95,10 @@ internal sealed unsafe class NavballBottomControls
             vehicle.IsStabilizationOn());
         var rcsInput = DrawButton("RCS", rcsTopLeft, buttonSize,
             _rcsVisual, rcsOn, (float)dt, allowInteraction, rcsDisabled,
-            "No vehicle control module"u8);
+            "No vehicle control module");
         var sasTooltip = eva?.ControlMode == KittenControlMode.View
-            ? "Enables auto trim: the flight computer damps body rates. Not applicable in View mode."u8
-            : "No vehicle control module"u8;
+            ? "Enables auto trim: the flight computer damps body rates. Not applicable in View mode."
+            : "No vehicle control module";
         var sasInput = DrawButton("SAS", sasTopLeft, buttonSize,
             _sasVisual, sasOn, (float)dt, allowInteraction, sasDisabled,
             sasTooltip);
@@ -138,7 +138,7 @@ internal sealed unsafe class NavballBottomControls
 
     private ButtonInput DrawButton(string label, float2 topLeft, float2 size,
         ToggleVisual visual, bool active, float dt, bool allowInteraction,
-        bool disabled = false, ImString disabledTooltip = default)
+        bool disabled = false, string? disabledTooltip = null)
     {
         var visible = PilotImGui.BeginControlCanvas($"##KSI2-{label}Canvas",
             topLeft, size, allowInteraction);
@@ -156,8 +156,9 @@ internal sealed unsafe class NavballBottomControls
             {
                 ImGui.Dummy(size);
                 DrawToggle(ImGui.GetWindowDrawList(), label, topLeft, size.X / 48f, visual);
-                if (hovered && disabled && !disabledTooltip.IsEmpty)
-                    ImGui.SetTooltip(disabledTooltip);
+                if (hovered && allowInteraction && disabled && disabledTooltip is not null)
+                    PilotTooltip.Show(label, disabledTooltip, topLeft, topLeft + size,
+                        size.X / 48f);
             }
             return input;
         }

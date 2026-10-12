@@ -30,14 +30,21 @@ internal sealed class PilotUiController : IDisposable
     internal void Initialize()
     {
         var assets = new TextureRegistry();
+        PilotTooltip.Initialize(assets);
         foreach (var module in _modules) module.Initialize(assets);
     }
 
     internal void Draw(double dt)
     {
-        if (ImGui.GetCurrentContext().IsNull()) return;
+        if (ImGui.GetCurrentContext().IsNull())
+        {
+            PilotTooltip.Reset();
+            return;
+        }
+        PilotTooltip.BeginFrame();
         if (!KSA.Program.DrawUI || KSA.Program.ControlledVehicle is not { IsDisposed: false })
         {
+            PilotTooltip.Reset();
             foreach (var module in _modules) module.CancelInteraction();
             _editor.Cancel();
             return;
@@ -85,6 +92,7 @@ internal sealed class PilotUiController : IDisposable
             }
             PilotImGui.EndArtworkWindow();
         }
+        PilotTooltip.Render();
     }
 
     private PanelBackgroundBlur? GetPanelBlur()
