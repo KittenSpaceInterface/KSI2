@@ -254,7 +254,16 @@ internal sealed unsafe class NavballBottomControls
     private void DrawToggle(ImDrawListPtr draw, string label, float2 topLeft,
         float scale, ToggleVisual visual)
     {
-        DrawImage(draw, "KSI2BottomToggleOutline", topLeft, 48f * scale,
+        var framebufferScale = ImGui.GetIO().DisplayFramebufferScale;
+        var viewportOrigin = ImGui.GetMainViewport().Pos;
+        var bottomRight = topLeft + new float2(48f * scale, 48f * scale);
+        var outlineMin = new float2(
+            SnapToFramebufferPixel(topLeft.X, viewportOrigin.X, framebufferScale.X),
+            SnapToFramebufferPixel(topLeft.Y, viewportOrigin.Y, framebufferScale.Y));
+        var outlineMax = new float2(
+            SnapToFramebufferPixel(bottomRight.X, viewportOrigin.X, framebufferScale.X),
+            SnapToFramebufferPixel(bottomRight.Y, viewportOrigin.Y, framebufferScale.Y));
+        DrawImage(draw, "KSI2BottomToggleOutline", outlineMin, outlineMax,
             visual.BorderColor);
         // KSA clears its font dictionary when display font settings change.
         // Do not retain a pointer into the old atlas after that regeneration.
