@@ -83,11 +83,15 @@ internal sealed unsafe class NavballBottomControls
         var sasTopLeft = new float2(x + 189f * scale, y + 240f * scale);
         var buttonSize = new float2(48f * scale, 48f * scale);
         var rcsOn = vehicle.FlightComputer.RCSMode == FlightComputerRCSMode.Enabled;
-        var sasOn = vehicle.IsStabilizationOn();
+        var eva = vehicle as KittenEva;
+        var sasDisabled = eva?.IsFlightComputerDisabled(KittenEvaAction.RateTrim) == true;
+        var sasOn = !sasDisabled && (eva?.IsSet(KittenEvaAction.RateTrim, clicked: false) ??
+            vehicle.IsStabilizationOn());
         var rcsInput = DrawButton("RCS", rcsTopLeft, buttonSize,
             _rcsVisual, rcsOn, (float)dt, allowInteraction);
         var sasInput = DrawButton("SAS", sasTopLeft, buttonSize,
-            _sasVisual, sasOn, (float)dt, allowInteraction);
+            _sasVisual, sasOn, (float)dt, allowInteraction, sasDisabled,
+            "Enables auto trim: the flight computer damps body rates. Not applicable in View mode."u8);
         if (rcsInput.Clicked)
         {
             InputEvents.FlightComputerInputBuffer.Add(new InputEvents.FlightComputerInputData
@@ -99,13 +103,13 @@ internal sealed unsafe class NavballBottomControls
         }
         if (sasInput.Clicked)
         {
-            // Toggle the flight computer's Auto/Manual state without changing
-            // its selected attitude frame or tracking target.
             InputEvents.FlightComputerInputBuffer.Add(new InputEvents.FlightComputerInputData
             {
                 Vehicle = vehicle,
-                Toggle = true,
-                EnumValue = FlightComputerAttitudeMode.Auto
+                Toggle = eva is null,
+                EnumValue = eva is null
+                    ? (Enum)FlightComputerAttitudeMode.Auto
+                    : sasOn ? KittenEvaAction.ManualTrim : KittenEvaAction.RateTrim
             });
         }
         var draw = ImGui.GetWindowDrawList();
@@ -123,23 +127,27 @@ internal sealed unsafe class NavballBottomControls
     }
 
     private ButtonInput DrawButton(string label, float2 topLeft, float2 size,
-        ToggleVisual visual, bool active, float dt, bool allowInteraction)
+        ToggleVisual visual, bool active, float dt, bool allowInteraction,
+        bool disabled = false, ImString disabledTooltip = default)
     {
         var visible = PilotImGui.BeginControlCanvas($"##KSI2-{label}Canvas",
             topLeft, size, allowInteraction);
         try
         {
-            var hovered = visible && allowInteraction && ImGui.IsWindowHovered();
-            var clicked = hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
-            var pressed = allowInteraction && (clicked || visual.Pressed) &&
+            var hovered = visible && ImGui.IsWindowHovered();
+            var interactive = hovered && allowInteraction && !disabled;
+            var clicked = interactive && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
+            var pressed = interactive && (clicked || visual.Pressed) &&
                 ImGui.IsMouseDown(ImGuiMouseButton.Left);
-            var input = new ButtonInput(clicked, hovered, pressed);
+            var input = new ButtonInput(clicked, interactive, pressed);
             UpdateInput(visual, input, active);
-            UpdateColors(visual, active, dt);
+            UpdateColors(visual, active, dt, disabled);
             if (visible)
             {
                 ImGui.Dummy(size);
                 DrawToggle(ImGui.GetWindowDrawList(), label, topLeft, size.X / 48f, visual);
+                if (hovered && disabled && !disabledTooltip.IsEmpty)
+                    ImGui.SetTooltip(disabledTooltip);
             }
             return input;
         }
@@ -165,14 +173,15 @@ internal sealed unsafe class NavballBottomControls
         visual.Pressed = input.Pressed;
     }
 
-    private static void UpdateColors(ToggleVisual visual, bool active, float dt)
+    private static void UpdateColors(ToggleVisual visual, bool active, float dt,
+        bool disabled)
     {
         // KSP2 fades each graphic independently when the selection state changes.
         // The label shrinks on press, while only its colors animate on hover.
-        var targetText = active
+        var targetText = disabled ? 0xFF666666u : active
             ? (visual.Hovered && !visual.Pressed ? 0xFF52CC00u : 0xFF66FF00u)
             : (visual.Hovered && !visual.Pressed ? 0xFFFFDFD5u : 0xFFCCB2AAu);
-        var targetBorder = active
+        var targetBorder = disabled ? 0x66666666u : active
             ? (visual.Pressed ? 0xFF66FF00u : visual.Hovered ? 0xFF52CC00u : 0xFF59FF6Du)
             : (visual.Hovered || visual.Pressed ? 0xFFFFDFD5u : 0x99CCB2AAu);
         if (!visual.Initialized)
