@@ -19,6 +19,9 @@ internal sealed unsafe class SpeedReadoutRenderer
 
     private readonly Dictionary<string, TextureReference> _textures = new();
     private SpeedReadoutValue? _lastValue;
+    private Vehicle? _selectedVehicle;
+    private SpeedReadoutMode _selectedMode;
+    private bool _hovered;
 
 // FUTURE USE ONLY: keep this preview disabled in the flight screen. If an
 // advanced controls screen is added, it may call DrawFutureSpeedSelector and
@@ -37,21 +40,32 @@ internal sealed unsafe class SpeedReadoutRenderer
 
     internal void Draw()
     {
-        if (!KSA.Program.DrawUI) return;
+        if (!KSA.Program.DrawUI)
+        {
+            _hovered = false;
+            return;
+        }
         var vehicle = KSA.Program.ControlledVehicle;
-        if (vehicle is null || vehicle.IsDisposed) return;
+        if (vehicle is null || vehicle.IsDisposed)
+        {
+            _hovered = false;
+            return;
+        }
         if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
-            && texture.ImguiTextureRef is not null)) return;
+            && texture.ImguiTextureRef is not null))
+        {
+            _hovered = false;
+            return;
+        }
 
-        var mode = SpeedReadoutGeometry.Mode(vehicle.NavBallData.Frame, vehicle.Target is not null);
-#if KSI2_FUTURE_SPEED_CONTROL_SCREEN
-        var speed = _useTestSpeed ? _testSpeed : vehicle.NavBallData.Speed;
-#else
-        var speed = vehicle.NavBallData.Speed;
-#endif
-        var value = SpeedReadoutGeometry.Format(speed, CultureInfo.CurrentCulture);
-        if (value is not null) _lastValue = value;
-        if (_lastValue is not { } displayed) return;
+        if (!ReferenceEquals(_selectedVehicle, vehicle))
+        {
+            _selectedVehicle = vehicle;
+            _selectedMode = SpeedReadoutGeometry.Mode(vehicle.NavBallData.Frame, vehicle.Target is not null);
+            _lastValue = null;
+        }
+        if (_selectedMode == SpeedReadoutMode.Target && vehicle.Target is null)
+            _selectedMode = SpeedReadoutMode.Orbit;
 
         var viewport = ImGui.GetMainViewport();
         var cluster = NavballClusterLayout.Calculate(viewport.Pos.X, viewport.Pos.Y,
@@ -60,6 +74,43 @@ internal sealed unsafe class SpeedReadoutRenderer
         var x = origin.X;
         var y = origin.Y;
         var scale = cluster.Scale;
+
+        // The KSP2 ModeSwitch covers the complete side card. Keep speed mode
+        // independent from KSA's piloting reference frame.
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new float2(0f, 0f));
+        ImGui.SetNextWindowPos(new float2(x, y), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new float2(86f * scale, 64f * scale), ImGuiCond.Always);
+        var flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
+                    ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
+                    ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
+        ImGui.Begin("##KSI2-SpeedMode", flags);
+        ImGui.InvisibleButton("cycle speed mode", new float2(86f * scale, 64f * scale));
+        var hovered = ImGui.IsItemHovered();
+        if (hovered && !_hovered) FlightUiSounds.Play("KSI2SpeedModeHover");
+        _hovered = hovered;
+        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+        {
+            FlightUiSounds.Play("KSI2SpeedModeSelect");
+            _selectedMode = _selectedMode switch
+            {
+                SpeedReadoutMode.Orbit => SpeedReadoutMode.Surface,
+                SpeedReadoutMode.Surface when vehicle.Target is not null => SpeedReadoutMode.Target,
+                _ => SpeedReadoutMode.Orbit
+            };
+        }
+        ImGui.End();
+        ImGui.PopStyleVar();
+
+        var mode = _selectedMode;
+#if KSI2_FUTURE_SPEED_CONTROL_SCREEN
+        var speed = _useTestSpeed ? _testSpeed : GetDisplayedSpeed(vehicle, mode);
+#else
+        var speed = GetDisplayedSpeed(vehicle, mode);
+#endif
+        var value = SpeedReadoutGeometry.Format(speed, CultureInfo.CurrentCulture);
+        if (value is not null) _lastValue = value;
+        if (_lastValue is not { } displayed) return;
+
         var draw = ImGui.GetForegroundDrawList(viewport);
 
         // The authored BG is a sliced Image with 14/62/19/62 source-pixel borders.
@@ -142,6 +193,19 @@ internal sealed unsafe class SpeedReadoutRenderer
                     &min, &max, &uvMin, &uvMax, tint);
             }
         }
+    }
+
+    private static double GetDisplayedSpeed(Vehicle vehicle, SpeedReadoutMode mode)
+    {
+        if (mode == SpeedReadoutMode.Surface) return vehicle.GetSurfaceSpeed();
+        if (mode == SpeedReadoutMode.Target)
+        {
+            var target = NavigationTarget.Create(vehicle.Target, vehicle.TargetPart,
+                vehicle.Parent, vehicle.Orbit.StateVectors.StateTime);
+            if (target.HasValue)
+                return (vehicle.Orbit.StateVectors.VelocityCci - target.Value.VelocityCci).Length();
+        }
+        return vehicle.GetInertialSpeed();
     }
 
 #if KSI2_FUTURE_SPEED_CONTROL_SCREEN
