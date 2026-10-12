@@ -90,11 +90,12 @@ internal sealed unsafe class ThrottleGauge : IDisposable
 
         var left = frame.X + 25 * scale;
         var top = frame.Y + 14 * scale;
-        var origin = new Point(left, top);
+        var alignedOrigin = NavballPixelAlignment.Snap(new float2(left, top));
+        var origin = new Point(alignedOrigin.X, alignedOrigin.Y);
         var art = _artwork!;
         var blurQueued = _bgTexture is { } mask &&
-            blur?.Queue(draw, new float2(origin.X, origin.Y),
-                new float2(origin.X + 85f * scale, origin.Y + 290f * scale),
+            blur?.Queue(draw, alignedOrigin,
+                NavballPixelAlignment.Snap(alignedOrigin + new float2(85f * scale, 290f * scale)),
                 mask, blurOpacity) == true;
         if (!blurQueued) DrawStaticLayer(draw, _bgTexture, art, "[asset]", origin, scale, 0xFD190B03u);
         DrawStaticLayer(draw, _barsTexture, art, "[asset]", origin, scale, 0xFF99413Eu);
@@ -145,14 +146,15 @@ internal sealed unsafe class ThrottleGauge : IDisposable
             else ImGui.Dummy(size);
 
             var draw = ImGui.GetWindowDrawList();
+            var alignedCenter = NavballPixelAlignment.Snap(new float2(x, y));
             var pose = ThrottleGeometry.Handle(throttle);
             var angle = -(pose.AngleDegrees + 180) * MathF.PI / 180f;
             // Preserve the source sprite's horizontal 65x34 orientation.
             if (_handleTexture?.ImguiTextureRef is { } texture)
-                RasterArtwork.DrawHandleTexture(draw, texture, new(x, y), scale, angle);
+                RasterArtwork.DrawHandleTexture(draw, texture, new(alignedCenter.X, alignedCenter.Y), scale, angle);
             else
-                art.DrawHandle(draw, new(x, y), scale, angle);
-            DrawHandleText(draw, ThrottleGeometry.Percent(throttle), x, y, scale, angle);
+                art.DrawHandle(draw, new(alignedCenter.X, alignedCenter.Y), scale, angle);
+            DrawHandleText(draw, ThrottleGeometry.Percent(throttle), alignedCenter.X, alignedCenter.Y, scale, angle);
         }
         finally
         {
@@ -165,7 +167,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         if (textureRef?.ImguiTextureRef is { } tex)
         {
             var min = new float2(origin.X, origin.Y);
-            var max = new float2(origin.X + 85f * scale, origin.Y + 290f * scale);
+            var max = NavballPixelAlignment.Snap(new float2(origin.X + 85f * scale, origin.Y + 290f * scale));
             var uvMin = new float2(0f, 0f);
             var uvMax = new float2(1f, 1f);
             ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, tex, &min, &max, &uvMin, &uvMax, tint);
@@ -183,7 +185,11 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         var count = ThrottleGeometry.ClipFill(0, 0, 85, 290, throttle, clipped);
         if (count < 3) return;
 
-        float2 Position(Point p) => new(origin.X + p.X * scale, origin.Y + p.Y * scale);
+        var alignedMax = NavballPixelAlignment.Snap(new float2(
+            origin.X + 85f * scale, origin.Y + 290f * scale));
+        float2 Position(Point p) => new(
+            p.X == 85f ? alignedMax.X : origin.X + p.X * scale,
+            p.Y == 290f ? alignedMax.Y : origin.Y + p.Y * scale);
         float2 Uv(Point p) => new(p.X / 85f, p.Y / 290f);
 
         // The fill image already contains both source masks. Triangulate the
@@ -213,8 +219,11 @@ internal sealed unsafe class ThrottleGauge : IDisposable
             const float angle = ThrottleGeometry.PercentGlyphAngleDegrees * MathF.PI / 180f;
             var cos = MathF.Cos(angle);
             var sin = MathF.Sin(angle);
-            var gx = origin.X + ThrottleGeometry.PercentGlyphCenterX * scale;
-            var gy = origin.Y + ThrottleGeometry.PercentGlyphCenterY * scale;
+            var center = NavballPixelAlignment.Snap(new float2(
+                origin.X + ThrottleGeometry.PercentGlyphCenterX * scale,
+                origin.Y + ThrottleGeometry.PercentGlyphCenterY * scale));
+            var gx = center.X;
+            var gy = center.Y;
 
             float2 Corner(float x, float y) => new(
                 gx + (x * cos - y * sin) * scale,
@@ -235,7 +244,12 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         }
         else
         {
-            art.DrawPercentGlyph(draw, origin, scale, throttle);
+            var center = NavballPixelAlignment.Snap(new float2(
+                origin.X + ThrottleGeometry.PercentGlyphCenterX * scale,
+                origin.Y + ThrottleGeometry.PercentGlyphCenterY * scale));
+            art.DrawPercentGlyph(draw, new Point(
+                center.X - ThrottleGeometry.PercentGlyphCenterX * scale,
+                center.Y - ThrottleGeometry.PercentGlyphCenterY * scale), scale, throttle);
         }
     }
 
