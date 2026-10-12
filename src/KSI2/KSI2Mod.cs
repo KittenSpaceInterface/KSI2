@@ -131,7 +131,7 @@ public sealed class KSI2Mod
         _atmosphericIndicator.Draw(blur, opacity);
         _verticalSpeedIndicator.Draw(blur, opacity);
         _altitudeReadout.Draw();
-        _bottomControls.Draw();
+        _bottomControls.Draw(dt);
         _gauge.DrawLayoutEditor();
     }
 
