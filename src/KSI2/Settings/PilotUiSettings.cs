@@ -14,6 +14,8 @@ internal sealed class PilotUiSettings
     public bool MouseThrottleControl { get; set; }
     public bool BlurPanelBackgrounds { get; set; }
     public int BlurOpacityTicks { get; set; } = 398;
+    public float[] VerticalSpeedMarkSpeeds { get; set; } = (float[])VerticalSpeedIndicatorGeometry.DefaultMarkSpeeds.Clone();
+    public float VerticalSpeedNeedleOffset { get; set; } = 2f;
     internal static string ModDirectory => Path.GetDirectoryName(typeof(PilotUiSettings).Assembly.Location) ?? AppContext.BaseDirectory;
     private static string FilePath => Path.Combine(ModDirectory, "ksi2.settings.json");
 
@@ -41,6 +43,13 @@ internal sealed class PilotUiSettings
             settings.X = Math.Clamp(settings.X, 0, 1);
             settings.Y = Math.Clamp(settings.Y, 0, 1);
             settings.BlurOpacityTicks = Math.Clamp(settings.BlurOpacityTicks, 0, 400);
+            if (settings.VerticalSpeedMarkSpeeds is not { Length: 7 }
+                || settings.VerticalSpeedMarkSpeeds.Any(speed => !float.IsFinite(speed))
+                || settings.VerticalSpeedMarkSpeeds.Where((speed, index) => index > 0
+                    && speed <= settings.VerticalSpeedMarkSpeeds[index - 1]).Any())
+                settings.VerticalSpeedMarkSpeeds = (float[])VerticalSpeedIndicatorGeometry.DefaultMarkSpeeds.Clone();
+            if (!float.IsFinite(settings.VerticalSpeedNeedleOffset)) settings.VerticalSpeedNeedleOffset = 2f;
+            settings.VerticalSpeedNeedleOffset = Math.Clamp(settings.VerticalSpeedNeedleOffset, -6f, 6f);
             settings.Editing = false;
             return settings;
         }

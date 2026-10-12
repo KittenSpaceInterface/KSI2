@@ -38,8 +38,8 @@ Build output is written to `src/KSI2/bin/Release/net10.0`.
 The throttle gauge follows the controlled vehicle's manual throttle. Drag its
 handle to change throttle through KSA's input actions at KSA's normal rate.
 The **Experimental** setting **Mouse throttle control** enables direct control;
-it is off by default. The settings window also lets you show or hide the gauge
-and adjust its scale and position.
+it is off by default. The settings window lets you adjust the interface scale
+and position.
 **Edit layout** lets you drag the interface as a group. Settings are saved
 beside the mod.
 
@@ -55,6 +55,9 @@ panel backings. Its switch and opacity are saved in `ksi2.settings.json`. If
 KSA exits unexpectedly while blur is enabled, KSI2 turns it off on the next
 launch. To recover manually, set `BlurPanelBackgrounds` to `false` in that
 settings file and remove `ksi2.blur-active` from the mod folder.
+
+Under **Advanced**, **Vertical Speed Configuration** toggles the calibration
+window. The window also has a Close button and starts closed when KSI2 loads.
 
 ## Geometry checks
 

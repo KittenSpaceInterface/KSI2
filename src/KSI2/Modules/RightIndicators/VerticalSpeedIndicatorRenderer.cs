@@ -6,9 +6,16 @@ using KSA;
 
 namespace KSI2;
 
+internal sealed class VerticalSpeedConfigurationState
+{
+    internal bool IsOpen;
+}
+
 internal sealed unsafe class VerticalSpeedIndicatorRenderer
 {
-    private const float MarkerArtworkAlignmentY = 2f;
+    private const float TestMinimumSpeed = -150f;
+    private const float TestMaximumSpeed = 150f;
+    private const float MaximumOutwardMovementAfterPositiveHundred = 2f;
 
     internal static readonly (string Id, string File)[] Assets =
     [
@@ -19,6 +26,23 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
     private readonly Dictionary<string, TextureReference> _textures = new();
     private byte[,]? _maskAlpha;
     private bool _maskAttempted;
+    private bool _useTestSpeed;
+    private float _testSpeed;
+    private bool _showNumberGuides;
+    private readonly PilotUiSettings _settings;
+    private readonly Action _save;
+    private readonly VerticalSpeedConfigurationState _configuration;
+    private static readonly string[] MarkLabels = ["-1000", "-100", "-10", "0", "+10", "+100", "+1000"];
+    private static readonly float[] MarkSliderMinimums = [-20000f, -5000f, -500f, -10f, 0.1f, 11f, 50f];
+    private static readonly float[] MarkSliderMaximums = [-50f, -11f, -0.1f, 10f, 500f, 5000f, 20000f];
+
+    internal VerticalSpeedIndicatorRenderer(PilotUiSettings settings, Action save,
+        VerticalSpeedConfigurationState configuration)
+    {
+        _settings = settings;
+        _save = save;
+        _configuration = configuration;
+    }
 
     internal void SetTexture(string id, TextureReference texture) => _textures[id] = texture;
     private ImTextureRef GetArtworkTexture(string id)
@@ -29,7 +53,14 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
 
     internal void Draw(Point widgetOrigin, float scale, PanelBackgroundBlur? blur, float opacity)
     {
-        if (!KSA.Program.DrawUI || !KsaVerticalSpeedSource.TryRead(out var speed)) return;
+        if (!KSA.Program.DrawUI) return;
+        if (_configuration.IsOpen) DrawConfigurationWindow();
+        if (!_configuration.IsOpen) _useTestSpeed = false;
+
+        double speed;
+        if (_useTestSpeed) speed = _testSpeed;
+        else if (!KsaVerticalSpeedSource.TryRead(out speed)) return;
+
         if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture) && texture.ImguiTextureRef is not null)) return;
         if (!SharedAssets.All(id => _textures.TryGetValue(id, out var texture) && texture.ImguiTextureRef is not null)) return;
         if (!EnsureMask()) return;
@@ -47,11 +78,59 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
         DrawLayer("KSI2AtmoBorder", 0x33FF6C68u, flipVertically: true);
         DrawLayer("KSI2AtmoBracket", 0xFFCC5753u, flipVertically: true);
 
-        var pose = VerticalSpeedIndicatorGeometry.Marker(speed);
-        // Align the visible sprite with the zero tick in the imported artwork.
-        DrawRotated("KSI2AtmoNeedle", pose.Position.X, pose.Position.Y + MarkerArtworkAlignmentY,
+        var pose = VerticalSpeedIndicatorGeometry.OffsetMarker(
+            VerticalSpeedIndicatorGeometry.Marker(speed, _settings.VerticalSpeedMarkSpeeds),
+            _settings.VerticalSpeedNeedleOffset);
+        if (speed > 100d)
+        {
+            var hundredPose = VerticalSpeedIndicatorGeometry.OffsetMarker(
+                VerticalSpeedIndicatorGeometry.GuideMarker(5, _settings.VerticalSpeedMarkSpeeds),
+                _settings.VerticalSpeedNeedleOffset);
+            var angle = pose.AngleDegrees * MathF.PI / 180f;
+            var hundredAngle = hundredPose.AngleDegrees * MathF.PI / 180f;
+            var outwardX = MathF.Cos(angle);
+            var outwardY = -MathF.Sin(angle);
+            var movementX = pose.Position.X + 16f * MathF.Cos(angle)
+                - hundredPose.Position.X - 16f * MathF.Cos(hundredAngle);
+            var movementY = pose.Position.Y - 16f * MathF.Sin(angle)
+                - hundredPose.Position.Y + 16f * MathF.Sin(hundredAngle);
+            var outwardMovement = movementX * outwardX + movementY * outwardY;
+            if (outwardMovement > MaximumOutwardMovementAfterPositiveHundred)
+            {
+                var excess = outwardMovement - MaximumOutwardMovementAfterPositiveHundred;
+                pose = pose with { Position = new Point(
+                    pose.Position.X - outwardX * excess,
+                    pose.Position.Y - outwardY * excess) };
+            }
+        }
+        DrawRotated("KSI2AtmoNeedle", pose.Position.X, pose.Position.Y,
             32f, 4f, pose.AngleDegrees * MathF.PI / 180f, 0xFFFFDFD5u);
         DrawLayer("KSI2AtmoShade", 0xFFFFFFFFu, flipVertically: true);
+        if (_configuration.IsOpen && _showNumberGuides) DrawNumberGuides();
+
+        void DrawNumberGuides()
+        {
+            var framebufferScale = ImGui.GetIO().DisplayFramebufferScale;
+            var pixelWidth = float.IsFinite(framebufferScale.X) && framebufferScale.X > 0f
+                ? 1f / framebufferScale.X : 1f;
+            const float guideLength = 8f;
+            for (var i = 0; i < VerticalSpeedIndicatorGeometry.MarkPaths.Length; i++)
+            {
+                var mark = VerticalSpeedIndicatorGeometry.OffsetMarker(
+                    VerticalSpeedIndicatorGeometry.GuideMarker(i, _settings.VerticalSpeedMarkSpeeds),
+                    _settings.VerticalSpeedNeedleOffset);
+                var angle = mark.AngleDegrees * MathF.PI / 180f;
+                var directionX = MathF.Cos(angle);
+                var directionY = -MathF.Sin(angle);
+                var tipX = mark.Position.X + 16f * directionX;
+                var tipY = mark.Position.Y + 16f * directionY;
+                var start = Align(origin + new float2(tipX * scale, tipY * scale));
+                var end = Align(origin + new float2(
+                    (tipX + guideLength * directionX) * scale,
+                    (tipY + guideLength * directionY) * scale));
+                ImGui.PInvoke.ImDrawList_AddLine(draw.Ptr, &start, &end, 0xFF0000FFu, pixelWidth);
+            }
+        }
 
         void DrawLayer(string id, uint tint, bool flipVertically = false)
         {
@@ -66,7 +145,8 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
             ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, texture, &min, &max, &uvMin, &uvMax, tint);
         }
 
-        void DrawRotated(string id, float x, float y, float width, float height, float angle, uint tint)
+        void DrawRotated(string id, float x, float y, float width, float height, float angle,
+            uint tint)
         {
             var texture = GetArtworkTexture(id);
             var center = Align(origin + new float2(x * scale, y * scale));
@@ -100,6 +180,58 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
                     &p1, &p2, &p3, &p4, &uv1, &uv2, &uv3, &uv4, color);
             }
         }
+    }
+
+    private void DrawConfigurationWindow()
+    {
+        ImGui.SetNextWindowPos(new float2(24f, 170f), ImGuiCond.FirstUseEver);
+        if (!ImGui.Begin("KSI2 Vertical Speed Configuration", ref _configuration.IsOpen,
+            ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings))
+        {
+            ImGui.End();
+            return;
+        }
+
+        ImGui.Text("Preview and calibrate the vertical speed indicator.");
+        ImGui.Checkbox("Use test speed", ref _useTestSpeed);
+        var sliderSpeed = Math.Clamp(_testSpeed, TestMinimumSpeed, TestMaximumSpeed);
+        ImGui.SetNextItemWidth(330f);
+        if (ImGui.SliderFloat("Vertical speed (m/s)", ref sliderSpeed,
+            TestMinimumSpeed, TestMaximumSpeed, "%+.0f m/s")) _testSpeed = sliderSpeed;
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(105f);
+        var typedTestSpeed = _testSpeed;
+        if (ImGui.InputFloat("##vertical-speed-test-value", ref typedTestSpeed, 0f, 0f, "%.1f",
+            ImGuiInputTextFlags.EnterReturnsTrue) && float.IsFinite(typedTestSpeed))
+            _testSpeed = Math.Clamp(typedTestSpeed, -10000f, 10000f);
+        ImGui.Checkbox("Show red number guides", ref _showNumberGuides);
+        for (var i = MarkLabels.Length - 1; i >= 0; i--)
+        {
+            var minimum = i == 0 ? MarkSliderMinimums[i]
+                : MathF.Max(MarkSliderMinimums[i], _settings.VerticalSpeedMarkSpeeds[i - 1] + 0.1f);
+            var maximum = i == MarkLabels.Length - 1 ? MarkSliderMaximums[i]
+                : MathF.Min(MarkSliderMaximums[i], _settings.VerticalSpeedMarkSpeeds[i + 1] - 0.1f);
+            ImGui.SetNextItemWidth(330f);
+            ImGui.SliderFloat($"{MarkLabels[i]} mark calibration", ref _settings.VerticalSpeedMarkSpeeds[i],
+                minimum, maximum, "%+.1f");
+            if (ImGui.IsItemDeactivatedAfterEdit()) _save();
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(105f);
+            var typedSpeed = _settings.VerticalSpeedMarkSpeeds[i];
+            if (ImGui.InputFloat($"##mark-speed-{i}", ref typedSpeed, 0f, 0f, "%.1f",
+                ImGuiInputTextFlags.EnterReturnsTrue) && float.IsFinite(typedSpeed))
+            {
+                _settings.VerticalSpeedMarkSpeeds[i] = Math.Clamp(typedSpeed, minimum, maximum);
+                _save();
+            }
+        }
+        var needleOffset = _settings.VerticalSpeedNeedleOffset;
+        if (ImGui.SliderFloat("Needle offset (rotated)", ref needleOffset,
+            -6f, 6f, "%+.2f px")) _settings.VerticalSpeedNeedleOffset = needleOffset;
+        if (ImGui.IsItemDeactivatedAfterEdit()) _save();
+        ImGui.Text("Type a calibration value and press Enter to save.");
+        if (ImGui.Button("Close")) _configuration.IsOpen = false;
+        ImGui.End();
     }
 
     private float SampleMask(float x, float y)

@@ -8,6 +8,7 @@ internal sealed class PilotSettingsController : IDisposable
     private readonly PilotUiSettings _settings = PilotUiSettings.Load();
     private readonly BlurCrashGuard _blurCrashGuard;
     internal PilotUiSettings Settings => _settings;
+    internal VerticalSpeedConfigurationState VerticalSpeedConfiguration { get; } = new();
     internal void Save() => _settings.Save();
     internal bool BlurPanelBackgrounds => _blurCrashGuard.Enabled;
     internal float BlurOpacity => _settings.BlurOpacityTicks / 400f;
@@ -22,8 +23,6 @@ internal sealed class PilotSettingsController : IDisposable
             return;
         }
         PilotImGui.PlaceCurrentWindow();
-        var show = _settings.Show;
-        if (ImGui.Checkbox("Show throttle", ref show)) { _settings.Show = show; Save(); }
         var editing = _settings.Editing;
         if (ImGui.Checkbox("Edit layout", ref editing))
         {
@@ -64,9 +63,9 @@ internal sealed class PilotSettingsController : IDisposable
         }
         if (throttle.MouseUnavailableReason is { } reason)
             ImGui.TextWrapped($"Mouse throttle control unavailable until restart: {reason}");
-        ImGui.Text(throttle.Snapshot is { } value
-            ? $"Live manual throttle: {ThrottleGeometry.Percent(value.Value)}"
-            : "No controlled vehicle");
+        ImGui.Text("Advanced");
+        if (ImGui.Button("Vertical Speed Configuration"))
+            VerticalSpeedConfiguration.IsOpen = !VerticalSpeedConfiguration.IsOpen;
         if (_settings.Editing)
         {
             var io = ImGui.GetIO();

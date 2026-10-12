@@ -3,15 +3,17 @@ namespace KSI2;
 internal sealed class RightIndicatorsModule : IPilotUiModule
 {
     private readonly AtmosphericIndicatorRenderer _atmosphericIndicator = new();
-    private readonly VerticalSpeedIndicatorRenderer _verticalSpeedIndicator = new();
+    private readonly VerticalSpeedIndicatorRenderer _verticalSpeedIndicator;
     public string Id => "right-indicators";
     internal const string AtmosphereId = "atmosphere";
     internal const string VerticalSpeedId = "vertical-speed";
     internal static readonly PilotLayoutDefinition[] Definitions = [];
     public IReadOnlyList<PilotLayoutDefinition> LayoutDefinitions => Definitions;
     public IReadOnlyList<PilotUiLayer> Layers { get; }
-    public RightIndicatorsModule()
+    public RightIndicatorsModule(PilotUiSettings settings, Action save,
+        VerticalSpeedConfigurationState configuration)
     {
+        _verticalSpeedIndicator = new VerticalSpeedIndicatorRenderer(settings, save, configuration);
         Layers =
         [
             new(PilotLayerOrder.Atmosphere, (l,c) => _atmosphericIndicator.Draw(l.Component(AtmosphereId).Position,

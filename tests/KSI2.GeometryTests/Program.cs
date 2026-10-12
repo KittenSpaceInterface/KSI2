@@ -91,17 +91,92 @@ var verticalSpeedOrigin = VerticalSpeedIndicatorGeometry.WidgetOrigin(cluster);
 Near(widgetOrigin.X, verticalSpeedOrigin.X, "vertical speed aligns with atmosphere");
 Near(8f, widgetOrigin.Y - verticalSpeedOrigin.Y - VerticalSpeedIndicatorGeometry.WidgetHeight,
     "vertical speed gap above atmosphere");
-var descendingMarker = VerticalSpeedIndicatorGeometry.Marker(-1000);
+var descendingMarker = VerticalSpeedIndicatorGeometry.Marker(-1200);
 Near(59f, descendingMarker.Position.X, "vertical speed minimum locator x");
 Near(131f, descendingMarker.Position.Y, "vertical speed minimum locator y");
 Near(5f, descendingMarker.AngleDegrees, "vertical speed minimum locator angle");
-var ascendingMarker = VerticalSpeedIndicatorGeometry.Marker(1000);
+var ascendingMarker = VerticalSpeedIndicatorGeometry.Marker(1200);
 Near(16f, ascendingMarker.Position.X, "vertical speed maximum locator x");
 Near(24f, ascendingMarker.Position.Y, "vertical speed maximum locator y");
 Near(45f, ascendingMarker.AngleDegrees, "vertical speed maximum locator angle");
-var quarterSpeedMarker = VerticalSpeedIndicatorGeometry.Marker(-500);
-Near(52.28125f, quarterSpeedMarker.Position.X, "vertical speed curve quarter x");
-Near(114.28125f, quarterSpeedMarker.Position.Y, "vertical speed curve quarter y");
+var zeroSpeedMarker = VerticalSpeedIndicatorGeometry.Marker(0);
+  var zeroOffsetMarker = VerticalSpeedIndicatorGeometry.OffsetMarker(zeroSpeedMarker, 0f);
+  Near(zeroSpeedMarker.Position.X, zeroOffsetMarker.Position.X, "zero needle offset keeps x");
+  Near(zeroSpeedMarker.Position.Y, zeroOffsetMarker.Position.Y, "zero needle offset keeps y");
+  var shiftedMarker = VerticalSpeedIndicatorGeometry.OffsetMarker(ascendingMarker, 2f);
+  Near(ascendingMarker.Position.X + 2f * MathF.Sin(ascendingMarker.AngleDegrees * MathF.PI / 180f),
+      shiftedMarker.Position.X, "rotated needle offset x");
+  Near(ascendingMarker.Position.Y + 2f * MathF.Cos(ascendingMarker.AngleDegrees * MathF.PI / 180f),
+      shiftedMarker.Position.Y, "rotated needle offset y");
+var positiveTenMarker = VerticalSpeedIndicatorGeometry.Marker(10);
+var positiveHalfMarker = VerticalSpeedIndicatorGeometry.Marker(5);
+Near((VerticalSpeedIndicatorGeometry.TipY(zeroSpeedMarker)
+    + VerticalSpeedIndicatorGeometry.TipY(positiveTenMarker)) / 2f,
+    VerticalSpeedIndicatorGeometry.TipY(positiveHalfMarker), "positive inner interval uses pixel distance");
+var negativeTenMarker = VerticalSpeedIndicatorGeometry.Marker(-10);
+var negativeHalfMarker = VerticalSpeedIndicatorGeometry.Marker(-5);
+Near((VerticalSpeedIndicatorGeometry.TipY(zeroSpeedMarker)
+    + VerticalSpeedIndicatorGeometry.TipY(negativeTenMarker)) / 2f,
+    VerticalSpeedIndicatorGeometry.TipY(negativeHalfMarker), "negative inner interval uses pixel distance");
+var hundredSpeedMarker = VerticalSpeedIndicatorGeometry.Marker(100);
+Near(VerticalSpeedIndicatorGeometry.GuideMarker(5,
+        VerticalSpeedIndicatorGeometry.DefaultMarkSpeeds).Position.X,
+    hundredSpeedMarker.Position.X, "calibrated positive hundred mark");
+for (var i = 0; i < VerticalSpeedIndicatorGeometry.MarkPaths.Length; i++)
+    Near(VerticalSpeedIndicatorGeometry.TipY(VerticalSpeedIndicatorGeometry.Marker(
+            VerticalSpeedIndicatorGeometry.PrintedSpeeds[i])),
+        VerticalSpeedIndicatorGeometry.TipY(VerticalSpeedIndicatorGeometry.GuideMarker(
+            i, VerticalSpeedIndicatorGeometry.DefaultMarkSpeeds)), $"vertical speed mark {i} reaches its guide");
+var changedMarkSpeeds = (float[])VerticalSpeedIndicatorGeometry.DefaultMarkSpeeds.Clone();
+changedMarkSpeeds[5] = 350f;
+Near(VerticalSpeedIndicatorGeometry.TipY(VerticalSpeedIndicatorGeometry.GuideMarker(5, changedMarkSpeeds)),
+    VerticalSpeedIndicatorGeometry.TipY(VerticalSpeedIndicatorGeometry.Marker(100, changedMarkSpeeds)),
+    "adjusted positive hundred speed moves the needle to its guide");
+if (VerticalSpeedIndicatorGeometry.TipY(VerticalSpeedIndicatorGeometry.GuideMarker(5, changedMarkSpeeds))
+    >= VerticalSpeedIndicatorGeometry.TipY(VerticalSpeedIndicatorGeometry.GuideMarker(5,
+        VerticalSpeedIndicatorGeometry.DefaultMarkSpeeds)))
+    throw new Exception("changing a mark speed did not move its red guide");
+var movedEndpoints = (float[])VerticalSpeedIndicatorGeometry.DefaultMarkSpeeds.Clone();
+movedEndpoints[0] = -15000f;
+movedEndpoints[6] = 15000f;
+if (VerticalSpeedIndicatorGeometry.TipY(VerticalSpeedIndicatorGeometry.GuideMarker(0, movedEndpoints))
+    <= VerticalSpeedIndicatorGeometry.TipY(VerticalSpeedIndicatorGeometry.GuideMarker(0,
+        VerticalSpeedIndicatorGeometry.DefaultMarkSpeeds)))
+    throw new Exception("negative endpoint calibration did not move its guide");
+if (VerticalSpeedIndicatorGeometry.TipY(VerticalSpeedIndicatorGeometry.GuideMarker(6, movedEndpoints))
+    >= VerticalSpeedIndicatorGeometry.TipY(VerticalSpeedIndicatorGeometry.GuideMarker(6,
+        VerticalSpeedIndicatorGeometry.DefaultMarkSpeeds)))
+    throw new Exception("positive endpoint calibration did not move its guide");
+foreach (var calibration in new[] { VerticalSpeedIndicatorGeometry.DefaultMarkSpeeds, changedMarkSpeeds })
+{
+    var actualSpeeds = new[] { -1000f, -100f, -10f, 0f, 10f, 100f, 1000f };
+    for (var i = 0; i < actualSpeeds.Length; i++)
+    {
+        var needle = VerticalSpeedIndicatorGeometry.OffsetMarker(
+            VerticalSpeedIndicatorGeometry.Marker(actualSpeeds[i], calibration), 2f);
+        var guide = VerticalSpeedIndicatorGeometry.OffsetMarker(
+            VerticalSpeedIndicatorGeometry.GuideMarker(i, calibration), 2f);
+        Near(guide.Position.X, needle.Position.X, $"printed speed {actualSpeeds[i]} meets guide x");
+        Near(guide.Position.Y, needle.Position.Y, $"printed speed {actualSpeeds[i]} meets guide y");
+        Near(guide.AngleDegrees, needle.AngleDegrees, $"printed speed {actualSpeeds[i]} meets guide angle");
+    }
+    var middle = VerticalSpeedIndicatorGeometry.Marker(55, calibration);
+    Near((VerticalSpeedIndicatorGeometry.TipY(VerticalSpeedIndicatorGeometry.GuideMarker(4, calibration))
+        + VerticalSpeedIndicatorGeometry.TipY(VerticalSpeedIndicatorGeometry.GuideMarker(5, calibration))) / 2f,
+        VerticalSpeedIndicatorGeometry.TipY(middle), "55 m/s is halfway in pixels between 10 and 100");
+}
+for (var i = 0; i < 7; i += 6)
+    Near(VerticalSpeedIndicatorGeometry.TipY(VerticalSpeedIndicatorGeometry.GuideMarker(i, movedEndpoints)),
+        VerticalSpeedIndicatorGeometry.TipY(VerticalSpeedIndicatorGeometry.Marker(
+            VerticalSpeedIndicatorGeometry.PrintedSpeeds[i], movedEndpoints)),
+        $"moving endpoint {i} keeps the needle on its guide");
+var restoredCalibration = PilotUiSettings.Parse(JsonSerializer.Serialize(new PilotUiSettings
+{
+    VerticalSpeedMarkSpeeds = changedMarkSpeeds,
+    VerticalSpeedNeedleOffset = 2.5f
+}));
+Near(350f, restoredCalibration.VerticalSpeedMarkSpeeds[5], "positive hundred calibration survives settings parse");
+Near(2.5f, restoredCalibration.VerticalSpeedNeedleOffset, "rotated needle offset survives settings parse");
 var rocketAtTop = AtmosphericIndicatorGeometry.RocketOnWidget(0);
 Near(75.5f, rocketAtTop.Position.X, "vacuum rocket widget x");
 Near(19.5f, rocketAtTop.Position.Y, "vacuum rocket widget y");
