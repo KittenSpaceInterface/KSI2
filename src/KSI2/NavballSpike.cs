@@ -22,7 +22,9 @@ internal sealed unsafe class NavballSpike
         internal Vector2 Uv { get; } = uv;
     }
 
-    private TextureReference? _texture;
+    private TextureReference? _surfaceTexture;
+    private TextureReference? _orbitTexture;
+    private TextureReference? _targetModeTexture;
     private readonly NavballTextureFiltering _filtering = new();
     private readonly NavballSupersampler _supersampler = new();
     private TextureReference? _shadowTexture;
@@ -41,7 +43,9 @@ internal sealed unsafe class NavballSpike
     private string? _meshError;
     private bool _loadAttempted;
 
-    internal void SetTexture(TextureReference texture) => _texture = texture;
+    internal void SetSurfaceTexture(TextureReference texture) => _surfaceTexture = texture;
+    internal void SetOrbitTexture(TextureReference texture) => _orbitTexture = texture;
+    internal void SetTargetModeTexture(TextureReference texture) => _targetModeTexture = texture;
     internal void SetShadowTexture(TextureReference texture) => _shadowTexture = texture;
     internal void SetCrosshairTexture(TextureReference texture) => _crosshairTexture = texture;
     internal void SetProgradeTexture(TextureReference texture) => _progradeTexture = texture;
@@ -53,9 +57,15 @@ internal sealed unsafe class NavballSpike
     internal void SetRadialOutTexture(TextureReference texture) => _radialOutTexture = texture;
     internal void SetRadialInTexture(TextureReference texture) => _radialInTexture = texture;
     internal void SetBurnTexture(TextureReference texture) => _burnTexture = texture;
-    internal void Draw()
+    internal void Draw(SpeedReadoutMode mode)
     {
-        if (!KSA.Program.DrawUI || _texture?.ImguiTextureRef is null) return;
+        var texture = mode switch
+        {
+            SpeedReadoutMode.Orbit => _orbitTexture ?? _surfaceTexture,
+            SpeedReadoutMode.Target => _targetModeTexture ?? _surfaceTexture,
+            _ => _surfaceTexture
+        };
+        if (!KSA.Program.DrawUI || texture?.ImguiTextureRef is null) return;
         EnsureMesh();
         if (_mesh is null) return;
 
@@ -64,8 +74,8 @@ internal sealed unsafe class NavballSpike
         var center = new Vector2(bounds.Center.X, bounds.Center.Y);
         var draw = ImGui.GetForegroundDrawList(viewport);
         ProjectSphere();
-        if (!_supersampler.TryDraw(draw, _texture, center, bounds.BallRadius, _mesh, _vertices!))
-            DrawProjectedSphere(draw, _filtering.GetTexture(_texture), center, bounds.BallRadius);
+        if (!_supersampler.TryDraw(draw, texture, center, bounds.BallRadius, _mesh, _vertices!))
+            DrawProjectedSphere(draw, _filtering.GetTexture(texture), center, bounds.BallRadius);
         DrawShadow(draw, center, bounds.Scale);
         DrawMarkers(draw, center, bounds.BallRadius);
         DrawCrosshair(draw, center, bounds.BallRadius);
