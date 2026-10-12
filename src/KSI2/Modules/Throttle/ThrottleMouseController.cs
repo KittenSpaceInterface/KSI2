@@ -17,7 +17,8 @@ internal sealed class ThrottleMouseController : IDisposable
     {
         try
         {
-            return vehicle is not null && !vehicle.IsDisposed && vehicle.IsControllable &&
+            return vehicle is not null && vehicle is not KittenEva &&
+                   !vehicle.IsDisposed && vehicle.IsControllable &&
                    Program.IsControlledVehicleActive &&
                    Universe.GetSimulationSpeed() <= Vehicle.CONTROLS_LOCK_WARP_FACTOR &&
                    vehicle.FlightComputer.BurnMode != FlightComputerBurnMode.Auto;

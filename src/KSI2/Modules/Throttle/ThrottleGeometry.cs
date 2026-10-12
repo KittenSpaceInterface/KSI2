@@ -121,6 +121,11 @@ internal static class KsaThrottleSource
         {
             var vehicle = KSA.Program.ControlledVehicle;
             if (vehicle is null || vehicle.IsDisposed) return false;
+            if (vehicle is KSA.KittenEva)
+            {
+                snapshot = new ThrottleSnapshot(0f);
+                return true;
+            }
             var value = vehicle.GetManualThrottle();
             return TryNormalize(value, out snapshot);
         }
