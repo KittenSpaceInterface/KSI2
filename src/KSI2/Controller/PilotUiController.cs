@@ -36,13 +36,7 @@ internal sealed class PilotUiController : IDisposable
     internal void Draw(double dt)
     {
         if (ImGui.GetCurrentContext().IsNull()) return;
-        if (!KSA.Program.DrawUI)
-        {
-            foreach (var module in _modules) module.CancelInteraction();
-            _editor.Cancel();
-            return;
-        }
-        if (KSA.Program.IsEditorOpen)
+        if (!KSA.Program.DrawUI || KSA.Program.ControlledVehicle is not { IsDisposed: false })
         {
             foreach (var module in _modules) module.CancelInteraction();
             _editor.Cancel();
