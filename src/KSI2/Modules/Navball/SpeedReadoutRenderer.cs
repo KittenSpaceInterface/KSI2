@@ -5,7 +5,7 @@ using KSA;
 
 namespace KSI2;
 
-internal sealed unsafe class SpeedReadoutRenderer : IDisposable
+internal sealed unsafe class SpeedReadoutRenderer
 {
     internal static readonly (string Id, string File)[] Assets =
     [
@@ -18,7 +18,6 @@ internal sealed unsafe class SpeedReadoutRenderer : IDisposable
     ];
 
     private readonly Dictionary<string, TextureReference> _textures = new();
-    private readonly ReadoutArtworkFiltering _filtering = new();
     private SpeedReadoutValue? _lastValue;
     private readonly SpeedModeState _modeState = new();
     private bool _hovered;
@@ -42,9 +41,7 @@ internal sealed unsafe class SpeedReadoutRenderer : IDisposable
     }
 
     private ImTextureRef GetArtworkTexture(string id)
-        => _filtering.GetPointTexture(_textures[id]);
-
-    public void Dispose() => _filtering.Dispose();
+        => _textures[id].ImguiTextureRef!.Value;
 
     internal void ObserveMode()
     {

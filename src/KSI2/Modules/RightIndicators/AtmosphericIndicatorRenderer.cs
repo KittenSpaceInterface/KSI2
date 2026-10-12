@@ -27,6 +27,12 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
 
     internal void SetTexture(string id, TextureReference texture) => _textures[id] = texture;
 
+    private ImTextureRef GetArtworkTexture(string id)
+        => _textures[id].ImguiTextureRef!.Value;
+
+    private float2 Align(float2 point)
+        => NavballPixelAlignment.Snap(point);
+
     internal void Draw(Point widgetOrigin, float scale, PanelBackgroundBlur? blur, float opacity)
     {
         if (!KSA.Program.DrawUI || !KsaAtmosphereSource.TryRead(out var gauge)) return;
@@ -36,8 +42,8 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
         var origin = new float2(widgetOrigin.X, widgetOrigin.Y);
         var draw = ImGui.GetWindowDrawList();
 
-        var blurQueued = blur?.Queue(draw, origin,
-            origin + new float2(85f * scale, 140f * scale),
+        var blurQueued = blur?.Queue(draw, Align(origin),
+            Align(origin + new float2(85f * scale, 140f * scale)),
             _textures["KSI2AtmoFill"], opacity) == true;
         if (!blurQueued) DrawLayer("KSI2AtmoFill", 0xFD190B03u);
         DrawLayer("KSI2AtmoLayers", 0xFFF2F2F2u);
@@ -49,11 +55,11 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
 
         void DrawLayer(string id, uint tint, float x = 0f, float y = 0f, float width = 85f, float height = 140f)
         {
-            var min = origin + new float2(x * scale, y * scale);
-            var max = min + new float2(width * scale, height * scale);
+            var min = Align(origin + new float2(x * scale, y * scale));
+            var max = Align(origin + new float2((x + width) * scale, (y + height) * scale));
             var uvMin = new float2(0f, 0f);
             var uvMax = new float2(1f, 1f);
-            var texture = _textures[id].ImguiTextureRef!.Value;
+            var texture = GetArtworkTexture(id);
             ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, texture, &min, &max, &uvMin, &uvMax, tint);
         }
 
@@ -78,8 +84,8 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
         void DrawRotated(string id, float x, float y, float width, float height, float angle, uint tint,
             float cellSize = 2f)
         {
-            var texture = _textures[id].ImguiTextureRef!.Value;
-            var center = origin + new float2(x * scale, y * scale);
+            var texture = GetArtworkTexture(id);
+            var center = Align(origin + new float2(x * scale, y * scale));
             var cos = MathF.Cos(angle);
             var sin = MathF.Sin(angle);
             float2 Corner(float dx, float dy) => center + new float2(

@@ -110,7 +110,5 @@ internal sealed class NavballModule : IPilotUiModule
     public void Dispose()
     {
         _navballSpike.Dispose();
-        _speedReadout.Dispose();
-        _altitudeReadout.Dispose();
     }
 }

@@ -21,6 +21,11 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
     private bool _maskAttempted;
 
     internal void SetTexture(string id, TextureReference texture) => _textures[id] = texture;
+    private ImTextureRef GetArtworkTexture(string id)
+        => _textures[id].ImguiTextureRef!.Value;
+
+    private float2 Align(float2 point)
+        => NavballPixelAlignment.Snap(point);
 
     internal void Draw(Point widgetOrigin, float scale, PanelBackgroundBlur? blur, float opacity)
     {
@@ -32,9 +37,9 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
         var origin = new float2(widgetOrigin.X, widgetOrigin.Y);
         var draw = ImGui.GetWindowDrawList();
 
-        var blurQueued = blur?.Queue(draw, origin,
-            origin + new float2(VerticalSpeedIndicatorGeometry.WidgetWidth * scale,
-                VerticalSpeedIndicatorGeometry.WidgetHeight * scale),
+        var blurQueued = blur?.Queue(draw, Align(origin),
+            Align(origin + new float2(VerticalSpeedIndicatorGeometry.WidgetWidth * scale,
+                VerticalSpeedIndicatorGeometry.WidgetHeight * scale)),
             _textures["KSI2AtmoFill"], opacity, flipVertically: true) == true;
         if (!blurQueued) DrawLayer("KSI2AtmoFill", 0xFD190B03u, flipVertically: true);
         DrawLayer("KSI2VertSpeedColors", 0xFFFFFFFFu);
@@ -50,21 +55,21 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
 
         void DrawLayer(string id, uint tint, bool flipVertically = false)
         {
-            var min = origin;
-            var max = min + new float2(VerticalSpeedIndicatorGeometry.WidgetWidth * scale,
-                VerticalSpeedIndicatorGeometry.WidgetHeight * scale);
+            var min = Align(origin);
+            var max = Align(origin + new float2(VerticalSpeedIndicatorGeometry.WidgetWidth * scale,
+                VerticalSpeedIndicatorGeometry.WidgetHeight * scale));
             // The widget root has a 180-degree X rotation. These layers
             // have no compensating rotation in the KSP2 prefab.
             var uvMin = new float2(0f, flipVertically ? 1f : 0f);
             var uvMax = new float2(1f, flipVertically ? 0f : 1f);
-            var texture = _textures[id].ImguiTextureRef!.Value;
+            var texture = GetArtworkTexture(id);
             ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, texture, &min, &max, &uvMin, &uvMax, tint);
         }
 
         void DrawRotated(string id, float x, float y, float width, float height, float angle, uint tint)
         {
-            var texture = _textures[id].ImguiTextureRef!.Value;
-            var center = origin + new float2(x * scale, y * scale);
+            var texture = GetArtworkTexture(id);
+            var center = Align(origin + new float2(x * scale, y * scale));
             var cos = MathF.Cos(angle);
             var sin = MathF.Sin(angle);
             float2 Corner(float dx, float dy) => center + new float2(

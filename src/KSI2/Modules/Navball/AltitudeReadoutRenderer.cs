@@ -5,7 +5,7 @@ using KSA;
 
 namespace KSI2;
 
-internal sealed unsafe class AltitudeReadoutRenderer : IDisposable
+internal sealed unsafe class AltitudeReadoutRenderer
 {
     internal static readonly (string Id, string File)[] Assets =
     [
@@ -23,7 +23,6 @@ internal sealed unsafe class AltitudeReadoutRenderer : IDisposable
     private const uint UnitsTileTint = 0x70591E59u;
 
     private readonly Dictionary<string, TextureReference> _textures = new();
-    private readonly ReadoutArtworkFiltering _filtering = new();
     private AltitudeReadoutValue? _lastValue;
     private Vehicle? _selectedVehicle;
     private AltitudeReadoutMode _selectedMode;
@@ -36,9 +35,7 @@ internal sealed unsafe class AltitudeReadoutRenderer : IDisposable
     }
 
     private ImTextureRef GetArtworkTexture(string id)
-        => _filtering.GetPointTexture(_textures[id]);
-
-    public void Dispose() => _filtering.Dispose();
+        => _textures[id].ImguiTextureRef!.Value;
 
     internal void Draw(Point origin, float scale, bool allowInteraction)
     {

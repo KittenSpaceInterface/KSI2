@@ -8,6 +8,7 @@ internal sealed class PilotUiController : IDisposable
     private readonly LayoutEditor _editor;
     private readonly ThrottleModule _throttle;
     private readonly NavballModule _navball = new();
+    private readonly RightIndicatorsModule _rightIndicators = new();
     private readonly IPilotUiModule[] _modules;
     private readonly PilotUiLayer[] _layers;
     private readonly PilotLayoutDefinition[] _layoutDefinitions;
@@ -18,7 +19,7 @@ internal sealed class PilotUiController : IDisposable
     {
         _editor = new LayoutEditor(_settings.Settings, _settings.Save);
         _throttle = new ThrottleModule(_settings.Settings);
-        _modules = [_throttle, _navball, new RightIndicatorsModule()];
+        _modules = [_throttle, _navball, _rightIndicators];
         _layers = _modules.SelectMany(module => module.Layers)
             .OrderBy(layer => PilotLayoutConfig.Current.Order(layer.Order)).ToArray();
         if (_layers.Select(layer => PilotLayoutConfig.Current.Order(layer.Order)).Distinct().Count() != _layers.Length)
