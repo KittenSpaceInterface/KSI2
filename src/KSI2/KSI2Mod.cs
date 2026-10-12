@@ -46,8 +46,12 @@ public sealed class KSI2Mod
         RegisterTexture("KSI2ThrottleFill", tex => _gauge.SetFillTexture(tex));
         var navballTexture = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "navball", "[asset]");
         if (File.Exists(navballTexture))
-            RegisterTexture("KSI2NavballSurface", tex => _navballSpike.SetTexture(tex));
+            RegisterTexture("KSI2NavballSurface", tex => _navballSpike.SetSurfaceTexture(tex));
         var navballDirectory = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "navball");
+        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
+            RegisterTexture("KSI2NavballOrbit", tex => _navballSpike.SetOrbitTexture(tex));
+        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
+            RegisterTexture("KSI2NavballTargetMode", tex => _navballSpike.SetTargetModeTexture(tex));
         var fontsDirectory = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "fonts");
         if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
             RegisterTexture("KSI2NavballShadow", tex => _navballSpike.SetShadowTexture(tex));
@@ -124,7 +128,8 @@ public sealed class KSI2Mod
         var opacity = _gauge.BlurOpacity;
         _navballClusterBackground.Draw(blur, opacity);
         _gauge.Draw(GetPanelBlur);
-        _navballSpike.Draw();
+        _speedReadout.UpdateMode();
+        _navballSpike.Draw(_speedReadout.SelectedMode);
         _sideDials.Draw();
         _speedReadout.Draw();
         _headingDial.Draw();

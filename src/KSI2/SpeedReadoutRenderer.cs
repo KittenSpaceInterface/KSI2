@@ -21,7 +21,10 @@ internal sealed unsafe class SpeedReadoutRenderer
     private SpeedReadoutValue? _lastValue;
     private Vehicle? _selectedVehicle;
     private SpeedReadoutMode _selectedMode;
+    private VehicleReferenceFrame _lastFrame;
     private bool _hovered;
+
+    internal SpeedReadoutMode SelectedMode => _selectedMode;
 
 // FUTURE USE ONLY: keep this preview disabled in the flight screen. If an
 // advanced controls screen is added, it may call DrawFutureSpeedSelector and
@@ -38,7 +41,7 @@ internal sealed unsafe class SpeedReadoutRenderer
         _textures[id] = texture;
     }
 
-    internal void Draw()
+    internal void UpdateMode()
     {
         if (!KSA.Program.DrawUI)
         {
@@ -51,21 +54,22 @@ internal sealed unsafe class SpeedReadoutRenderer
             _hovered = false;
             return;
         }
+        var frame = vehicle.NavBallData.Frame;
+        if (!ReferenceEquals(_selectedVehicle, vehicle) || _lastFrame != frame)
+        {
+            _selectedVehicle = vehicle;
+            _lastFrame = frame;
+            _selectedMode = SpeedReadoutGeometry.Mode(frame, vehicle.Target is not null);
+            _lastValue = null;
+        }
+        if (_selectedMode == SpeedReadoutMode.Target && vehicle.Target is null)
+            _selectedMode = SpeedReadoutMode.Orbit;
         if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
             && texture.ImguiTextureRef is not null))
         {
             _hovered = false;
             return;
         }
-
-        if (!ReferenceEquals(_selectedVehicle, vehicle))
-        {
-            _selectedVehicle = vehicle;
-            _selectedMode = SpeedReadoutGeometry.Mode(vehicle.NavBallData.Frame, vehicle.Target is not null);
-            _lastValue = null;
-        }
-        if (_selectedMode == SpeedReadoutMode.Target && vehicle.Target is null)
-            _selectedMode = SpeedReadoutMode.Orbit;
 
         var viewport = ImGui.GetMainViewport();
         var cluster = NavballClusterLayout.Calculate(viewport.Pos.X, viewport.Pos.Y,
@@ -75,8 +79,7 @@ internal sealed unsafe class SpeedReadoutRenderer
         var y = origin.Y;
         var scale = cluster.Scale;
 
-        // The KSP2 ModeSwitch covers the complete side card. Keep speed mode
-        // independent from KSA's piloting reference frame.
+        // The KSP2 ModeSwitch covers the complete side card.
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new float2(0f, 0f));
         ImGui.SetNextWindowPos(new float2(x, y), ImGuiCond.Always);
         ImGui.SetNextWindowSize(new float2(86f * scale, 64f * scale), ImGuiCond.Always);
@@ -93,13 +96,37 @@ internal sealed unsafe class SpeedReadoutRenderer
             FlightUiSounds.Play("KSI2SpeedModeSelect");
             _selectedMode = _selectedMode switch
             {
-                SpeedReadoutMode.Orbit => SpeedReadoutMode.Surface,
-                SpeedReadoutMode.Surface when vehicle.Target is not null => SpeedReadoutMode.Target,
-                _ => SpeedReadoutMode.Orbit
+                SpeedReadoutMode.Surface => SpeedReadoutMode.Orbit,
+                SpeedReadoutMode.Orbit when vehicle.Target is not null => SpeedReadoutMode.Target,
+                _ => SpeedReadoutMode.Surface
             };
+            _lastFrame = _selectedMode switch
+            {
+                SpeedReadoutMode.Surface => VehicleReferenceFrame.EnuBody,
+                SpeedReadoutMode.Target => VehicleReferenceFrame.Dock,
+                _ => VehicleReferenceFrame.Lvlh
+            };
+            vehicle.SetNavBallFrame(_lastFrame);
         }
         ImGui.End();
         ImGui.PopStyleVar();
+    }
+
+    internal void Draw()
+    {
+        if (!KSA.Program.DrawUI) return;
+        var vehicle = KSA.Program.ControlledVehicle;
+        if (vehicle is null || vehicle.IsDisposed) return;
+        if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
+            && texture.ImguiTextureRef is not null)) return;
+
+        var viewport = ImGui.GetMainViewport();
+        var cluster = NavballClusterLayout.Calculate(viewport.Pos.X, viewport.Pos.Y,
+            viewport.Size.X, viewport.Size.Y);
+        var origin = SpeedReadoutGeometry.TopLeft(cluster);
+        var x = origin.X;
+        var y = origin.Y;
+        var scale = cluster.Scale;
 
         var mode = _selectedMode;
 #if KSI2_FUTURE_SPEED_CONTROL_SCREEN
@@ -113,6 +140,12 @@ internal sealed unsafe class SpeedReadoutRenderer
 
         var draw = ImGui.GetForegroundDrawList(viewport);
 
+        // The authored frame has a transparent center; the visible KSP2 card
+        // has a black backing that covers the rotating dial labels beneath it.
+        var fillMin = new float2(x + 3f * scale, y + 3f * scale);
+        var fillMax = new float2(x + 83f * scale, y + 61f * scale);
+        ImGui.PInvoke.ImDrawList_AddRectFilled(draw.Ptr, &fillMin, &fillMax,
+            0xFF000000u, 0f, ImDrawFlags.None);
         // The authored BG is a sliced Image with 14/62/19/62 source-pixel borders.
         DrawNineSlice("KSI2SpeedBackground", x, y, 86f, 64f, 0xFF00ABCCu);
         // The title's black label overlays and interrupts the left frame line.

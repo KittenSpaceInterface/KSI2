@@ -11,28 +11,30 @@ namespace KSI2;
 internal sealed unsafe class NavballTextureFiltering : IDisposable
 {
     private VkSampler _sampler;
-    private ImTextureRef? _texture;
-    private bool _attempted;
+    private readonly Dictionary<TextureReference, ImTextureRef> _textures = new();
+    private bool _unavailable;
 
     internal ImTextureRef GetTexture(TextureReference source)
     {
-        if (_texture is { } texture) return texture;
-        if (_attempted) return source.ImguiTextureRef!.Value;
-        _attempted = true;
+        if (_textures.TryGetValue(source, out var texture)) return texture;
+        if (_unavailable) return source.ImguiTextureRef!.Value;
         var renderer = KSA.Program.GetRenderer();
         try
         {
-            var settings = CreateSamplerSettings(renderer.GetFeatures().SamplerAnisotropy,
-                renderer.GetLimits().MaxSamplerAnisotropy);
-            _sampler = renderer.Device.CreateSampler(in settings, null);
-            _texture = ImGuiBackend.Vulkan.AddTexture(_sampler, source.ImageView);
-            Console.WriteLine($"KSI2: navball mip filtering enabled, anisotropy {settings.MaxAnisotropy}x.");
-            return _texture.Value;
+            if (!_sampler.IsNotNull())
+            {
+                var settings = CreateSamplerSettings(renderer.GetFeatures().SamplerAnisotropy,
+                    renderer.GetLimits().MaxSamplerAnisotropy);
+                _sampler = renderer.Device.CreateSampler(in settings, null);
+                Console.WriteLine($"KSI2: navball mip filtering enabled, anisotropy {settings.MaxAnisotropy}x.");
+            }
+            texture = ImGuiBackend.Vulkan.AddTexture(_sampler, source.ImageView);
+            _textures.Add(source, texture);
+            return texture;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            if (_sampler.IsNotNull()) renderer.Device.DestroySampler(_sampler, null);
-            _sampler = default;
+            _unavailable = true;
             Console.Error.WriteLine($"KSI2: navball filtering unavailable; using UI sampler: {ex.Message}");
             return source.ImguiTextureRef!.Value;
         }
@@ -48,13 +50,13 @@ internal sealed unsafe class NavballTextureFiltering : IDisposable
 
     public void Dispose()
     {
-        if (_texture is null && !_sampler.IsNotNull()) return;
+        if (_textures.Count == 0 && !_sampler.IsNotNull()) return;
         var device = KSA.Program.GetRenderer().Device;
         // Submitted ImGui frames can still reference our descriptor and sampler.
         device.WaitIdle();
-        if (_texture is { } texture) ImGuiBackend.Vulkan.RemoveTexture(texture);
+        foreach (var texture in _textures.Values) ImGuiBackend.Vulkan.RemoveTexture(texture);
         if (_sampler.IsNotNull()) device.DestroySampler(_sampler, null);
-        _texture = null;
+        _textures.Clear();
         _sampler = default;
     }
 }
