@@ -6,11 +6,12 @@ internal readonly record struct ThrottleBounds(Point Position, Point InitialPosi
 internal static class ThrottleLayout
 {
     internal static ThrottleBounds Calculate(float viewportX, float viewportY,
-        float width, float height, PilotUiSettings settings)
+        float width, float height, Point scaleViewport, PilotUiSettings settings)
     {
         var node = PilotLayoutConfig.Current.Node("throttle");
         var designSize = PilotLayoutConfig.Current.DesignSize;
-        var scale = MathF.Min(width / designSize[0], height / designSize[1]) * settings.Scale;
+        var scale = MathF.Min(scaleViewport.X / designSize[0],
+            scaleViewport.Y / designSize[1]) * settings.Scale;
         scale = MathF.Min(scale, MathF.Min(width / node.Size[0], height / node.Size[1]));
         var frameWidth = node.Size[0] * scale;
         var frameHeight = node.Size[1] * scale;

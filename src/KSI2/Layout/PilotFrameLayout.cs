@@ -41,11 +41,16 @@ internal readonly record struct PilotFrameLayout(
 
     internal static PilotFrameLayout Resolve(float viewportX, float viewportY, float width, float height,
         PilotUiSettings settings, IReadOnlyList<PilotLayoutDefinition> definitions)
+        => Resolve(viewportX, viewportY, width, height, new Point(width, height), settings, definitions);
+
+    internal static PilotFrameLayout Resolve(float viewportX, float viewportY, float width, float height,
+        Point scaleViewport, PilotUiSettings settings, IReadOnlyList<PilotLayoutDefinition> definitions)
     {
-        var throttle = ThrottleLayout.Calculate(viewportX, viewportY, width, height, settings);
+        var throttle = ThrottleLayout.Calculate(viewportX, viewportY, width, height, scaleViewport, settings);
         var config = PilotLayoutConfig.Current;
         var root = config.Node("navball-cluster");
-        var scale = MathF.Min(width / config.DesignSize[0], height / config.DesignSize[1]) * settings.Scale;
+        var scale = MathF.Min(scaleViewport.X / config.DesignSize[0],
+            scaleViewport.Y / config.DesignSize[1]) * settings.Scale;
         scale = MathF.Min(scale, MathF.Min(width / root.Size[0], height / root.Size[1]));
         var availableX = MathF.Max(0, width - root.Size[0] * scale);
         var availableY = MathF.Max(0, height - root.Size[1] * scale);

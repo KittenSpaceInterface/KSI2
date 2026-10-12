@@ -47,8 +47,9 @@ internal sealed class PilotUiController : IDisposable
         _throttle.UpdateSnapshot();
         _settings.DrawWindow(_throttle.UiState, _editor, _throttle.CancelInteraction);
         _navball.SetStatusIconMipmaps(_settings.Settings.StatusIconMipmaps);
+        var scaleViewport = PilotScaleViewport.Resolve(viewport.Size.X, viewport.Size.Y);
         var layout = PilotFrameLayout.Resolve(viewport.Pos.X, viewport.Pos.Y,
-            viewport.Size.X, viewport.Size.Y, _settings.Settings, _layoutDefinitions);
+            viewport.Size.X, viewport.Size.Y, scaleViewport, _settings.Settings, _layoutDefinitions);
         var mode = _settings.Settings.Editing ? PilotInteractionMode.LayoutEditing : PilotInteractionMode.Instruments;
         var blur = _settings.BlurPanelBackgrounds ? GetPanelBlur() : null;
         var context = new PilotRenderContext(mode, blur, _settings.BlurOpacity, dt);
