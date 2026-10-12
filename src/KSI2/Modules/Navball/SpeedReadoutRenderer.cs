@@ -5,7 +5,7 @@ using KSA;
 
 namespace KSI2;
 
-internal sealed unsafe class SpeedReadoutRenderer
+internal sealed unsafe class SpeedReadoutRenderer : IDisposable
 {
     internal static readonly (string Id, string File)[] Assets =
     [
@@ -18,6 +18,7 @@ internal sealed unsafe class SpeedReadoutRenderer
     ];
 
     private readonly Dictionary<string, TextureReference> _textures = new();
+    private readonly ReadoutArtworkFiltering _filtering = new();
     private SpeedReadoutValue? _lastValue;
     private readonly SpeedModeState _modeState = new();
     private bool _hovered;
@@ -39,6 +40,11 @@ internal sealed unsafe class SpeedReadoutRenderer
     {
         _textures[id] = texture;
     }
+
+    private ImTextureRef GetArtworkTexture(string id)
+        => _filtering.GetPointTexture(_textures[id]);
+
+    public void Dispose() => _filtering.Dispose();
 
     internal void ObserveMode()
     {
@@ -117,8 +123,8 @@ internal sealed unsafe class SpeedReadoutRenderer
 
         // The authored frame has a transparent center; the visible KSP2 card
         // has a black backing that covers the rotating dial labels beneath it.
-        var fillMin = new float2(x + 3f * scale, y + 3f * scale);
-        var fillMax = new float2(x + 83f * scale, y + 61f * scale);
+        var fillMin = NavballPixelAlignment.Snap(new float2(x + 3f * scale, y + 3f * scale));
+        var fillMax = NavballPixelAlignment.Snap(new float2(x + 83f * scale, y + 61f * scale));
         ImGui.PInvoke.ImDrawList_AddRectFilled(draw.Ptr, &fillMin, &fillMax,
             0xFF000000u, 0f, ImDrawFlags.None);
         // The authored BG is a sliced Image with 14/62/19/62 source-pixel borders.
@@ -154,9 +160,9 @@ internal sealed unsafe class SpeedReadoutRenderer
 
         void DrawImage(string id, float left, float top, float width, float height, uint tint)
         {
-            var texture = _textures[id].ImguiTextureRef!.Value;
-            var min = new float2(left, top);
-            var max = new float2(left + width, top + height);
+            var texture = GetArtworkTexture(id);
+            var min = NavballPixelAlignment.Snap(new float2(left, top));
+            var max = NavballPixelAlignment.Snap(new float2(left + width, top + height));
             var uvMin = new float2(0f, 0f);
             var uvMax = new float2(1f, 1f);
             ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, texture,
@@ -166,14 +172,17 @@ internal sealed unsafe class SpeedReadoutRenderer
         void DrawTiledImage(string id, float left, float top, float width, float height,
             float tileWidth, float tileHeight, uint tint)
         {
-            var texture = _textures[id].ImguiTextureRef!.Value;
+            var texture = GetArtworkTexture(id);
             for (var row = 0f; row < height; row += tileHeight)
             for (var column = 0f; column < width; column += tileWidth)
             {
                 var drawWidth = MathF.Min(tileWidth, width - column);
                 var drawHeight = MathF.Min(tileHeight, height - row);
-                var min = new float2(left + column * scale, top + row * scale);
-                var max = min + new float2(drawWidth * scale, drawHeight * scale);
+                var min = NavballPixelAlignment.Snap(new float2(
+                    left + column * scale, top + row * scale));
+                var max = NavballPixelAlignment.Snap(new float2(
+                    left + (column + drawWidth) * scale,
+                    top + (row + drawHeight) * scale));
                 var uvMin = new float2(0f, 0f);
                 var uvMax = new float2(drawWidth / tileWidth, drawHeight / tileHeight);
                 ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, texture,
@@ -183,7 +192,7 @@ internal sealed unsafe class SpeedReadoutRenderer
 
         void DrawNineSlice(string id, float left, float top, float width, float height, uint tint)
         {
-            var texture = _textures[id].ImguiTextureRef!.Value;
+            var texture = GetArtworkTexture(id);
             ReadOnlySpan<float> sourceX = [0f, 14f, 158f, 177f];
             ReadOnlySpan<float> sourceY = [0f, 62f, 66f, 128f];
             ReadOnlySpan<float> destinationX = [left, left + 7f * scale,
@@ -193,8 +202,10 @@ internal sealed unsafe class SpeedReadoutRenderer
             for (var row = 0; row < 3; row++)
             for (var column = 0; column < 3; column++)
             {
-                var min = new float2(destinationX[column], destinationY[row]);
-                var max = new float2(destinationX[column + 1], destinationY[row + 1]);
+                var min = NavballPixelAlignment.Snap(new float2(
+                    destinationX[column], destinationY[row]));
+                var max = NavballPixelAlignment.Snap(new float2(
+                    destinationX[column + 1], destinationY[row + 1]));
                 var uvMin = new float2(sourceX[column] / 177f, sourceY[row] / 128f);
                 var uvMax = new float2(sourceX[column + 1] / 177f, sourceY[row + 1] / 128f);
                 ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, texture,

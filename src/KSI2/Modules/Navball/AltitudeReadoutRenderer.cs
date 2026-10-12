@@ -1,12 +1,11 @@
 using System.Globalization;
 using Brutal.ImGuiApi;
 using Brutal.Numerics;
-using Brutal.TextureApi;
 using KSA;
 
 namespace KSI2;
 
-internal sealed unsafe class AltitudeReadoutRenderer
+internal sealed unsafe class AltitudeReadoutRenderer : IDisposable
 {
     internal static readonly (string Id, string File)[] Assets =
     [
@@ -24,6 +23,7 @@ internal sealed unsafe class AltitudeReadoutRenderer
     private const uint UnitsTileTint = 0x70591E59u;
 
     private readonly Dictionary<string, TextureReference> _textures = new();
+    private readonly ReadoutArtworkFiltering _filtering = new();
     private AltitudeReadoutValue? _lastValue;
     private Vehicle? _selectedVehicle;
     private AltitudeReadoutMode _selectedMode;
@@ -34,6 +34,11 @@ internal sealed unsafe class AltitudeReadoutRenderer
     {
         _textures[id] = texture;
     }
+
+    private ImTextureRef GetArtworkTexture(string id)
+        => _filtering.GetPointTexture(_textures[id]);
+
+    public void Dispose() => _filtering.Dispose();
 
     internal void Draw(Point origin, float scale, bool allowInteraction)
     {
@@ -132,9 +137,9 @@ internal sealed unsafe class AltitudeReadoutRenderer
 
         void DrawImage(string id, float left, float top, float width, float height, uint tint)
         {
-            var texture = _textures[id].ImguiTextureRef!.Value;
-            var min = new float2(left, top);
-            var max = new float2(left + width, top + height);
+            var texture = GetArtworkTexture(id);
+            var min = NavballPixelAlignment.Snap(new float2(left, top));
+            var max = NavballPixelAlignment.Snap(new float2(left + width, top + height));
             var uvMin = new float2(0f, 0f);
             var uvMax = new float2(1f, 1f);
             ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, texture,
@@ -144,14 +149,15 @@ internal sealed unsafe class AltitudeReadoutRenderer
         void DrawTiledImage(string id, float left, float top, float width, float height,
             float tileWidth, float tileHeight, uint tint)
         {
-            var texture = _textures[id].ImguiTextureRef!.Value;
+            var texture = GetArtworkTexture(id);
             for (var row = 0f; row < height; row += tileHeight)
             for (var column = 0f; column < width; column += tileWidth)
             {
                 var drawWidth = MathF.Min(tileWidth, width - column);
                 var drawHeight = MathF.Min(tileHeight, height - row);
-                var min = new float2(left + column * scale, top + row * scale);
-                var max = min + new float2(drawWidth * scale, drawHeight * scale);
+                var min = NavballPixelAlignment.Snap(new float2(left + column * scale, top + row * scale));
+                var max = NavballPixelAlignment.Snap(new float2(left + (column + drawWidth) * scale,
+                    top + (row + drawHeight) * scale));
                 var uvMin = new float2(0f, 0f);
                 var uvMax = new float2(drawWidth / tileWidth, drawHeight / tileHeight);
                 ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, texture,
@@ -161,7 +167,7 @@ internal sealed unsafe class AltitudeReadoutRenderer
 
         void DrawNineSlice(string id, float left, float top, float width, float height, uint tint)
         {
-            var texture = _textures[id].ImguiTextureRef!.Value;
+            var texture = GetArtworkTexture(id);
             // BG-Readout has a 180-degree Y rotation in GRP-ALT, mirroring
             // the asymmetric source border and all of its line artwork.
             ReadOnlySpan<float> sourceX = [177f, 158f, 14f, 0f];
@@ -173,8 +179,8 @@ internal sealed unsafe class AltitudeReadoutRenderer
             for (var row = 0; row < 3; row++)
             for (var column = 0; column < 3; column++)
             {
-                var min = new float2(destinationX[column], destinationY[row]);
-                var max = new float2(destinationX[column + 1], destinationY[row + 1]);
+                var min = NavballPixelAlignment.Snap(new float2(destinationX[column], destinationY[row]));
+                var max = NavballPixelAlignment.Snap(new float2(destinationX[column + 1], destinationY[row + 1]));
                 var uvMin = new float2(sourceX[column] / 177f, sourceY[row] / 128f);
                 var uvMax = new float2(sourceX[column + 1] / 177f, sourceY[row + 1] / 128f);
                 ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, texture,
