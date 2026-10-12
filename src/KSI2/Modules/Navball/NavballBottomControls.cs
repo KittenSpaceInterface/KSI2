@@ -63,7 +63,7 @@ internal sealed unsafe class NavballBottomControls
         }
     }
 
-    internal void ProcessInteraction(NavballClusterBounds cluster, bool allowInteraction)
+    internal void ProcessInteraction(PilotComponentBounds cluster, bool allowInteraction)
     {
         if (!KSA.Program.DrawUI || !allowInteraction)
         {
@@ -78,8 +78,8 @@ internal sealed unsafe class NavballBottomControls
         }
 
         var scale = cluster.Scale;
-        var x = cluster.Min.X;
-        var y = cluster.Min.Y;
+        var x = cluster.Position.X;
+        var y = cluster.Position.Y;
 
         // The two outer prefab widgets are 48x48, 63/189 px from the cluster
         // left and 240 px from its top. The middle status images are 24x24.
@@ -114,15 +114,15 @@ internal sealed unsafe class NavballBottomControls
         }
     }
 
-    internal void Draw(NavballClusterBounds cluster, double dt)
+    internal void Draw(PilotComponentBounds cluster, double dt)
     {
         if (!KSA.Program.DrawUI) return;
         var vehicle = KSA.Program.ControlledVehicle;
         if (vehicle is null || vehicle.IsDisposed) return;
         var viewport = ImGui.GetMainViewport();
         var scale = cluster.Scale;
-        var x = cluster.Min.X;
-        var y = cluster.Min.Y;
+        var x = cluster.Position.X;
+        var y = cluster.Position.Y;
         var rcsTopLeft = new float2(x + 63f * scale, y + 240f * scale);
         var sasTopLeft = new float2(x + 189f * scale, y + 240f * scale);
         var rcsOn = vehicle.FlightComputer.RCSMode == FlightComputerRCSMode.Enabled;

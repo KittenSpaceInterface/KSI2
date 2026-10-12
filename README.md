@@ -36,6 +36,13 @@ and adjust its scale and position.
 **Edit layout** offers a display-only throttle preview. Settings are saved
 beside the mod.
 
+The default instrument positions and draw order are in
+`ksi2.layout.defaults.json`. To keep personal adjustments across installs,
+place a sparse `ksi2.layout.json` beside the mod DLL; see
+[`docs/pilot-layout-json.md`](docs/pilot-layout-json.md). KSI2 reads these files
+when it starts. The in-game combined drag still saves its position in
+`ksi2.settings.json`.
+
 The **Experimental** setting **Blur panel backgrounds** covers the four flight
 panel backings. Its switch and opacity are saved in `ksi2.settings.json`. If
 KSA exits unexpectedly while blur is enabled, KSI2 turns it off on the next
@@ -70,6 +77,7 @@ Copy these files from the Release output:
 - `KSI2.deps.json`
 - `mod.toml`
 - `KSI2Assets.xml`
+- `ksi2.layout.defaults.json`
 - `assets/` (the complete folder)
 
 Enable `KSI2` in KSA's user `manifest.toml`, then open the game through StarMap. Current StarMap versions look for installed mods and show them when the game opens. If StarMap does not recognize the mod automatically, check that `KSI2` is in the user manifest and installed under the user `mods/` directory.

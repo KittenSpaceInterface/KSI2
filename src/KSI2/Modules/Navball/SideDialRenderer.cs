@@ -29,7 +29,7 @@ internal sealed unsafe class SideDialRenderer
 
     internal void SetTexture(string id, TextureReference texture) => _textures[id] = texture;
 
-    internal void Draw(NavballClusterBounds bounds)
+    internal void Draw(PilotComponentBounds bounds)
     {
         if (!KSA.Program.DrawUI) return;
         var vehicle = KSA.Program.ControlledVehicle;
@@ -41,7 +41,8 @@ internal sealed unsafe class SideDialRenderer
             && texture.ImguiTextureRef is not null)) return;
 
         var viewport = ImGui.GetMainViewport();
-        var center = new float2(bounds.Center.X, bounds.Center.Y);
+        var center = new float2(bounds.Position.X + bounds.Width * bounds.Scale / 2f,
+            bounds.Position.Y + bounds.Height * bounds.Scale / 2f);
         var scale = bounds.Scale;
         var draw = ImGui.GetForegroundDrawList(viewport);
         var speed = (float)vehicle.NavBallData.Speed;

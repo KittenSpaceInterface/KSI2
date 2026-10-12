@@ -1,0 +1,32 @@
+{
+  "designSize": [1920, 1080],
+  "elements": {
+    "throttle": {
+      "anchor": "viewport-bottom-left",
+      "offset": [24, -24],
+      "size": [175, 318],
+      "z": 1100
+    },
+    "navball-cluster": {
+      "anchor": "viewport-bottom-left",
+      "offset": [112.85, -33.05],
+      "size": [300, 300],
+      "children": {
+        "cluster-background": { "offset": [0, 0], "size": [300, 300], "z": 1000 },
+        "navball-sphere": { "offset": [62, 62], "size": [176, 176], "z": 1200 },
+        "side-dials": { "offset": [2, 2], "size": [296, 296], "z": 1300 },
+        "speed-card": { "offset": [-37, 118], "size": [86, 64], "z": 1400 },
+        "heading-dial": {
+          "offset": [2, 2], "size": [296, 296], "z": 1500,
+          "children": {
+            "heading-readout": { "offset": [117, -24], "size": [62, 40], "z": 1501 }
+          }
+        },
+        "atmosphere": { "offset": [279, 155], "size": [85, 140], "z": 1600 },
+        "vertical-speed": { "offset": [279, 7], "size": [85, 140], "z": 1700 },
+        "altitude-card": { "offset": [251, 118], "size": [86, 64], "z": 1800 },
+        "bottom-controls": { "offset": [0, 0], "size": [300, 300], "z": 1900 }
+      }
+    }
+  }
+}

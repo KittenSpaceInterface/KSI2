@@ -11,8 +11,6 @@ internal sealed unsafe class HeadingDialRenderer
 {
     private const float DialSize = 296f;
     private const float SourceSize = 592f;
-    private const float ReadoutWidth = 62f;
-    private const float ReadoutHeight = 40f;
 
     internal static readonly (string Id, string File)[] Assets =
     [
@@ -33,17 +31,30 @@ internal sealed unsafe class HeadingDialRenderer
 
     internal void SetTexture(string id, TextureReference texture) => _textures[id] = texture;
 
-    internal void Draw(NavballClusterBounds bounds)
+    internal void DrawDial(PilotComponentBounds bounds) => Draw(bounds, readout: false);
+
+    internal void DrawReadout(PilotComponentBounds bounds) => Draw(bounds, readout: true);
+
+    private void Draw(PilotComponentBounds bounds, bool readout)
     {
         if (!KSA.Program.DrawUI || !TryReadHeading(out var heading)) return;
         if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
             && texture.ImguiTextureRef is not null)) return;
-        if (!EnsureMask()) return;
+        if (!readout && !EnsureMask()) return;
 
         var viewport = ImGui.GetMainViewport();
-        var center = new float2(bounds.Center.X, bounds.Center.Y);
+        var center = new float2(bounds.Position.X + bounds.Width * bounds.Scale / 2f,
+            bounds.Position.Y + bounds.Height * bounds.Scale / 2f);
         var scale = bounds.Scale;
         var draw = ImGui.GetForegroundDrawList(viewport);
+
+        if (readout)
+        {
+            DrawImage("KSI2HeadingReadout", bounds.Position.X, bounds.Position.Y,
+                bounds.Width, bounds.Height, 0xFFCC5753u);
+            DrawValue(heading, bounds.Position.X, bounds.Position.Y);
+            return;
+        }
 
         // The two background Images and the rotating dial are children of
         // DialMask. KSP2's UI stencil displays only the mask sprite's top arc.
@@ -57,11 +68,6 @@ internal sealed unsafe class HeadingDialRenderer
         // These siblings sit above the mask and do not rotate with the dial.
         DrawImage("KSI2HeadingFrame", center.X - DialSize * scale / 2f,
             center.Y - DialSize * scale / 2f, DialSize, DialSize, 0xFF99413Eu);
-        var readoutX = center.X - ReadoutWidth * scale / 2f;
-        var readoutY = center.Y - (132f + ReadoutHeight) * scale;
-        DrawImage("KSI2HeadingReadout", readoutX, readoutY,
-            ReadoutWidth, ReadoutHeight, 0xFFCC5753u);
-        DrawValue(heading, readoutX, readoutY);
 
         void DrawMasked(string id, uint tint, float rotation)
         {
@@ -113,7 +119,7 @@ internal sealed unsafe class HeadingDialRenderer
                 var size = 26f * scale;
                 var width = ImGui.PInvoke.ImFont_CalcTextSizeA(font.Ptr,
                     size, 1000f, -1f, text, text + bytes.Length, null).X;
-                var position = new float2(x + (ReadoutWidth * scale - width) / 2f,
+                var position = new float2(x + (bounds.Width * scale - width) / 2f,
                     y + 4f * scale);
                 ImGui.PInvoke.ImDrawList_AddText_1(draw.Ptr, font.Ptr, size,
                     &position, 0xFFFFDFD5u, text, text + bytes.Length, 0f, null);

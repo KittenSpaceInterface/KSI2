@@ -12,14 +12,13 @@ internal sealed unsafe class NavballClusterBackground
     internal void SetBackgroundTexture(TextureReference texture) => _backgroundTexture = texture;
     internal void SetBorderTexture(TextureReference texture) => _borderTexture = texture;
 
-    internal void Draw(NavballClusterBounds bounds, PanelBackgroundBlur? blur, float opacity)
+    internal void Draw(PilotComponentBounds bounds, PanelBackgroundBlur? blur, float opacity)
     {
         if (!KSA.Program.DrawUI || _backgroundTexture?.ImguiTextureRef is not { } background) return;
 
         var viewport = ImGui.GetMainViewport();
-        var size = bounds.PanelSize;
-        var min = new float2(bounds.Min.X, bounds.Min.Y);
-        var max = min + new float2(size, size);
+        var min = new float2(bounds.Position.X, bounds.Position.Y);
+        var max = new float2(bounds.Max.X, bounds.Max.Y);
         var uvMin = new float2(0f, 0f);
         var uvMax = new float2(1f, 1f);
         var draw = ImGui.GetForegroundDrawList(viewport);

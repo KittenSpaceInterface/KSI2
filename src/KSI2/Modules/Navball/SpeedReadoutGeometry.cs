@@ -12,9 +12,12 @@ internal static class SpeedReadoutGeometry
     internal const float Width = 86f;
     internal const float Height = 64f;
 
-    internal static Point TopLeft(NavballClusterBounds cluster) => new(
-        cluster.Center.X - 187f * cluster.Scale,
-        cluster.Center.Y - 32f * cluster.Scale);
+    internal static Point TopLeft(NavballClusterBounds cluster)
+    {
+        var offset = PilotLayoutConfig.Current.Node("speed-card").Offset;
+        return new(cluster.Min.X + offset[0] * cluster.Scale,
+            cluster.Min.Y + offset[1] * cluster.Scale);
+    }
 
     internal static SpeedReadoutMode Mode(VehicleReferenceFrame frame, bool hasTarget) => frame switch
     {

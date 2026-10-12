@@ -12,12 +12,12 @@ internal static class AltitudeReadoutGeometry
     internal const float Width = 86f;
     internal const float Height = 64f;
 
-    // KSP2 authors the active altitude card 101 UI units to the right of the
-    // shared cluster center. NavballClusterLayout already applies the live
-    // viewport scale and current cluster placement.
-    internal static Point TopLeft(NavballClusterBounds cluster) => new(
-        cluster.Center.X + 101f * cluster.Scale,
-        cluster.Center.Y - 32f * cluster.Scale);
+    internal static Point TopLeft(NavballClusterBounds cluster)
+    {
+        var offset = PilotLayoutConfig.Current.Node("altitude-card").Offset;
+        return new(cluster.Min.X + offset[0] * cluster.Scale,
+            cluster.Min.Y + offset[1] * cluster.Scale);
+    }
 
     // KSA's active ENU frame supplies radar altitude. All other active frames
     // currently supply barometric altitude in NavBallData.Altitude.
