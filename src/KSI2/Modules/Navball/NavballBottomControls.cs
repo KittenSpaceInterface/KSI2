@@ -147,6 +147,7 @@ internal sealed unsafe class NavballBottomControls
                     ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing |
                     ImGuiWindowFlags.NoNavInputs;
         ImGui.Begin($"##KSI2-{label}", flags);
+        PilotImGui.BringCurrentWindowToFront();
         var clicked = ImGui.InvisibleButton($"##{label}", size);
         var hovered = ImGui.IsItemHovered();
         var pressed = ImGui.IsItemActive() && ImGui.IsMouseDown(ImGuiMouseButton.Left);

@@ -149,6 +149,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
                     ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
                     ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
         ImGui.Begin("##KSI2-ThrottleDrag", flags);
+        PilotImGui.BringCurrentWindowToFront();
         ImGui.InvisibleButton("##handle", new float2(hitRadius * 2, hitRadius * 2));
         var active = ImGui.IsItemActive() && ImGui.IsMouseDown(ImGuiMouseButton.Left);
         var mouse = ImGui.GetMousePos();
