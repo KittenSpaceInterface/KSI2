@@ -28,18 +28,11 @@ internal sealed class PilotSettingsController : IDisposable
         if (ImGui.Checkbox("Edit layout", ref editing))
         {
             _settings.Editing = editing;
-            if (!editing) { editor.Cancel(); throttle.UsePreview = false; Save(); }
+            if (!editing) { editor.Cancel(); Save(); }
         }
         var scale = _settings.Scale;
         if (ImGui.SliderFloat("Scale", ref scale, 0.5f, 2f, "%.2fx")) _settings.Scale = scale;
         if (ImGui.IsItemDeactivatedAfterEdit()) Save();
-        if (_settings.Editing)
-        {
-            if (ImGui.SliderFloat("Preview throttle (0-100)", ref throttle.PreviewPercent, 0f, 100f, "%.0f"))
-                throttle.UsePreview = true;
-            ImGui.Checkbox("Preview throttle", ref throttle.UsePreview);
-        }
-
         if (ImGui.Button("Reset layout"))
         {
             editor.Cancel();
@@ -71,7 +64,9 @@ internal sealed class PilotSettingsController : IDisposable
         }
         if (throttle.MouseUnavailableReason is { } reason)
             ImGui.TextWrapped($"Mouse throttle control unavailable until restart: {reason}");
-        ImGui.Text(_settings.Editing && throttle.UsePreview ? $"Preview throttle: {throttle.PreviewPercent:0}" : (throttle.Snapshot is { } value ? $"Live manual throttle: {ThrottleGeometry.Percent(value.Value)}" : "No controlled vehicle"));
+        ImGui.Text(throttle.Snapshot is { } value
+            ? $"Live manual throttle: {ThrottleGeometry.Percent(value.Value)}"
+            : "No controlled vehicle");
         if (_settings.Editing)
         {
             var io = ImGui.GetIO();
