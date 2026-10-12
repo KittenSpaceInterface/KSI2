@@ -17,11 +17,18 @@ Deferred experimental controls and panel blur are recorded in
 
 ## Build
 
-Local builds use KSA reference assemblies from an `Import` directory next to this repository. To use a different directory, change the default `KsaReferencePath` in [`Directory.Build.props`](Directory.Build.props) at the repository root, or pass it as an MSBuild property, for example `-p:KsaReferencePath="D:\path\to\KSA\assemblies"`.
+`Directory.Build.props` defaults `KsaReferencePath` to an `Import` directory one level above this repository. In this workspace that resolves to `D:\ksi-project\Import`; if it is absent, the build reports that KSA reference assemblies were not found. Point `KsaReferencePath` at the local KSA installation directory containing `KSA.dll` and the `Brutal.*.dll` assemblies; avoid copying these proprietary game assemblies into the repository.
 
 ```shell
 dotnet restore KSI2.sln
 dotnet build KSI2.sln --configuration Release --no-restore
+```
+
+When the assemblies are elsewhere, pass their directory as an MSBuild property:
+
+```powershell
+dotnet restore KSI2.sln -p:KsaReferencePath="C:\path\to\Kitten Space Agency"
+dotnet build KSI2.sln --configuration Release --no-restore -p:KsaReferencePath="C:\path\to\Kitten Space Agency"
 ```
 
 Build output is written to `src/KSI2/bin/Release/net10.0`.
