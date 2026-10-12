@@ -38,4 +38,28 @@ internal static class PilotImGui
         ImGui.End();
         ImGui.PopStyleVar();
     }
+
+    internal static bool BeginControlCanvas(string name, float2 position, float2 size, bool acceptsInput)
+    {
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, float2.Zero);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
+        ImGui.SetNextWindowViewport(ImGui.GetMainViewport().ID);
+        ImGui.SetNextWindowPos(position, ImGuiCond.Always);
+        ImGui.SetNextWindowSize(size, ImGuiCond.Always);
+        var flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize |
+                    ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar |
+                    ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
+                    ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing |
+                    ImGuiWindowFlags.NoNavInputs;
+        if (!acceptsInput) flags |= ImGuiWindowFlags.NoInputs;
+        var visible = ImGui.Begin(name, flags);
+        PlaceCurrentWindow();
+        return visible;
+    }
+
+    internal static void EndControlCanvas()
+    {
+        ImGui.End();
+        ImGui.PopStyleVar(2);
+    }
 }

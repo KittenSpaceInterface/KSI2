@@ -30,21 +30,6 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         _uiState.MouseUnavailableReason = _mouseControl.UnavailableReason;
     }
 
-    internal void ProcessInteraction(ThrottleBounds layout, bool allowInteraction)
-    {
-        if (_disposed || !KSA.Program.DrawUI || !_settings.Show || !_settings.MouseThrottleControl ||
-            !allowInteraction || _uiState.Snapshot is null ||
-            !ThrottleMouseController.CanControl(KSA.Program.ControlledVehicle))
-        {
-            _mouseControl.Cancel();
-            return;
-        }
-        EnsureArtwork();
-        if (_artwork is null) { _mouseControl.Cancel(); return; }
-        HandleThrottleDrag(new Point(layout.Position.X + 25f * layout.Scale,
-            layout.Position.Y + 14f * layout.Scale), layout.Scale, _uiState.Snapshot.Value.Value);
-    }
-
     internal ThrottleGauge(PilotUiSettings settings, ThrottleUiState uiState)
     {
         _settings = settings;
@@ -59,18 +44,20 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     internal void SetPercentGlyphTexture(TextureReference texture) => _percentGlyphTexture = texture;
     internal void SetFillTexture(TextureReference texture) => _fillTexture = texture;
 
-    internal void Draw(ThrottleBounds layout, PanelBackgroundBlur? blur, float blurOpacity)
+    internal void Draw(ThrottleBounds layout, PanelBackgroundBlur? blur, float blurOpacity,
+        bool allowInteraction)
     {
         if (_disposed || ImGui.GetCurrentContext().IsNull() || !KSA.Program.DrawUI)
         {
             _mouseControl.Cancel();
             return;
         }
-        if (!_settings.Show) return;
+        if (!_settings.Show) { _mouseControl.Cancel(); return; }
         var throttle = _uiState.Snapshot?.Value;
-        if (throttle is null) return;
+        if (throttle is null) { _mouseControl.Cancel(); return; }
         EnsureArtwork();
-        if (_artwork is not null) DrawGauge(throttle.Value, layout, blur, blurOpacity);
+        if (_artwork is not null) DrawGauge(throttle.Value, layout, blur, blurOpacity,
+            allowInteraction);
         else _mouseControl.Cancel();
     }
 
@@ -94,7 +81,8 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         }
     }
 
-    private void DrawGauge(float throttle, ThrottleBounds layout, PanelBackgroundBlur? blur, float blurOpacity)
+    private void DrawGauge(float throttle, ThrottleBounds layout, PanelBackgroundBlur? blur,
+        float blurOpacity, bool allowInteraction)
     {
         var scale = layout.Scale;
         var frame = layout.Position;
@@ -117,52 +105,59 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         else
             art.DrawFill(draw, origin, scale, throttle);
         DrawPercentGlyph(draw, _percentGlyphTexture, art, origin, scale, throttle);
-        var pose = ThrottleGeometry.Handle(throttle);
-        var center = ThrottleGeometry.HandleCenter(throttle);
-        var hx = left + center.X * scale;
-        var hy = top + center.Y * scale;
-        // Preserve the source sprite's horizontal 65x34 orientation; only the
-        // serialized prefab path and child rotation orient it along the arc.
-        var angle = -(pose.AngleDegrees + 180) * MathF.PI / 180f;
-        if (_handleTexture?.ImguiTextureRef is { } texture)
-            RasterArtwork.DrawHandleTexture(draw, texture, new(hx, hy), scale, angle);
-        else
-            art.DrawHandle(draw, new(hx, hy), scale, angle);
-        DrawHandleText(draw, ThrottleGeometry.Percent(throttle), hx, hy, scale, angle);
+        DrawHandleCanvas(origin, scale, throttle, art, allowInteraction);
     }
 
-    private void HandleThrottleDrag(Point origin, float scale, float throttle)
+    private void DrawHandleCanvas(Point origin, float scale, float throttle,
+        RasterArtwork art, bool allowInteraction)
     {
         var vehicle = KSA.Program.ControlledVehicle;
-        if (vehicle is null) return;
         var center = ThrottleGeometry.HandleCenter(throttle);
         var x = origin.X + center.X * scale;
         var y = origin.Y + center.Y * scale;
         var hitRadius = 42f * scale;
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new float2(0, 0));
-        ImGui.SetNextWindowPos(new float2(x - hitRadius, y - hitRadius), ImGuiCond.Always);
-        ImGui.SetNextWindowSize(new float2(hitRadius * 2, hitRadius * 2), ImGuiCond.Always);
-        var flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-                    ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
-                    ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
-        ImGui.Begin("##KSI2-ThrottleDrag", flags);
-        PilotImGui.PlaceCurrentWindow();
-        ImGui.InvisibleButton("##handle", new float2(hitRadius * 2, hitRadius * 2));
-        var active = ImGui.IsItemActive() && ImGui.IsMouseDown(ImGuiMouseButton.Left);
-        var mouse = ImGui.GetMousePos();
-        if (ImGui.IsItemActivated())
+        var size = new float2(hitRadius * 2f, hitRadius * 2f);
+        var canDrag = allowInteraction && _settings.MouseThrottleControl &&
+            ThrottleMouseController.CanControl(vehicle);
+        if (!canDrag) _mouseControl.Cancel();
+        var visible = PilotImGui.BeginControlCanvas("##KSI2-ThrottleHandleCanvas",
+            new float2(x - hitRadius, y - hitRadius), size, canDrag);
+        try
         {
-            _throttleDragOffsetY = mouse.Y - y;
-            _mouseControl.Begin(vehicle, throttle);
+            if (!visible) { _mouseControl.Cancel(); return; }
+            if (canDrag)
+            {
+                ImGui.InvisibleButton("##handle", size);
+                var active = ImGui.IsItemActive() && ImGui.IsMouseDown(ImGuiMouseButton.Left);
+                var mouse = ImGui.GetMousePos();
+                if (ImGui.IsItemActivated())
+                {
+                    _throttleDragOffsetY = mouse.Y - y;
+                    _mouseControl.Begin(vehicle!, throttle);
+                }
+                else if (_mouseControl.IsDragging && active)
+                {
+                    var widgetY = (mouse.Y - _throttleDragOffsetY - origin.Y) / scale;
+                    _mouseControl.Update(vehicle, ThrottleGeometry.ThrottleAtHandleY(widgetY));
+                }
+                if (_mouseControl.IsDragging && !active) _mouseControl.Cancel();
+            }
+            else ImGui.Dummy(size);
+
+            var draw = ImGui.GetWindowDrawList();
+            var pose = ThrottleGeometry.Handle(throttle);
+            var angle = -(pose.AngleDegrees + 180) * MathF.PI / 180f;
+            // Preserve the source sprite's horizontal 65x34 orientation.
+            if (_handleTexture?.ImguiTextureRef is { } texture)
+                RasterArtwork.DrawHandleTexture(draw, texture, new(x, y), scale, angle);
+            else
+                art.DrawHandle(draw, new(x, y), scale, angle);
+            DrawHandleText(draw, ThrottleGeometry.Percent(throttle), x, y, scale, angle);
         }
-        else if (_mouseControl.IsDragging && active)
+        finally
         {
-            var widgetY = (mouse.Y - _throttleDragOffsetY - origin.Y) / scale;
-            _mouseControl.Update(vehicle, ThrottleGeometry.ThrottleAtHandleY(widgetY));
+            PilotImGui.EndControlCanvas();
         }
-        if (_mouseControl.IsDragging && !active) _mouseControl.Cancel();
-        ImGui.End();
-        ImGui.PopStyleVar();
     }
 
     private static void DrawStaticLayer(ImDrawListPtr draw, TextureReference? textureRef, RasterArtwork art, string fallbackName, Point origin, float scale, uint tint)

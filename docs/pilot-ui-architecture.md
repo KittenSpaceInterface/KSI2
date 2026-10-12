@@ -11,23 +11,29 @@ and resolves `PilotFrameLayout` once from the viewport, the loaded layout JSON,
 and the saved root position. The controller selects either instrument or layout
 editing mode. Each module declares `PilotUiLayer` entries with one stable
 `PilotLayerOrder` identifier for its artwork
-and optional input update. The controller sorts the entries once, updates their
-input in back-to-front order, then draws their artwork in the same order. Input
-windows are raised as they are updated, so an overlapping upper interactive
-layer receives the pointer. Layers without input let the pointer pass through.
+and optional input update. The controller sorts the entries once, updates early
+input state in back-to-front order, then visits draw layers in the same order.
+Control canvases process their input and draw their artwork during that visit.
+They are raised as they are drawn, so an overlapping upper interactive layer
+receives the pointer. Layers without input let the pointer pass through.
 The default JSON preserves the visual stack: cluster background, throttle,
 sphere, side dials, speed card, heading dial, heading readout, atmosphere,
 vertical speed, altitude card, bottom controls.
-The speed mode is updated before the sphere renders. Input update order puts
-the speed card over the overlapping throttle hit area. The layout editor is the
-final interactive layer while editing; its input updates the resolved frame
-before drawing, and its outline draws last. Pilot artwork draws inside a
-transparent, input-free ImGui window. Settings and instrument hit targets use
-separate regular ImGui windows. KSI2 places these windows above ordinary KSA
-gauges and below an open KSA modal, so the pause backdrop dims the entire pilot
-interface and the pause menu receives clicks. KSI2 cancels instrument and editor
-interaction while a modal is open. Layer numbers describe order within KSI2,
-not the order of KSA popups.
+The speed mode is observed before the sphere renders; a click on the card
+changes the sphere on the next frame. Canvas order puts the speed card over the
+overlapping throttle hit area. While editing, the layout editor owns a bounded
+canvas for both its drag hit area and the navball artwork; its input updates the
+resolved frame before drawing, and its outline is appended after the draw
+layers. Outside editing, noninteractive artwork draws inside a transparent,
+input-free ImGui window. The speed and altitude cards, RCS and
+SAS buttons, and throttle handle draw their artwork in their own tightly
+bounded ImGui windows, which also own their mouse hit areas. The throttle body
+remains on the shared artwork canvas. Settings
+are a separate regular ImGui window. KSI2 places these windows above ordinary
+KSA gauges and below an open KSA modal, so the pause backdrop dims the entire
+pilot interface and the pause menu receives clicks. KSI2 cancels instrument and
+editor interaction while a modal is open. Layer numbers order KSI2's draw calls;
+cross-window overlap also follows ImGui window placement, not KSA popup order.
 The cluster background starts at 1000, leaving 0-999 for future KSI2 underlays.
 Most layer values are 100 apart to leave room for intermediate components.
 KSA has no matching layer value or default zero; ordering KSI2 relative to KSA

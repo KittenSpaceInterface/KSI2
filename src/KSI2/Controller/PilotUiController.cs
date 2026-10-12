@@ -50,7 +50,8 @@ internal sealed class PilotUiController : IDisposable
         var mode = _settings.Settings.Editing ? PilotInteractionMode.LayoutEditing : PilotInteractionMode.Instruments;
         var blur = _settings.BlurPanelBackgrounds ? GetPanelBlur() : null;
         var context = new PilotRenderContext(mode, blur, _settings.BlurOpacity, dt);
-        if (KSA.Program.IsModalOpen())
+        var modalOpen = KSA.Program.IsModalOpen();
+        if (modalOpen)
         {
             foreach (var module in _modules) module.CancelInteraction();
             _editor.Cancel();
@@ -59,15 +60,31 @@ internal sealed class PilotUiController : IDisposable
         {
             // The last input window raised is the topmost interactive layer.
             foreach (var layer in _layers) layer.UpdateInput?.Invoke(layout, mode);
-            _editor.ProcessInteraction(ref layout);
         }
-        if (PilotImGui.BeginArtworkWindow(viewport))
+        if (mode == PilotInteractionMode.LayoutEditing && !modalOpen)
         {
-            // The layout JSON orders artwork within this regular ImGui window.
-            foreach (var layer in _layers) layer.Draw(layout, context);
-            _editor.DrawOverlay(layout);
+            _editor.BeginCanvas(ref layout);
+            try
+            {
+                // The navball artwork and its drag hit area share this canvas.
+                foreach (var layer in _layers) layer.Draw(layout, context);
+                _editor.DrawOverlay(layout);
+            }
+            finally
+            {
+                _editor.EndCanvas();
+            }
         }
-        PilotImGui.EndArtworkWindow();
+        else
+        {
+            if (PilotImGui.BeginArtworkWindow(viewport))
+            {
+                // The layout JSON orders underlays and the control canvases.
+                foreach (var layer in _layers) layer.Draw(layout, context);
+                _editor.DrawOverlay(layout);
+            }
+            PilotImGui.EndArtworkWindow();
+        }
     }
 
     private PanelBackgroundBlur? GetPanelBlur()
