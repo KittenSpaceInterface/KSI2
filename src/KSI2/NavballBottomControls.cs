@@ -16,6 +16,24 @@ internal sealed unsafe class NavballBottomControls
     ];
 
     private readonly Dictionary<string, TextureReference> _textures = new();
+    private readonly ToggleVisual _rcsVisual = new();
+    private readonly ToggleVisual _sasVisual = new();
+
+    private sealed class ToggleVisual
+    {
+        internal bool Hovered;
+        internal bool Pressed;
+        internal bool Initialized;
+        internal uint TextColor;
+        internal uint BorderColor;
+        internal uint StartTextColor;
+        internal uint StartBorderColor;
+        internal uint TargetTextColor;
+        internal uint TargetBorderColor;
+        internal float FadeTime = 0.25f;
+    }
+
+    private readonly record struct ButtonInput(bool Clicked, bool Hovered, bool Pressed);
 
     internal void SetTexture(string id, TextureReference texture) => _textures[id] = texture;
 
@@ -45,11 +63,19 @@ internal sealed unsafe class NavballBottomControls
         }
     }
 
-    internal void Draw()
+    internal void Draw(double dt)
     {
-        if (!KSA.Program.DrawUI) return;
+        if (!KSA.Program.DrawUI)
+        {
+            ResetInput();
+            return;
+        }
         var vehicle = KSA.Program.ControlledVehicle;
-        if (vehicle is null || vehicle.IsDisposed) return;
+        if (vehicle is null || vehicle.IsDisposed)
+        {
+            ResetInput();
+            return;
+        }
 
         var viewport = ImGui.GetMainViewport();
         var cluster = NavballClusterLayout.Calculate(viewport.Pos.X, viewport.Pos.Y,
@@ -63,7 +89,13 @@ internal sealed unsafe class NavballBottomControls
         var rcsTopLeft = new float2(x + 63f * scale, y + 240f * scale);
         var sasTopLeft = new float2(x + 189f * scale, y + 240f * scale);
         var buttonSize = new float2(48f * scale, 48f * scale);
-        if (Button("RCS", rcsTopLeft, buttonSize))
+        var rcsOn = vehicle.FlightComputer.RCSMode == FlightComputerRCSMode.Enabled;
+        var sasOn = vehicle.IsStabilizationOn();
+        var rcsInput = Button("RCS", rcsTopLeft, buttonSize);
+        var sasInput = Button("SAS", sasTopLeft, buttonSize);
+        UpdateInput(_rcsVisual, rcsInput, rcsOn);
+        UpdateInput(_sasVisual, sasInput, sasOn);
+        if (rcsInput.Clicked)
         {
             InputEvents.FlightComputerInputBuffer.Add(new InputEvents.FlightComputerInputData
             {
@@ -72,13 +104,13 @@ internal sealed unsafe class NavballBottomControls
                 EnumValue = FlightComputerRCSMode.Enabled
             });
         }
-        if (Button("SAS", sasTopLeft, buttonSize)) vehicle.ToggleStabilization();
+        if (sasInput.Clicked) vehicle.ToggleStabilization();
 
         var draw = ImGui.GetForegroundDrawList(viewport);
-        var rcsOn = vehicle.FlightComputer.RCSMode == FlightComputerRCSMode.Enabled;
-        var sasOn = vehicle.IsStabilizationOn();
-        DrawToggle(draw, "RCS", rcsTopLeft, scale, rcsOn);
-        DrawToggle(draw, "SAS", sasTopLeft, scale, sasOn);
+        UpdateColors(_rcsVisual, rcsOn, (float)dt);
+        UpdateColors(_sasVisual, vehicle.IsStabilizationOn(), (float)dt);
+        DrawToggle(draw, "RCS", rcsTopLeft, scale, _rcsVisual);
+        DrawToggle(draw, "SAS", sasTopLeft, scale, _sasVisual);
 
         // KSA has vessel cycling, but no KSP2 CommNet state. Its controllable
         // flag drives the control icon; the cycle icon reflects vessel count.
@@ -93,7 +125,7 @@ internal sealed unsafe class NavballBottomControls
             vehicle.IsControllable ? 0xFF52CC00u : 0xFF99413Eu);
     }
 
-    private static bool Button(string label, float2 topLeft, float2 size)
+    private static ButtonInput Button(string label, float2 topLeft, float2 size)
     {
         ImGui.SetNextWindowPos(topLeft, ImGuiCond.Always);
         ImGui.SetNextWindowSize(size, ImGuiCond.Always);
@@ -105,21 +137,88 @@ internal sealed unsafe class NavballBottomControls
                     ImGuiWindowFlags.NoNavInputs;
         ImGui.Begin($"##KSI2-{label}", flags);
         var clicked = ImGui.InvisibleButton($"##{label}", size);
+        var hovered = ImGui.IsItemHovered();
+        var pressed = ImGui.IsItemActive() && ImGui.IsMouseDown(ImGuiMouseButton.Left);
         ImGui.End();
         ImGui.PopStyleVar();
-        return clicked;
+        return new ButtonInput(clicked, hovered, pressed);
+    }
+
+    private void ResetInput()
+    {
+        _rcsVisual.Hovered = _rcsVisual.Pressed = false;
+        _sasVisual.Hovered = _sasVisual.Pressed = false;
+    }
+
+    private static void UpdateInput(ToggleVisual visual, ButtonInput input, bool active)
+    {
+        if (input.Hovered && !visual.Hovered)
+            PlaySound("KSI2SasRcsHover");
+        if (input.Pressed && !visual.Pressed)
+            PlaySound(active ? "KSI2SasRcsDisable" : "KSI2SasRcsEnable");
+        visual.Hovered = input.Hovered;
+        visual.Pressed = input.Pressed;
+    }
+
+    private static void PlaySound(string id)
+    {
+        try
+        {
+            GameAudio.Play2DSound(ModLibrary.Get<SoundBehavior>(id), out _, 1f);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"KSI2: could not play '{id}': {ex.Message}");
+        }
+    }
+
+    private static void UpdateColors(ToggleVisual visual, bool active, float dt)
+    {
+        var targetText = active ? 0xFF66FF00u : 0xFFCCB2AAu;
+        var targetBorder = active ? 0xFF59FF6Du : 0x99CCB2AAu;
+        if (!visual.Initialized)
+        {
+            visual.Initialized = true;
+            visual.TextColor = visual.StartTextColor = visual.TargetTextColor = targetText;
+            visual.BorderColor = visual.StartBorderColor = visual.TargetBorderColor = targetBorder;
+            return;
+        }
+        if (targetText != visual.TargetTextColor)
+        {
+            visual.StartTextColor = visual.TextColor;
+            visual.StartBorderColor = visual.BorderColor;
+            visual.TargetTextColor = targetText;
+            visual.TargetBorderColor = targetBorder;
+            visual.FadeTime = 0f;
+        }
+        visual.FadeTime = MathF.Min(0.25f, visual.FadeTime + MathF.Max(0f, dt));
+        var t = visual.FadeTime / 0.25f;
+        visual.TextColor = LerpColor(visual.StartTextColor, targetText, t);
+        visual.BorderColor = LerpColor(visual.StartBorderColor, targetBorder, t);
+    }
+
+    private static uint LerpColor(uint from, uint to, float t)
+    {
+        uint result = 0;
+        for (var shift = 0; shift < 32; shift += 8)
+        {
+            var start = (from >> shift) & 0xFF;
+            var end = (to >> shift) & 0xFF;
+            result |= (uint)MathF.Round(start + (end - (float)start) * t) << shift;
+        }
+        return result;
     }
 
     private void DrawToggle(ImDrawListPtr draw, string label, float2 topLeft,
-        float scale, bool active)
+        float scale, ToggleVisual visual)
     {
         DrawImage(draw, "KSI2BottomToggleOutline", topLeft, 48f * scale,
-            active ? 0xFF59FF6Du : 0x99CCB2AAu);
+            visual.BorderColor);
         // KSA clears its font dictionary when display font settings change.
         // Do not retain a pointer into the old atlas after that regeneration.
         var font = FontManager.Fonts.TryGetValue(FontKey, out var loaded)
             ? loaded : ImGui.GetFont();
-        var size = 18f * scale;
+        var size = 18f * scale * (visual.Pressed ? 0.9f : 1f);
         var bytes = Encoding.UTF8.GetBytes(label);
         fixed (byte* text = bytes)
         {
@@ -153,7 +252,7 @@ internal sealed unsafe class NavballBottomControls
                         (top + bottom) / 2f);
             }
             ImGui.PInvoke.ImDrawList_AddText_1(draw.Ptr, font.Ptr, size,
-                &position, active ? 0xFF66FF00u : 0xFFCCB2AAu,
+                &position, visual.TextColor,
                 text, text + bytes.Length, 0f, null);
         }
     }
