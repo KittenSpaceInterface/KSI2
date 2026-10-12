@@ -40,19 +40,10 @@ internal sealed unsafe class SpeedReadoutRenderer
         _textures[id] = texture;
     }
 
-    internal void UpdateMode(Point origin, float scale, bool allowInteraction)
+    internal void ObserveMode()
     {
-        if (!KSA.Program.DrawUI)
-        {
-            _hovered = false;
-            return;
-        }
         var vehicle = KSA.Program.ControlledVehicle;
-        if (vehicle is null || vehicle.IsDisposed)
-        {
-            _hovered = false;
-            return;
-        }
+        if (vehicle is null || vehicle.IsDisposed) return;
         var frame = vehicle.NavBallData.Frame;
         var frameMode = frame switch
         {
@@ -62,11 +53,14 @@ internal sealed unsafe class SpeedReadoutRenderer
         };
         if (_modeState.Observe(vehicle, frameMode, vehicle.Target is not null))
             _lastValue = null;
-        if (!allowInteraction)
-        {
-            _hovered = false;
-            return;
-        }
+    }
+
+    internal void Draw(Point origin, float scale, bool allowInteraction)
+    {
+        if (!KSA.Program.DrawUI) { _hovered = false; return; }
+        var vehicle = KSA.Program.ControlledVehicle;
+        if (vehicle is null || vehicle.IsDisposed) { _hovered = false; return; }
+        ObserveMode();
         if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
             && texture.ImguiTextureRef is not null))
         {
@@ -74,45 +68,38 @@ internal sealed unsafe class SpeedReadoutRenderer
             return;
         }
 
-        var x = origin.X;
-        var y = origin.Y;
-
         // The KSP2 ModeSwitch covers the complete side card.
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new float2(0f, 0f));
-        ImGui.SetNextWindowPos(new float2(x, y), ImGuiCond.Always);
-        ImGui.SetNextWindowSize(new float2(86f * scale, 64f * scale), ImGuiCond.Always);
-        var flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-                    ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
-                    ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
-        ImGui.Begin("##KSI2-SpeedMode", flags);
-        PilotImGui.PlaceCurrentWindow();
-        ImGui.InvisibleButton("cycle speed mode", new float2(86f * scale, 64f * scale));
-        var hovered = ImGui.IsItemHovered();
-        if (hovered && !_hovered) FlightUiSounds.Play("KSI2SpeedModeHover");
-        _hovered = hovered;
-        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+        var size = new float2(86f * scale, 64f * scale);
+        var visible = PilotImGui.BeginControlCanvas("##KSI2-SpeedCanvas",
+            new float2(origin.X, origin.Y), size, allowInteraction);
+        try
         {
-            FlightUiSounds.Play("KSI2SpeedModeSelect");
-            var selected = _modeState.SelectNext(vehicle.Target is not null);
-            vehicle.SetNavBallFrame(selected switch
+            if (!visible) { _hovered = false; return; }
+            ImGui.Dummy(size);
+            var hovered = allowInteraction && ImGui.IsWindowHovered();
+            if (hovered && !_hovered) FlightUiSounds.Play("KSI2SpeedModeHover");
+            _hovered = hovered;
+            if (hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
             {
-                SpeedReadoutMode.Surface => VehicleReferenceFrame.EnuBody,
-                SpeedReadoutMode.Target => VehicleReferenceFrame.Dock,
-                _ => VehicleReferenceFrame.Lvlh
-            });
+                FlightUiSounds.Play("KSI2SpeedModeSelect");
+                var selected = _modeState.SelectNext(vehicle.Target is not null);
+                vehicle.SetNavBallFrame(selected switch
+                {
+                    SpeedReadoutMode.Surface => VehicleReferenceFrame.EnuBody,
+                    SpeedReadoutMode.Target => VehicleReferenceFrame.Dock,
+                    _ => VehicleReferenceFrame.Lvlh
+                });
+            }
+            DrawArtwork(origin, scale, vehicle);
         }
-        ImGui.End();
-        ImGui.PopStyleVar();
+        finally
+        {
+            PilotImGui.EndControlCanvas();
+        }
     }
 
-    internal void Draw(Point origin, float scale)
+    private void DrawArtwork(Point origin, float scale, Vehicle vehicle)
     {
-        if (!KSA.Program.DrawUI) return;
-        var vehicle = KSA.Program.ControlledVehicle;
-        if (vehicle is null || vehicle.IsDisposed) return;
-        if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
-            && texture.ImguiTextureRef is not null)) return;
-
         var x = origin.X;
         var y = origin.Y;
 

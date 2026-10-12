@@ -63,13 +63,9 @@ internal sealed unsafe class NavballBottomControls
         }
     }
 
-    internal void ProcessInteraction(PilotComponentBounds cluster, bool allowInteraction)
+    internal void Draw(PilotComponentBounds cluster, double dt, bool allowInteraction)
     {
-        if (!KSA.Program.DrawUI || !allowInteraction)
-        {
-            ResetInput();
-            return;
-        }
+        if (!KSA.Program.DrawUI) { ResetInput(); return; }
         var vehicle = KSA.Program.ControlledVehicle;
         if (vehicle is null || vehicle.IsDisposed)
         {
@@ -88,10 +84,10 @@ internal sealed unsafe class NavballBottomControls
         var buttonSize = new float2(48f * scale, 48f * scale);
         var rcsOn = vehicle.FlightComputer.RCSMode == FlightComputerRCSMode.Enabled;
         var sasOn = vehicle.IsStabilizationOn();
-        var rcsInput = Button("RCS", rcsTopLeft, buttonSize);
-        var sasInput = Button("SAS", sasTopLeft, buttonSize);
-        UpdateInput(_rcsVisual, rcsInput, rcsOn);
-        UpdateInput(_sasVisual, sasInput, sasOn);
+        var rcsInput = DrawButton("RCS", rcsTopLeft, buttonSize,
+            _rcsVisual, rcsOn, (float)dt, allowInteraction);
+        var sasInput = DrawButton("SAS", sasTopLeft, buttonSize,
+            _sasVisual, sasOn, (float)dt, allowInteraction);
         if (rcsInput.Clicked)
         {
             InputEvents.FlightComputerInputBuffer.Add(new InputEvents.FlightComputerInputData
@@ -112,26 +108,7 @@ internal sealed unsafe class NavballBottomControls
                 EnumValue = FlightComputerAttitudeMode.Auto
             });
         }
-    }
-
-    internal void Draw(PilotComponentBounds cluster, double dt)
-    {
-        if (!KSA.Program.DrawUI) return;
-        var vehicle = KSA.Program.ControlledVehicle;
-        if (vehicle is null || vehicle.IsDisposed) return;
-        var scale = cluster.Scale;
-        var x = cluster.Position.X;
-        var y = cluster.Position.Y;
-        var rcsTopLeft = new float2(x + 63f * scale, y + 240f * scale);
-        var sasTopLeft = new float2(x + 189f * scale, y + 240f * scale);
-        var rcsOn = vehicle.FlightComputer.RCSMode == FlightComputerRCSMode.Enabled;
-
         var draw = ImGui.GetWindowDrawList();
-        UpdateColors(_rcsVisual, rcsOn, (float)dt);
-        UpdateColors(_sasVisual, vehicle.IsStabilizationOn(), (float)dt);
-        DrawToggle(draw, "RCS", rcsTopLeft, scale, _rcsVisual);
-        DrawToggle(draw, "SAS", sasTopLeft, scale, _sasVisual);
-
         // KSA has vessel cycling, but no KSP2 CommNet state. Its controllable
         // flag drives the control icon; the cycle icon reflects vessel count.
         var vesselCount = 0;
@@ -145,24 +122,31 @@ internal sealed unsafe class NavballBottomControls
             vehicle.IsControllable ? 0xFF52CC00u : 0xFF99413Eu);
     }
 
-    private static ButtonInput Button(string label, float2 topLeft, float2 size)
+    private ButtonInput DrawButton(string label, float2 topLeft, float2 size,
+        ToggleVisual visual, bool active, float dt, bool allowInteraction)
     {
-        ImGui.SetNextWindowPos(topLeft, ImGuiCond.Always);
-        ImGui.SetNextWindowSize(size, ImGuiCond.Always);
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new float2(0f, 0f));
-        var flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize |
-                    ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar |
-                    ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
-                    ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing |
-                    ImGuiWindowFlags.NoNavInputs;
-        ImGui.Begin($"##KSI2-{label}", flags);
-        PilotImGui.PlaceCurrentWindow();
-        var clicked = ImGui.InvisibleButton($"##{label}", size);
-        var hovered = ImGui.IsItemHovered();
-        var pressed = ImGui.IsItemActive() && ImGui.IsMouseDown(ImGuiMouseButton.Left);
-        ImGui.End();
-        ImGui.PopStyleVar();
-        return new ButtonInput(clicked, hovered, pressed);
+        var visible = PilotImGui.BeginControlCanvas($"##KSI2-{label}Canvas",
+            topLeft, size, allowInteraction);
+        try
+        {
+            var hovered = visible && allowInteraction && ImGui.IsWindowHovered();
+            var clicked = hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
+            var pressed = allowInteraction && (clicked || visual.Pressed) &&
+                ImGui.IsMouseDown(ImGuiMouseButton.Left);
+            var input = new ButtonInput(clicked, hovered, pressed);
+            UpdateInput(visual, input, active);
+            UpdateColors(visual, active, dt);
+            if (visible)
+            {
+                ImGui.Dummy(size);
+                DrawToggle(ImGui.GetWindowDrawList(), label, topLeft, size.X / 48f, visual);
+            }
+            return input;
+        }
+        finally
+        {
+            PilotImGui.EndControlCanvas();
+        }
     }
 
     internal void ResetInput()

@@ -23,23 +23,14 @@ internal sealed unsafe class LayoutEditor
         ImGui.PInvoke.ImDrawList_AddRect(draw.Ptr, &a, &b, color, 0, ImDrawFlags.None, 1.5f);
     }
 
-    internal void ProcessInteraction(ref PilotFrameLayout layout)
+    internal void BeginCanvas(ref PilotFrameLayout layout)
     {
-        if (!_settings.Editing || !KSA.Program.DrawUI) return;
-        var viewport = ImGui.GetMainViewport();
         var throttle = layout.Throttle;
         var min = layout.EditorMin;
         var max = layout.EditorMax;
         var size = new float2(max.X - min.X, max.Y - min.Y);
 
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new float2(0, 0));
-        ImGui.SetNextWindowPos(new float2(min.X, min.Y), ImGuiCond.Always);
-        ImGui.SetNextWindowSize(size, ImGuiCond.Always);
-        var flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-                    ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
-                    ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
-        ImGui.Begin("##KSI2-LayoutEdit", flags);
-        PilotImGui.PlaceCurrentWindow();
+        PilotImGui.BeginControlCanvas("##KSI2-LayoutEdit", new float2(min.X, min.Y), size, true);
         ImGui.InvisibleButton("drag interface", size);
         var mouse = ImGui.GetMousePos();
         if (ImGui.IsItemActivated())
@@ -60,8 +51,15 @@ internal sealed unsafe class LayoutEditor
         {
             if (_drag.End()) _save();
         }
-        ImGui.End();
-        ImGui.PopStyleVar();
+        // The artwork can move during this drag. Keep its clip on the viewport
+        // rather than the canvas's position at the start of the frame.
+        ImGui.PInvoke.ImDrawList_PushClipRectFullScreen(ImGui.GetWindowDrawList().Ptr);
+    }
+
+    internal void EndCanvas()
+    {
+        ImGui.PInvoke.ImDrawList_PopClipRect(ImGui.GetWindowDrawList().Ptr);
+        PilotImGui.EndControlCanvas();
     }
 
     internal void DrawOverlay(PilotFrameLayout layout)

@@ -23,19 +23,19 @@ internal sealed class NavballModule : IPilotUiModule
             new(PilotLayerOrder.NavballSphere, (l,c) => _navballSpike.Draw(l.Component("navball-sphere"),_speedReadout.SelectedMode)),
             new(PilotLayerOrder.SideDials, (l,c) => _sideDials.Draw(l.Component("side-dials"))),
             new(PilotLayerOrder.SpeedCard,
-                (l,c) => _speedReadout.Draw(l.Component(SpeedCardId).Position, l.Component(SpeedCardId).Scale),
-                (l,m) => _speedReadout.UpdateMode(l.Component(SpeedCardId).Position,
-                    l.Component(SpeedCardId).Scale, m == PilotInteractionMode.Instruments)),
+                (l,c) => _speedReadout.Draw(l.Component(SpeedCardId).Position,
+                    l.Component(SpeedCardId).Scale,
+                    c.Mode == PilotInteractionMode.Instruments && !KSA.Program.IsModalOpen()),
+                (l,m) => _speedReadout.ObserveMode()),
             new(PilotLayerOrder.HeadingDial, (l,c) => _headingDial.DrawDial(l.Component("heading-dial"))),
             new(PilotLayerOrder.HeadingReadout, (l,c) => _headingDial.DrawReadout(l.Component("heading-readout"))),
             new(PilotLayerOrder.AltitudeCard,
-                (l,c) => _altitudeReadout.Draw(l.Component(AltitudeCardId).Position, l.Component(AltitudeCardId).Scale),
-                (l,m) => _altitudeReadout.UpdateMode(l.Component(AltitudeCardId).Position,
-                    l.Component(AltitudeCardId).Scale, m == PilotInteractionMode.Instruments)),
+                (l,c) => _altitudeReadout.Draw(l.Component(AltitudeCardId).Position,
+                    l.Component(AltitudeCardId).Scale,
+                    c.Mode == PilotInteractionMode.Instruments && !KSA.Program.IsModalOpen())),
             new(PilotLayerOrder.BottomControls,
-                (l,c) => _bottomControls.Draw(l.Component("bottom-controls"),c.DeltaTime),
-                (l,m) => _bottomControls.ProcessInteraction(l.Component("bottom-controls"),
-                    m == PilotInteractionMode.Instruments))
+                (l,c) => _bottomControls.Draw(l.Component("bottom-controls"),c.DeltaTime,
+                    c.Mode == PilotInteractionMode.Instruments && !KSA.Program.IsModalOpen()))
         ];
     }
     public void Initialize(TextureRegistry assets)

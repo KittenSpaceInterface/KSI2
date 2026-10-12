@@ -35,7 +35,7 @@ internal sealed unsafe class AltitudeReadoutRenderer
         _textures[id] = texture;
     }
 
-    internal void UpdateMode(Point origin, float scale, bool allowInteraction)
+    internal void Draw(Point origin, float scale, bool allowInteraction)
     {
         if (!KSA.Program.DrawUI)
         {
@@ -61,39 +61,34 @@ internal sealed unsafe class AltitudeReadoutRenderer
             _selectedMode = AltitudeReadoutGeometry.Mode(vehicle.NavBallData.Frame);
             _lastValue = null;
         }
-        var x = origin.X;
-        var y = origin.Y;
-        if (!allowInteraction) { _hovered = false; return; }
-        // The complete card cycles altitude mode independently of the navball.
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new float2(0f, 0f));
-        ImGui.SetNextWindowPos(new float2(x, y), ImGuiCond.Always);
-        ImGui.SetNextWindowSize(new float2(86f * scale, 64f * scale), ImGuiCond.Always);
-        var flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-                    ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
-                    ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
-        ImGui.Begin("##KSI2-AltitudeMode", flags);
-        PilotImGui.PlaceCurrentWindow();
-        ImGui.InvisibleButton("cycle altitude mode", new float2(86f * scale, 64f * scale));
-        var hovered = ImGui.IsItemHovered();
-        if (hovered && !_hovered) FlightUiSounds.Play("KSI2AltitudeModeHover");
-        _hovered = hovered;
-        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+
+        // Use one canvas for the card's artwork and mouse events, as KSA gauges do.
+        var size = new float2(86f * scale, 64f * scale);
+        var visible = PilotImGui.BeginControlCanvas("##KSI2-AltitudeCanvas",
+            new float2(origin.X, origin.Y), size, allowInteraction);
+        try
         {
-            FlightUiSounds.Play("KSI2AltitudeModeSelect");
-            _selectedMode = _selectedMode == AltitudeReadoutMode.SeaLevel
-                ? AltitudeReadoutMode.GroundLevel : AltitudeReadoutMode.SeaLevel;
+            if (!visible) { _hovered = false; return; }
+            ImGui.Dummy(size);
+            var hovered = allowInteraction && ImGui.IsWindowHovered();
+            if (hovered && !_hovered) FlightUiSounds.Play("KSI2AltitudeModeHover");
+            _hovered = hovered;
+            if (hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+            {
+                FlightUiSounds.Play("KSI2AltitudeModeSelect");
+                _selectedMode = _selectedMode == AltitudeReadoutMode.SeaLevel
+                    ? AltitudeReadoutMode.GroundLevel : AltitudeReadoutMode.SeaLevel;
+            }
+            DrawArtwork(origin, scale, vehicle);
         }
-        ImGui.End();
-        ImGui.PopStyleVar();
+        finally
+        {
+            PilotImGui.EndControlCanvas();
+        }
     }
 
-    internal void Draw(Point origin, float scale)
+    private void DrawArtwork(Point origin, float scale, Vehicle vehicle)
     {
-        if (!KSA.Program.DrawUI) return;
-        var vehicle = KSA.Program.ControlledVehicle;
-        if (vehicle is null || vehicle.IsDisposed) return;
-        if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
-            && texture.ImguiTextureRef is not null)) return;
         var x = origin.X;
         var y = origin.Y;
         var draw = ImGui.GetWindowDrawList();

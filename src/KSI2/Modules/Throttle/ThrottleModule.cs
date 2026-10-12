@@ -10,13 +10,12 @@ internal sealed class ThrottleModule : IPilotUiModule
     public IReadOnlyList<PilotLayoutDefinition> LayoutDefinitions => Definitions;
     public IReadOnlyList<PilotUiLayer> Layers { get; }
     internal void Draw(PilotFrameLayout layout, PilotRenderContext context) =>
-        _gauge.Draw(layout.Throttle, context.Blur, context.Opacity);
+        _gauge.Draw(layout.Throttle, context.Blur, context.Opacity,
+            context.Mode == PilotInteractionMode.Instruments && !KSA.Program.IsModalOpen());
     internal ThrottleModule(PilotUiSettings settings)
     {
         _gauge = new ThrottleGauge(settings, UiState);
-        Layers = [new(PilotLayerOrder.Throttle, Draw,
-            (layout, mode) => _gauge.ProcessInteraction(layout.Throttle,
-                mode == PilotInteractionMode.Instruments))];
+        Layers = [new(PilotLayerOrder.Throttle, Draw)];
     }
     public void Initialize(TextureRegistry assets)
     {

@@ -42,20 +42,27 @@ for the current coordinates.
 
 The earlier pilot artwork used ImGui's viewport foreground draw list. That was
 simple, but it bypassed KSA's normal window stack: the pause backdrop did not
-dim our interface. The current implementation draws artwork in a transparent,
-input-free ImGui window and uses separate windows for KSI2 controls and
-settings. It places those windows behind KSA's modal pause menu. In-game testing
-confirmed that the backdrop now covers KSI2 and the pause menu receives clicks.
-These are the reasons for the informal architecture ratings of 5/10 for the
-earlier approach and 7/10 for the current one; the numbers are design judgments,
-not measured performance scores.
+dim our interface. The pause-menu implementation moved artwork into a regular,
+transparent ImGui window and placed it, the control hit windows, and settings
+behind KSA's modal. In-game testing confirmed that the backdrop covers KSI2 and
+the pause menu receives clicks. Those results informed the informal ratings of
+5/10 for the foreground approach and 7/10 for the first regular-window version;
+the numbers are design judgments, not measured performance scores.
 
-The full-screen artwork window passes pointer input through to KSA. KSI2's
-dedicated control windows capture input over their own bounds. KSA windows also
+The full-screen artwork window passes pointer input through to KSA. A tested
+altitude-card prototype draws the card and handles hover and clicks in one
+bounded window; moving it across the screen edge no longer turned it black in
+the user's test. The speed card, RCS and SAS buttons, and throttle handle now
+follow that pattern and still need the same in-game validation. Their windows
+capture input over their own bounds. In layout editing mode, the navball
+artwork and combined drag hit area now share a bounded canvas and await an
+in-game edge test. The throttle body remains click-through outside editing.
+KSA windows also
 order themselves by focus: among KSA elements, the last clicked one remains on
-top. That normal KSA behavior is separate from KSI2's placement. The current
-weakness is that visual order and hit testing are managed by different windows,
-while `PilotImGui` moves KSI2 windows in ImGui's display stack each frame.
+top. That normal KSA behavior is separate from KSI2's placement. KSI2 still
+mixes a shared artwork window with control canvases, so JSON draw order and
+ImGui window order can differ where components overlap. `PilotImGui` also moves
+KSI2 windows in ImGui's display stack each frame.
 This repeated placement is expected to have a small cost with the current
 window count, but has not been profiled. Its main concern is the coupling to
 ImGui's internal window-order API and the possibility of visual and input order
