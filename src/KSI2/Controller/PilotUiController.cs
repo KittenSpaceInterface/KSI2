@@ -8,7 +8,7 @@ internal sealed class PilotUiController : IDisposable
     private readonly LayoutEditor _editor;
     private readonly ThrottleModule _throttle;
     private readonly IPilotUiModule[] _modules;
-    private readonly PilotRenderEntry[] _renderEntries;
+    private readonly PilotUiLayer[] _layers;
     private readonly PilotLayoutDefinition[] _layoutDefinitions;
     private PanelBackgroundBlur? _panelBlur;
     private bool _panelBlurAttempted;
@@ -17,10 +17,12 @@ internal sealed class PilotUiController : IDisposable
     {
         _editor = new LayoutEditor(_settings.Settings, _settings.Save);
         _throttle = new ThrottleModule(_settings.Settings);
-        // Input windows retain their former priority: the speed card covers
-        // the overlapping throttle hit area, while draw order is separate.
         _modules = [_throttle, new NavballModule(), new RightIndicatorsModule()];
-        _renderEntries = _modules.SelectMany(module => module.RenderEntries).OrderBy(entry => entry.Order).ToArray();
+        _layers = _modules.SelectMany(module => module.Layers).OrderBy(layer => layer.Order).ToArray();
+        if (_layers.Select(layer => layer.Order).Distinct().Count() != _layers.Length)
+            throw new InvalidOperationException("Pilot UI layers must have distinct orders.");
+        if (_layers.Any(layer => layer.Order >= PilotLayerOrder.LayoutEditor))
+            throw new InvalidOperationException("Pilot UI layers must remain below the layout editor.");
         _layoutDefinitions = _modules.SelectMany(module => module.LayoutDefinitions).ToArray();
     }
 
@@ -47,9 +49,11 @@ internal sealed class PilotUiController : IDisposable
         var mode = _settings.Settings.Editing ? PilotInteractionMode.LayoutEditing : PilotInteractionMode.Instruments;
         var blur = _settings.BlurPanelBackgrounds ? GetPanelBlur() : null;
         var context = new PilotRenderContext(mode, blur, _settings.BlurOpacity, dt);
-        foreach (var module in _modules) module.Update(layout, mode);
+        // Input windows and artwork use the same back-to-front layer order.
+        // The last input window raised is the topmost interactive layer.
+        foreach (var layer in _layers) layer.UpdateInput?.Invoke(layout, mode);
         _editor.ProcessInteraction(ref layout);
-        foreach (var entry in _renderEntries) entry.Draw(layout, context);
+        foreach (var layer in _layers) layer.Draw(layout, context);
         _editor.DrawOverlay(layout);
     }
 
