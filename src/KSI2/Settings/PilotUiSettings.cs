@@ -14,8 +14,6 @@ internal sealed class PilotUiSettings
     public bool MouseThrottleControl { get; set; }
     public bool BlurPanelBackgrounds { get; set; }
     public int BlurOpacityTicks { get; set; } = 398;
-    public bool StatusIconMipmaps { get; set; } = true;
-
     internal static string ModDirectory => Path.GetDirectoryName(typeof(PilotUiSettings).Assembly.Location) ?? AppContext.BaseDirectory;
     private static string FilePath => Path.Combine(ModDirectory, "ksi2.settings.json");
 

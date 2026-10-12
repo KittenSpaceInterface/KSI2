@@ -12,15 +12,12 @@ internal sealed unsafe class NavballBottomControls
     [
         ("KSI2BottomToggleOutline", "[asset]"),
         ("KSI2BottomObjectCycle", "[asset]"),
-        ("KSI2BottomCommNet", "[asset]"),
-        ("KSI2BottomObjectCycleNoMipMaps", "[asset]"),
-        ("KSI2BottomCommNetNoMipMaps", "[asset]")
+        ("KSI2BottomCommNet", "[asset]")
     ];
 
     private readonly Dictionary<string, TextureReference> _textures = new();
     private readonly ToggleVisual _rcsVisual = new();
     private readonly ToggleVisual _sasVisual = new();
-    private bool _statusIconMipmaps = true;
 
     private sealed class ToggleVisual
     {
@@ -39,7 +36,6 @@ internal sealed unsafe class NavballBottomControls
     private readonly record struct ButtonInput(bool Clicked, bool Hovered, bool Pressed);
 
     internal void SetTexture(string id, TextureReference texture) => _textures[id] = texture;
-    internal void SetStatusIconMipmaps(bool enabled) => _statusIconMipmaps = enabled;
 
     internal void LoadFont(string path)
     {
@@ -150,12 +146,8 @@ internal sealed unsafe class NavballBottomControls
         var commMax = new float2(
             SnapToFramebufferPixel(x + 179f * scale, viewportOrigin.X, framebufferScale.X),
             SnapToFramebufferPixel(y + 279f * scale, viewportOrigin.Y, framebufferScale.Y));
-        var cycleTexture = _statusIconMipmaps
-            ? "KSI2BottomObjectCycle" : "KSI2BottomObjectCycleNoMipMaps";
-        var commTexture = _statusIconMipmaps
-            ? "KSI2BottomCommNet" : "KSI2BottomCommNetNoMipMaps";
-        DrawImage(draw, cycleTexture, cycleMin, cycleMax, planeTint);
-        DrawImage(draw, commTexture,
+        DrawImage(draw, "KSI2BottomObjectCycle", cycleMin, cycleMax, planeTint);
+        DrawImage(draw, "KSI2BottomCommNet",
             commMin, commMax, commTint);
     }
 

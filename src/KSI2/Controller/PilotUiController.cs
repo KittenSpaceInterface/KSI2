@@ -47,7 +47,6 @@ internal sealed class PilotUiController : IDisposable
         var viewport = ImGui.GetMainViewport();
         _throttle.UpdateSnapshot();
         _settings.DrawWindow(_throttle.UiState, _editor, _throttle.CancelInteraction);
-        _navball.SetStatusIconMipmaps(_settings.Settings.StatusIconMipmaps);
         var scaleViewport = PilotScaleViewport.Resolve(viewport.Size.X, viewport.Size.Y);
         var layout = PilotFrameLayout.Resolve(viewport.Pos.X, viewport.Pos.Y,
             viewport.Size.X, viewport.Size.Y, scaleViewport, _settings.Settings, _layoutDefinitions);
