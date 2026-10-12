@@ -72,6 +72,7 @@ internal sealed unsafe class AltitudeReadoutRenderer
                     ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
                     ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
         ImGui.Begin("##KSI2-AltitudeMode", flags);
+        PilotImGui.BringCurrentWindowToFront();
         ImGui.InvisibleButton("cycle altitude mode", new float2(86f * scale, 64f * scale));
         var hovered = ImGui.IsItemHovered();
         if (hovered && !_hovered) FlightUiSounds.Play("KSI2AltitudeModeHover");

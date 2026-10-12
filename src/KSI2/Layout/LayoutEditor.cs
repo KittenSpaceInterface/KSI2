@@ -39,6 +39,7 @@ internal sealed unsafe class LayoutEditor
                     ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
                     ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
         ImGui.Begin("##KSI2-LayoutEdit", flags);
+        PilotImGui.BringCurrentWindowToFront();
         ImGui.InvisibleButton("drag interface", size);
         var mouse = ImGui.GetMousePos();
         if (ImGui.IsItemActivated())
