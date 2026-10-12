@@ -119,7 +119,6 @@ internal sealed unsafe class NavballBottomControls
         if (!KSA.Program.DrawUI) return;
         var vehicle = KSA.Program.ControlledVehicle;
         if (vehicle is null || vehicle.IsDisposed) return;
-        var viewport = ImGui.GetMainViewport();
         var scale = cluster.Scale;
         var x = cluster.Position.X;
         var y = cluster.Position.Y;
@@ -127,7 +126,7 @@ internal sealed unsafe class NavballBottomControls
         var sasTopLeft = new float2(x + 189f * scale, y + 240f * scale);
         var rcsOn = vehicle.FlightComputer.RCSMode == FlightComputerRCSMode.Enabled;
 
-        var draw = ImGui.GetForegroundDrawList(viewport);
+        var draw = ImGui.GetWindowDrawList();
         UpdateColors(_rcsVisual, rcsOn, (float)dt);
         UpdateColors(_sasVisual, vehicle.IsStabilizationOn(), (float)dt);
         DrawToggle(draw, "RCS", rcsTopLeft, scale, _rcsVisual);
@@ -157,7 +156,7 @@ internal sealed unsafe class NavballBottomControls
                     ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing |
                     ImGuiWindowFlags.NoNavInputs;
         ImGui.Begin($"##KSI2-{label}", flags);
-        PilotImGui.BringCurrentWindowToFront();
+        PilotImGui.PlaceCurrentWindow();
         var clicked = ImGui.InvisibleButton($"##{label}", size);
         var hovered = ImGui.IsItemHovered();
         var pressed = ImGui.IsItemActive() && ImGui.IsMouseDown(ImGuiMouseButton.Left);

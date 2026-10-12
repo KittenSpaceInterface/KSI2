@@ -40,11 +40,10 @@ internal sealed unsafe class SideDialRenderer
         if (!required.All(id => _textures.TryGetValue(id, out var texture)
             && texture.ImguiTextureRef is not null)) return;
 
-        var viewport = ImGui.GetMainViewport();
         var center = new float2(bounds.Position.X + bounds.Width * bounds.Scale / 2f,
             bounds.Position.Y + bounds.Height * bounds.Scale / 2f);
         var scale = bounds.Scale;
-        var draw = ImGui.GetForegroundDrawList(viewport);
+        var draw = ImGui.GetWindowDrawList();
         var speed = (float)vehicle.NavBallData.Speed;
         var altitude = (float)vehicle.NavBallData.Altitude;
         if (float.IsFinite(speed))

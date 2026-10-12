@@ -21,13 +21,17 @@ vertical speed, altitude card, bottom controls.
 The speed mode is updated before the sphere renders. Input update order puts
 the speed card over the overlapping throttle hit area. The layout editor is the
 final interactive layer while editing; its input updates the resolved frame
-before drawing, and its outline draws last. Settings remain a separate ImGui
-window. Pilot artwork uses the viewport foreground draw list, so layer numbers
-describe order within KSI2, not the order of KSA popups.
+before drawing, and its outline draws last. Pilot artwork draws inside a
+transparent, input-free ImGui window. Settings and instrument hit targets use
+separate regular ImGui windows. KSI2 places these windows above ordinary KSA
+gauges and below an open KSA modal, so the pause backdrop dims the entire pilot
+interface and the pause menu receives clicks. KSI2 cancels instrument and editor
+interaction while a modal is open. Layer numbers describe order within KSI2,
+not the order of KSA popups.
 The cluster background starts at 1000, leaving 0-999 for future KSI2 underlays.
 Most layer values are 100 apart to leave room for intermediate components.
-KSA has no matching layer value or default zero; placing KSI2 artwork behind KSA
-would require a change to the ImGui draw channel, not a lower `PilotLayerOrder`.
+KSA has no matching layer value or default zero; ordering KSI2 relative to KSA
+requires window placement, not a lower `PilotLayerOrder`.
 The speed state follows vehicle and frame changes even while layout editing
 blocks instrument clicks. The settings window reads throttle diagnostics from
 the throttle module's state object.

@@ -29,9 +29,8 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
         if (!SharedAssets.All(id => _textures.TryGetValue(id, out var texture) && texture.ImguiTextureRef is not null)) return;
         if (!EnsureMask()) return;
 
-        var viewport = ImGui.GetMainViewport();
         var origin = new float2(widgetOrigin.X, widgetOrigin.Y);
-        var draw = ImGui.GetForegroundDrawList(viewport);
+        var draw = ImGui.GetWindowDrawList();
 
         var blurQueued = blur?.Queue(draw, origin,
             origin + new float2(VerticalSpeedIndicatorGeometry.WidgetWidth * scale,

@@ -16,12 +16,11 @@ internal sealed unsafe class NavballClusterBackground
     {
         if (!KSA.Program.DrawUI || _backgroundTexture?.ImguiTextureRef is not { } background) return;
 
-        var viewport = ImGui.GetMainViewport();
         var min = new float2(bounds.Position.X, bounds.Position.Y);
         var max = new float2(bounds.Max.X, bounds.Max.Y);
         var uvMin = new float2(0f, 0f);
         var uvMax = new float2(1f, 1f);
-        var draw = ImGui.GetForegroundDrawList(viewport);
+        var draw = ImGui.GetWindowDrawList();
 
         var blurQueued = blur?.Queue(draw, min, max, _backgroundTexture!, opacity) == true;
         if (!blurQueued)

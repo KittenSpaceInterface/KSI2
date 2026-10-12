@@ -33,9 +33,8 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
         if (Assets.Any(asset => !_textures.TryGetValue(asset.Id, out var texture) || texture.ImguiTextureRef is null)) return;
         if (!EnsureMask()) return;
 
-        var viewport = ImGui.GetMainViewport();
         var origin = new float2(widgetOrigin.X, widgetOrigin.Y);
-        var draw = ImGui.GetForegroundDrawList(viewport);
+        var draw = ImGui.GetWindowDrawList();
 
         var blurQueued = blur?.Queue(draw, origin,
             origin + new float2(85f * scale, 140f * scale),

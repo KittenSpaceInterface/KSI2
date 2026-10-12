@@ -50,12 +50,24 @@ internal sealed class PilotUiController : IDisposable
         var mode = _settings.Settings.Editing ? PilotInteractionMode.LayoutEditing : PilotInteractionMode.Instruments;
         var blur = _settings.BlurPanelBackgrounds ? GetPanelBlur() : null;
         var context = new PilotRenderContext(mode, blur, _settings.BlurOpacity, dt);
-        // Input windows and artwork use the same back-to-front layer order.
-        // The last input window raised is the topmost interactive layer.
-        foreach (var layer in _layers) layer.UpdateInput?.Invoke(layout, mode);
-        _editor.ProcessInteraction(ref layout);
-        foreach (var layer in _layers) layer.Draw(layout, context);
-        _editor.DrawOverlay(layout);
+        if (KSA.Program.IsModalOpen())
+        {
+            foreach (var module in _modules) module.CancelInteraction();
+            _editor.Cancel();
+        }
+        else
+        {
+            // The last input window raised is the topmost interactive layer.
+            foreach (var layer in _layers) layer.UpdateInput?.Invoke(layout, mode);
+            _editor.ProcessInteraction(ref layout);
+        }
+        if (PilotImGui.BeginArtworkWindow(viewport))
+        {
+            // The layout JSON orders artwork within this regular ImGui window.
+            foreach (var layer in _layers) layer.Draw(layout, context);
+            _editor.DrawOverlay(layout);
+        }
+        PilotImGui.EndArtworkWindow();
     }
 
     private PanelBackgroundBlur? GetPanelBlur()

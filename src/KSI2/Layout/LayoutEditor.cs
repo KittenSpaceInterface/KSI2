@@ -39,7 +39,7 @@ internal sealed unsafe class LayoutEditor
                     ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
                     ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNavInputs;
         ImGui.Begin("##KSI2-LayoutEdit", flags);
-        PilotImGui.BringCurrentWindowToFront();
+        PilotImGui.PlaceCurrentWindow();
         ImGui.InvisibleButton("drag interface", size);
         var mouse = ImGui.GetMousePos();
         if (ImGui.IsItemActivated())
@@ -67,8 +67,7 @@ internal sealed unsafe class LayoutEditor
     internal void DrawOverlay(PilotFrameLayout layout)
     {
         if (!_settings.Editing || !KSA.Program.DrawUI) return;
-        var viewport = ImGui.GetMainViewport();
-        var draw = ImGui.GetForegroundDrawList(viewport);
+        var draw = ImGui.GetWindowDrawList();
         DrawRect(draw, layout.EditorMin, layout.EditorMax, 0xDD66FF00);
     }
 }
