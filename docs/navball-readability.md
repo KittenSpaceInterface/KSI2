@@ -1,12 +1,13 @@
 # Navball lettering and shadow
 
-KSP2 renders the navball mesh into a texture at twice the RawImage resolution,
-then displays that texture at roughly 176 pixels of visible sphere diameter.
-KSI2 now follows the same spatial sampling step in `NavballSupersampler`: it
-rasterizes the original mesh and surface texture at twice the displayed ball
-diameter, averages each 2 × 2 group of samples, and submits the resolved pixels
-to ImGui. This preserves the ball's displayed size and is intended to improve
-coverage of thin numbers and markings near its edge.
+KSP2 renders the navball mesh into a 390 × 390 texture at unit UI scale, then
+displays it in a 195 × 195 RawImage. Its sphere is about 177 pixels across,
+with transparent margin inside the RawImage. KSI2 follows these dimensions in
+`NavballSupersampler`: it rasterizes the mesh into a 390 × 390 CPU buffer,
+averages each 2 × 2 group of samples, and submits the 195 × 195 result to
+ImGui. The result's origin and size are aligned to framebuffer pixels, and
+the sphere, shadow, markers, and crosshair share the aligned center. At other
+UI scales, both dimensions follow the scaled, pixel-aligned RawImage size.
 
 The intermediate is built on the CPU because KSI2's `StarMapAfterGui` hook
 submits draw commands to an ImGui pass that KSA has already begun. It is not a
@@ -19,7 +20,7 @@ The locally extracted `Flight-Navball-Shadow` remains a single full-opacity
 copy over the ball. KSP2's prefab contains multiple shadow Images, but the
 single copy is KSI2's existing readability adjustment.
 
-The Release build succeeds, and an in-game check showed a considerable
-readability improvement. Frame cost has not been measured.
-KSP2's GPU color-space handling and its exact 390 × 390 render target remain
-differences from this software implementation.
+The earlier twofold sphere render improved readability in an in-game check.
+The exact RawImage dimensions and pixel alignment have not yet had an in-game
+visual comparison. Frame cost has not been measured. KSP2's GPU texture
+filtering and color-space handling remain different from this CPU pass.

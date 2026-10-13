@@ -7,6 +7,9 @@ namespace KSI2;
 
 internal sealed unsafe class NavballSpike
 {
+    private const float RawImageSize = 195f;
+    private const float BallRadiusInRawImage = 88.47f;
+
     // KSP2's blue hemisphere points along -X in the imported mesh; KSA uses
     // -Z for sky. The quarter turn maps KSP2 east (-Z) to KSA's forward
     // azimuth (-X), while preserving the 0, 90, 180, 270 heading order.
@@ -69,14 +72,20 @@ internal sealed unsafe class NavballSpike
         EnsureMesh();
         if (_mesh is null) return;
 
-        var center = new Vector2(bounds.Position.X + bounds.Width * bounds.Scale / 2f,
+        var layoutCenter = new Vector2(bounds.Position.X + bounds.Width * bounds.Scale / 2f,
             bounds.Position.Y + bounds.Height * bounds.Scale / 2f);
-        var radius = bounds.Width * bounds.Scale / 2f;
+        var rawImageSize = NavballPixelAlignment.SnapSize(RawImageSize * bounds.Scale);
+        var rawImageMin = NavballPixelAlignment.Snap(new float2(
+            layoutCenter.X - rawImageSize / 2f, layoutCenter.Y - rawImageSize / 2f));
+        var center = new Vector2(rawImageMin.X + rawImageSize / 2f,
+            rawImageMin.Y + rawImageSize / 2f);
+        var visualScale = rawImageSize / RawImageSize;
+        var radius = BallRadiusInRawImage * visualScale;
         var draw = ImGui.GetWindowDrawList();
         ProjectSphere();
-        if (!_supersampler.TryDraw(draw, texture, center, radius, _mesh, _vertices!))
+        if (!_supersampler.TryDraw(draw, texture, center, radius, rawImageSize, _mesh, _vertices!))
             DrawProjectedSphere(draw, _filtering.GetTexture(texture), center, radius);
-        DrawShadow(draw, center, bounds.Scale);
+        DrawShadow(draw, center, visualScale);
         DrawMarkers(draw, center, radius);
         DrawCrosshair(draw, center, radius);
     }

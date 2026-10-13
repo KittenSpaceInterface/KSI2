@@ -14,6 +14,14 @@ internal static class NavballPixelAlignment
             Snap(point.Y, origin.Y, scale.Y));
     }
 
+    internal static float SnapSize(float size)
+    {
+        var framebufferScale = ImGui.GetIO().DisplayFramebufferScale.X;
+        return float.IsFinite(framebufferScale) && framebufferScale > 0f
+            ? MathF.Max(1f, MathF.Round(size * framebufferScale)) / framebufferScale
+            : MathF.Max(1f, MathF.Round(size));
+    }
+
     private static float Snap(float coordinate, float viewportOrigin, float framebufferScale)
         => float.IsFinite(framebufferScale) && framebufferScale > 0f
             ? viewportOrigin + MathF.Round((coordinate - viewportOrigin) * framebufferScale) / framebufferScale

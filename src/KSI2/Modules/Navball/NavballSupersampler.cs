@@ -5,11 +5,10 @@ using KSA;
 
 namespace KSI2;
 
-// Rasterize the original mesh at twice its displayed diameter, then resolve
-// four high-resolution samples into each final UI pixel. KSP2 uses the same
-// twofold spatial step with an offscreen RenderTexture and a RawImage. Keeping
-// this pass on the CPU avoids inserting a Vulkan render pass inside ImGui's
-// already active presentation pass.
+// Rasterize the sphere inside KSP2's 195-pixel RawImage canvas at twice its
+// displayed size. At unit scale this is a 390x390 intermediate with transparent
+// margins around the 354-pixel sphere. The CPU pass avoids inserting a Vulkan
+// render pass inside ImGui's already active presentation pass.
 internal sealed unsafe class NavballSupersampler
 {
     private TextureReference? _source;
@@ -19,17 +18,20 @@ internal sealed unsafe class NavballSupersampler
     private uint[] _highPixels = [];
     private uint[] _resolvedPixels = [];
     private int _highSize;
+    private float _highRadius;
     private bool _failed;
 
     internal bool TryDraw(ImDrawListPtr draw, TextureReference source, Vector2 center, float radius,
-        NavballMesh mesh, NavballSpike.ProjectedVertex[] vertices)
+        float rawImageSize, NavballMesh mesh, NavballSpike.ProjectedVertex[] vertices)
     {
         if (_failed) return false;
         try
         {
             EnsureSource(source);
-            var highSize = Math.Max(2, (int)MathF.Round(radius * 4f));
-            if ((highSize & 1) != 0) highSize++;
+            var framebufferScale = ImGui.GetIO().DisplayFramebufferScale.X;
+            if (!float.IsFinite(framebufferScale) || framebufferScale <= 0f) framebufferScale = 1f;
+            var highSize = Math.Max(1, (int)MathF.Round(rawImageSize * framebufferScale)) * 2;
+            _highRadius = highSize * radius / rawImageSize;
             if (highSize != _highSize)
             {
                 _highSize = highSize;
@@ -52,7 +54,7 @@ internal sealed unsafe class NavballSupersampler
             }
 
             Resolve();
-            DrawResolved(draw, center, radius);
+            DrawResolved(draw, center, rawImageSize);
             return true;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -84,12 +86,12 @@ internal sealed unsafe class NavballSupersampler
         NavballSpike.ProjectedVertex c)
     {
         var half = _highSize * 0.5f;
-        var ax = half + a.Position.X * half;
-        var ay = half + a.Position.Y * half;
-        var bx = half + b.Position.X * half;
-        var by = half + b.Position.Y * half;
-        var cx = half + c.Position.X * half;
-        var cy = half + c.Position.Y * half;
+        var ax = half + a.Position.X * _highRadius;
+        var ay = half + a.Position.Y * _highRadius;
+        var bx = half + b.Position.X * _highRadius;
+        var by = half + b.Position.Y * _highRadius;
+        var cx = half + c.Position.X * _highRadius;
+        var cy = half + c.Position.Y * _highRadius;
         var area = Edge(ax, ay, bx, by, cx, cy);
         if (MathF.Abs(area) < 1e-8f) return;
 
@@ -176,12 +178,12 @@ internal sealed unsafe class NavballSupersampler
         }
     }
 
-    private void DrawResolved(ImDrawListPtr draw, Vector2 center, float radius)
+    private void DrawResolved(ImDrawListPtr draw, Vector2 center, float rawImageSize)
     {
         var size = _highSize / 2;
-        var step = radius * 2f / size;
-        var left = center.X - radius;
-        var top = center.Y - radius;
+        var step = rawImageSize / size;
+        var left = center.X - rawImageSize / 2f;
+        var top = center.Y - rawImageSize / 2f;
         for (var y = 0; y < size; y++)
         {
             var row = y * size;
