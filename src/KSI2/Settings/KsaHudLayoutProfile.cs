@@ -6,7 +6,7 @@ namespace KSI2;
 internal static class KsaHudLayoutProfile
 {
     private const string ProfileName = "KSI2 Default";
-    private const int ProfileRevision = 9;
+    private const int ProfileRevision = 10;
     private const float RightMarginUv = 0.017778f;
     private const float PortraitTopOffsetUv = -0.04f;
     private const float PortraitTopOffsetPixels = 75f;
@@ -48,12 +48,14 @@ internal static class KsaHudLayoutProfile
 
         var layout = SerializedLayout.CaptureCurrent();
         var navballLayout = layout.Canvases.FirstOrDefault(canvas => canvas.Id == navball.Id);
-        if (navballLayout is null)
+        var telemetry = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "Telemetry");
+        if (navballLayout is null || telemetry is null)
         {
-            Console.Error.WriteLine("KSI2: could not create the HUD layout because KSA did not export its Navball canvas.");
+            Console.Error.WriteLine("KSI2: could not create the HUD layout because KSA did not export its Navball or Telemetry canvas.");
             return;
         }
         navballLayout.Enabled = false;
+        telemetry.Enabled = false;
         if (!PositionPortraitAtRightMargin(layout))
         {
             Console.Error.WriteLine("KSI2: could not create the HUD layout because KSA's portrait canvas was not found.");
@@ -88,7 +90,7 @@ internal static class KsaHudLayoutProfile
             else
             {
                 WriteProfileRevision();
-                Console.WriteLine("KSI2: added the 'KSI2 Default' KSA HUD layout (navball hidden, portrait at the right margin).");
+                Console.WriteLine("KSI2: added the 'KSI2 Default' KSA HUD layout (navball and telemetry hidden, portrait at the right margin).");
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
@@ -179,9 +181,12 @@ internal static class KsaHudLayoutProfile
     {
         var navball = save.LayoutData.Canvases.FirstOrDefault(canvas => canvas.Id == "Navball");
         var portrait = save.LayoutData.Canvases.FirstOrDefault(canvas => canvas.Id == "CrewPortraits");
-        if (navball is null || portrait is null || !PositionPortraitAtRightMargin(save.LayoutData)) return false;
+        var telemetry = save.LayoutData.Canvases.FirstOrDefault(canvas => canvas.Id == "Telemetry");
+        if (navball is null || portrait is null || telemetry is null
+            || !PositionPortraitAtRightMargin(save.LayoutData)) return false;
 
         navball.Enabled = false;
+        telemetry.Enabled = false;
         var stagingDirectory = Path.Combine(save.Directory.Parent!.FullName,
             $".{ProfileName}.{Guid.NewGuid():N}.tmp");
         try
@@ -191,7 +196,7 @@ internal static class KsaHudLayoutProfile
             File.Move(Path.Combine(stagingDirectory, "layout.xml"),
                 Path.Combine(save.Directory.FullName, "layout.xml"), overwrite: true);
             LayoutSave.FromDirectory(save.Directory.FullName);
-            Console.WriteLine("KSI2: updated the 'KSI2 Default' KSA HUD layout (navball hidden, portrait at the right margin).");
+            Console.WriteLine("KSI2: updated the 'KSI2 Default' KSA HUD layout (navball and telemetry hidden, portrait at the right margin).");
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
