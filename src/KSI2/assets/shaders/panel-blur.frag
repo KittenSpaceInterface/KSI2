@@ -6,14 +6,33 @@ layout(set = 0, binding = 1) uniform sampler2D panelMask;
 layout(push_constant) uniform PanelData {
     vec4 rect;
     vec4 scene;
+    vec4 maskSlice;
 } panel;
 
 layout(location = 0) in vec2 maskUv;
 layout(location = 0) out vec4 outputColor;
 
+float mapSlice(float uv, float destinationCorner, float sourceCorner) {
+    if (uv < destinationCorner)
+        return uv * sourceCorner / destinationCorner;
+    if (uv > 1.0 - destinationCorner)
+        return 1.0 - (1.0 - uv) * sourceCorner / destinationCorner;
+    return mix(sourceCorner, 1.0 - sourceCorner,
+               (uv - destinationCorner) / (1.0 - 2.0 * destinationCorner));
+}
+
 void main() {
     vec2 panelUv = vec2(maskUv.x, mix(maskUv.y, 1.0 - maskUv.y, panel.scene.w));
-    float maskAlpha = texture(panelMask, panelUv).a;
+    float maskAlpha;
+    if (panel.maskSlice.w > 1.5) {
+        maskAlpha = 1.0;
+    } else {
+        if (panel.maskSlice.w > 0.5) {
+            panelUv.x = mapSlice(panelUv.x, panel.maskSlice.y, panel.maskSlice.x);
+            panelUv.y = mapSlice(panelUv.y, panel.maskSlice.z, panel.maskSlice.x);
+        }
+        maskAlpha = texture(panelMask, panelUv).a;
+    }
     if (maskAlpha <= 0.001) discard;
     vec2 uv = clamp(gl_FragCoord.xy * panel.scene.xy, vec2(0.0), vec2(1.0));
     vec3 color = vec3(0.0);

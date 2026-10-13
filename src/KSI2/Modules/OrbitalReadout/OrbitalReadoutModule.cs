@@ -126,7 +126,8 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
 
         // Use the same fill and optional blur as the other KSI2 panels.
         var blurQueued = _textures.TryGetValue("KSI2OrbitFill", out var mask)
-            && blur?.Queue(draw, Snap(0, 0), Snap(240, 56), mask, opacity) == true;
+            && blur?.Queue(draw, Snap(0, 0), Snap(240, 56), mask, opacity,
+                maskNineSlice: new PanelMaskNineSlice(14f / 48f, 7f / 240f, 7f / 56f)) == true;
         if (!blurQueued) DrawNineSlice("KSI2OrbitFill", 0, 0, 240, 56, PanelColor, true);
         DrawNineSlice("KSI2OrbitBorder", 2, 2, 236, 52, BorderColor, false);
         DrawNineSlice("KSI2OrbitBracket", 2, 2, 236, 52, BracketColor, false);
@@ -137,9 +138,14 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
             vehicle.NextApoapsisTime, 4);
         DrawRow(vehicle.Orbit.PeriapsisAltitude, vehicle.NextPeriapsisTime, 22);
 
-        // An opaque label interrupts the lower frame; no accent bars flank the text.
-        DrawRect(70, 42, 170, 56, OpaquePanelColor);
-        DrawLcd("ORBITAL.INFO", 69, 163, 45, 56, 11, TitleColor, center: true);
+        // This title backing intentionally covers the lower frame. Blur that same
+        // rectangular area instead of removing it or leaving it opaque.
+        var titleBlurQueued = blurQueued && blur is not null &&
+            _textures.TryGetValue("KSI2OrbitFill", out var titleMask) &&
+            blur.Queue(draw, Snap(70, 42), Snap(170, 56), titleMask, opacity,
+                rectangularMask: true);
+        if (!titleBlurQueued) DrawRect(70, 42, 170, 56, OpaquePanelColor);
+        DrawLcd("ORBITAL.INFO", 70, 170, 45, 56, 11, TitleColor, center: true);
 
         SyncWarpCanvas(bounds);
         if (allowInteraction) QueueWarpCanvas(draw);

@@ -11,6 +11,9 @@ using RenderCore;
 
 namespace KSI2;
 
+internal readonly record struct PanelMaskNineSlice(
+    float SourceCornerFraction, float DestinationCornerFractionX, float DestinationCornerFractionY);
+
 // Drawn only in KSA's ImGui pass, after KSA has transitioned its scene image for sampling.
 internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
 {
@@ -18,6 +21,7 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
     {
         public float4 Rect;
         public float4 Scene;
+        public float4 MaskSlice;
     }
 
     private struct PanelDrawData
@@ -102,7 +106,8 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
     }
 
     internal bool Queue(ImDrawListPtr draw, float2 min, float2 max, TextureReference mask,
-        float opacity, bool flipVertically = false)
+        float opacity, bool flipVertically = false, PanelMaskNineSlice? maskNineSlice = null,
+        bool rectangularMask = false)
     {
         try
         {
@@ -143,7 +148,13 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
                     Rect = new float4((min.X - viewport.Pos.X) / viewport.Size.X,
                         (min.Y - viewport.Pos.Y) / viewport.Size.Y,
                         (max.X - min.X) / viewport.Size.X, (max.Y - min.Y) / viewport.Size.Y),
-                    Scene = new float4(0f, 0f, Math.Clamp(opacity, 0f, 1f), flipVertically ? 1f : 0f)
+                    Scene = new float4(0f, 0f, Math.Clamp(opacity, 0f, 1f), flipVertically ? 1f : 0f),
+                    MaskSlice = rectangularMask
+                        ? new float4(0f, 0f, 0f, 2f)
+                        : maskNineSlice is { } slice
+                        ? new float4(slice.SourceCornerFraction, slice.DestinationCornerFractionX,
+                            slice.DestinationCornerFractionY, 1f)
+                        : float4.Zero
                 },
                 Descriptor = maskDescriptor.Set
             };
