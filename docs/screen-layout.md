@@ -1,10 +1,9 @@
 # Screen placement in the current pilot interface
 
 KSI2 renders Unity UI artwork in KSA's top-left-origin ImGui viewport. The
-current navball placement is defined in `NavballClusterLayout.Calculate` and
+current navball placement is defined in `PilotLayoutDefaults.json` and
 shared by the cluster background, sphere, heading dial, and side dials. These formulas
-describe the implementation as it stands; the cluster's final vertical offset
-still needs an in-game comparison.
+describe the default KSP2 prefab placement in KSI2's viewport.
 
 ## Current cluster calculation
 
@@ -12,8 +11,8 @@ The KSP2 reference canvas is 1920 × 1080. KSI2 uses a uniform scale:
 
 ```text
 s = min(viewportWidth / 1920, viewportHeight / 1080)
-clusterLeft = viewportX + 112.85 × s
-clusterTop = viewportY + viewportHeight - (33.05 + 300) × s
+clusterLeft = viewportX + 94 × s
+clusterTop = viewportY + viewportHeight - (82 + 300) × s
 clusterCenter = (clusterLeft + 150 × s, clusterTop + 150 × s)
 ```
 
@@ -22,22 +21,15 @@ panel to the viewport. A saved edit position adds the throttle's displacement
 from its initial anchor to the cluster position. In edit mode, one invisible
 overlay covers the complete interface and drags all components together.
 
-`112.85 = 49 + (94 - 30.15)` and `33.05 = 38 + (82 - 86.95)`. These offsets
-preserve the separation between KSP2's navball and throttle after placing
-KSI2's separately controlled throttle. KSP2's own `group_navball / Container`
-is 300 × 300, bottom-left anchored at `(94, 82)` on its reference canvas.
-At 1920 × 1080, KSI2 currently places the cluster 33.05 units above the
-viewport bottom; KSP2's authored bottom offset is 82. That difference is a
-specific consequence of the current throttle-relative placement, not a
-universal UI scale correction.
-
-The current navball looks too low compared with KSP2, which leaves room below
-the ball for RCS and SAS controls. The prefab puts those 48 × 48 controls in
-the lower part of the same 300 × 300 cluster. A later visual pass should raise
-the cluster by adjusting its bottom offset and compare it at the same viewport
-size. Changing `NavballClusterLayout.Calculate` also moves the heading dial,
-the atmosphere widget, and the vertical-speed widget because they currently
-derive their positions from the cluster. Review those dependents together.
+KSP2's `group_navball / Container` is 300 × 300, bottom-left anchored at
+`(94, 82)` on its reference canvas. Its centered sphere is `(244 × s, 232 × s)`
+from the viewport's bottom-left. KSP2's visible throttle widget begins at
+`(30.15, 86.95)`. KSI2's throttle artwork is inset `(25, 14)` into its
+175 × 318 frame, so its default frame origin is `(5.15, 72.95)` from the
+viewport's bottom-left. Both defaults were translated by the same
+`(-18.85, +48.95)` canvas-unit displacement, matching the combined layout
+editor's movement. A saved combined edit position still translates both
+instruments together.
 
 ## Convert a prefab child to screen coordinates
 
@@ -75,6 +67,12 @@ The vertical-speed widget then sits one widget height plus an 8-unit gap above
 the atmosphere widget. The Scale control changes the throttle and all navball
 components together. Edit layout moves the complete interface through its
 single overlay; Reset layout restores the initial anchors.
+
+The active orbital readout is a separate 240 × 56 viewport-anchored widget.
+Its default left edge is `viewportX + 122 × s` and its top edge is
+`viewportY + viewportHeight - 72 × s`. It has its own `orbital-readout`
+layout root, so overriding the navball position does not move it. A saved
+combined layout edit translates both roots by the same displacement.
 
 ## Where this calculation applies
 

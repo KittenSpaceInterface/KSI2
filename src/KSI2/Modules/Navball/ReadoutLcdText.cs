@@ -31,7 +31,8 @@ internal static unsafe class ReadoutLcdText
 
     internal static void Draw(ImDrawListPtr draw, string value, float left, float right,
         float top, float bottom, float fontSize, float scale, bool alignRight, uint tint,
-        bool alignCenter = false)
+        bool alignCenter = false, bool snapPosition = false, bool alignBottom = false,
+        float? alignBottomY = null, string? layoutReference = null)
     {
         // KSA can rebuild its font atlas when display font settings change.
         // Resolve the face each frame, as the bottom controls do.
@@ -44,8 +45,10 @@ internal static unsafe class ReadoutLcdText
             var measured = ImGui.PInvoke.ImFont_CalcTextSizeA(font.Ptr,
                 size, 1000f, -1f, text, text + bytes.Length, null);
             var ink = InkBounds(font, value, measured);
-            var width = MathF.Max(measured.X, ink.Right - ink.Left);
-            var height = ink.Bottom - ink.Top;
+            var reference = layoutReference is null ? ink : ReferenceInkBounds(font, layoutReference, size);
+            var width = layoutReference is null ? MathF.Max(measured.X, ink.Right - ink.Left)
+                : reference.Right - reference.Left;
+            var height = reference.Bottom - reference.Top;
             var fit = MathF.Min(1f, MathF.Min((right - left) / width,
                 (bottom - top) / height));
             if (fit < 1f)
@@ -54,19 +57,22 @@ internal static unsafe class ReadoutLcdText
                 measured = ImGui.PInvoke.ImFont_CalcTextSizeA(font.Ptr,
                     size, 1000f, -1f, text, text + bytes.Length, null);
                 ink = InkBounds(font, value, measured);
+                reference = layoutReference is null ? ink : ReferenceInkBounds(font, layoutReference, size);
             }
 
             // Position the visible strokes inside the backing tile, rather
             // than centering ImGui's line box with its font ascent padding.
             var position = new float2(alignCenter ? (left + right - ink.Left - ink.Right) / 2f
                 : alignRight ? right - ink.Right : left - ink.Left,
-                (top + bottom - ink.Top - ink.Bottom) / 2f);
+                alignBottom ? (alignBottomY ?? bottom) - reference.Bottom
+                    : (top + bottom - ink.Top - ink.Bottom) / 2f);
+            if (snapPosition) position = NavballPixelAlignment.Snap(position);
             ImGui.PInvoke.ImDrawList_AddText_1(draw.Ptr, font.Ptr, size,
                 &position, tint, text, text + bytes.Length, 0f, null);
         }
     }
 
-    private static (float Left, float Top, float Right, float Bottom) InkBounds(
+    internal static (float Left, float Top, float Right, float Bottom) InkBounds(
         ImFontPtr font, string value, float2 measured)
     {
         var baked = font.LastBaked;
@@ -93,5 +99,17 @@ internal static unsafe class ReadoutLcdText
         return float.IsFinite(left)
             ? (left, top, right, bottom)
             : (0f, 0f, measured.X, measured.Y);
+    }
+
+    internal static (float Left, float Top, float Right, float Bottom) ReferenceInkBounds(
+        ImFontPtr font, string reference, float size)
+    {
+        var bytes = Encoding.UTF8.GetBytes(reference);
+        fixed (byte* text = bytes)
+        {
+            var measured = ImGui.PInvoke.ImFont_CalcTextSizeA(font.Ptr,
+                size, 1000f, -1f, text, text + bytes.Length, null);
+            return InkBounds(font, reference, measured);
+        }
     }
 }

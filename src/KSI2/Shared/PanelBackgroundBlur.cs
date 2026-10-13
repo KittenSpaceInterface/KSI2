@@ -32,7 +32,7 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
         public required VkDescriptorSet Set;
     }
 
-    private const int MaxPanelMasks = 3;
+    private const int MaxPanelMasks = 4;
 
     private static readonly ImDrawCallback DrawCallback = OnDraw;
     private static PanelBackgroundBlur? _active;

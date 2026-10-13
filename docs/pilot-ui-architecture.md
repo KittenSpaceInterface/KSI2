@@ -3,7 +3,7 @@
 `KSI2Mod` forwards StarMap lifecycle calls to `PilotUiController`. The controller
 owns the settings controller, combined layout editor, shared blur service, and a
 list of modules. A module owns its renderers and declares its asset assignments.
-The current modules are throttle, navball, and right indicators. Atmosphere and
+The current modules are throttle, navball, right indicators, and orbital readout. Atmosphere and
 vertical speed remain separate components inside the right indicators module.
 
 Each GUI frame reads the throttle snapshot, draws the existing settings window,
@@ -18,7 +18,7 @@ They are raised as they are drawn, so an overlapping upper interactive layer
 receives the pointer. Layers without input let the pointer pass through.
 The default JSON preserves the visual stack: cluster background, throttle,
 sphere, side dials, speed card, heading dial, heading readout, atmosphere,
-vertical speed, altitude card, bottom controls.
+vertical speed, altitude card, bottom controls, orbital readout.
 The speed mode is observed before the sphere renders; a click on the card
 changes the sphere on the next frame. Canvas order puts the speed card over the
 overlapping throttle hit area. While editing, the layout editor owns a bounded
@@ -42,7 +42,7 @@ The speed state follows vehicle and frame changes even while layout editing
 blocks instrument clicks. The settings window reads throttle diagnostics from
 the throttle module's state object.
 
-The packaged `ksi2.layout.defaults.json` defines the throttle and navball
+The packaged `ksi2.layout.defaults.json` defines the throttle, navball, and orbital readout
 cluster roots, their viewport anchors, child offsets, artwork bounds, and draw
 orders. A sparse `ksi2.layout.json` beside the DLL can override positions and
 draw orders. The files are loaded once at startup. The resolver stores all
@@ -66,8 +66,8 @@ the controller, and the ImGui font atlas belongs to KSA. Native KSA panels need
 a separate adapter and investigation before being added.
 
 Compatibility baseline: the default 1920 x 1080 navball root is
-`(112.85, 746.95)` and throttle uses its existing 175 x 318 frame, 24 pixel
-margin, normalized saved position, and 0.5-2 user scale. The settings window
+`(94, 698)` and throttle uses its existing 175 x 318 frame at `(5.15, 689.05)`,
+normalized saved position, and 0.5-2 user scale. The settings window
 still offers combined dragging, reset, mouse throttle control,
 and guarded experimental blur. `Editing` resets to false on load. The existing
 JSON names and meanings are unchanged. Checks cover default and saved positions,

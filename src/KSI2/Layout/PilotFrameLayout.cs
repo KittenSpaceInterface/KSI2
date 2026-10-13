@@ -71,6 +71,22 @@ internal readonly record struct PilotFrameLayout(
         };
         config.ResolveChildren("throttle", throttle.Position, throttle.Scale, components);
         config.ResolveChildren("navball-cluster", navball.Min, navball.Scale, components);
+        var orbitNode = config.Node("orbital-readout");
+        var orbitScale = MathF.Min(scaleViewport.X / config.DesignSize[0],
+            scaleViewport.Y / config.DesignSize[1]) * settings.Scale;
+        orbitScale = MathF.Min(orbitScale, MathF.Min(width / orbitNode.Size[0], height / orbitNode.Size[1]));
+        var orbitAvailableX = MathF.Max(0, width - orbitNode.Size[0] * orbitScale);
+        var orbitAvailableY = MathF.Max(0, height - orbitNode.Size[1] * orbitScale);
+        var orbitPosition = orbitNode.Anchor == "viewport-bottom-left"
+            ? new Point(viewportX + Math.Clamp(orbitNode.Offset[0] * orbitScale, 0, orbitAvailableX),
+                viewportY + Math.Clamp(orbitAvailableY + orbitNode.Offset[1] * orbitScale, 0, orbitAvailableY))
+            : new Point(viewportX + Math.Clamp(orbitNode.Offset[0] * orbitScale, 0, orbitAvailableX),
+                viewportY + Math.Clamp(orbitNode.Offset[1] * orbitScale, 0, orbitAvailableY));
+        if (settings.PositionSet)
+            orbitPosition = new Point(orbitPosition.X + throttle.Position.X - throttle.InitialPosition.X,
+                orbitPosition.Y + throttle.Position.Y - throttle.InitialPosition.Y);
+        components.Add("orbital-readout", new PilotComponentBounds(orbitPosition, orbitScale,
+            orbitNode.Size[0], orbitNode.Size[1]));
         var layout = new PilotFrameLayout(new(viewportX, viewportY), new(width, height), throttle, navball,
             new ReadOnlyDictionary<string, PilotComponentBounds>(components), throttle.Position, throttle.Position);
         var editorMin = new Point(float.PositiveInfinity, float.PositiveInfinity);

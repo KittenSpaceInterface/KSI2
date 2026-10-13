@@ -3,13 +3,19 @@
   "elements": {
     "throttle": {
       "anchor": "viewport-bottom-left",
-      "offset": [24, -24],
+      "offset": [5.15, -72.95],
       "size": [175, 318],
       "z": 1100
     },
+    "orbital-readout": {
+      "anchor": "viewport-bottom-left",
+      "offset": [122, -16],
+      "size": [240, 56],
+      "z": 1950
+    },
     "navball-cluster": {
       "anchor": "viewport-bottom-left",
-      "offset": [112.85, -33.05],
+      "offset": [94, -82],
       "size": [300, 300],
       "children": {
         "cluster-background": { "offset": [0, 0], "size": [300, 300], "z": 1000 },

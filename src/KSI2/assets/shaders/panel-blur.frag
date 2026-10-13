@@ -34,6 +34,6 @@ void main() {
     // Slightly reveal the original scene beneath the dark blurred panel.
     // KSP2 uses the mask alpha directly; this opacity is a KSI2 visual choice.
     float alpha = maskAlpha * panel.scene.z;
-    const vec3 panelTint = vec3(36.0, 38.0, 47.0) / 255.0;
+    const vec3 panelTint = vec3(3.0, 11.0, 25.0) / 255.0;
     outputColor = vec4(color * panelTint, alpha);
 }

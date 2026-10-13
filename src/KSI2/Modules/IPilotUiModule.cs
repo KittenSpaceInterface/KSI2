@@ -18,6 +18,7 @@ internal enum PilotLayerOrder
     VerticalSpeed,
     AltitudeCard,
     BottomControls,
+    OrbitalReadout,
     LayoutEditor
 }
 

@@ -137,7 +137,7 @@ internal sealed class PilotLayoutConfig
     [
         "throttle", "navball-cluster", "cluster-background", "navball-sphere", "side-dials",
         "speed-card", "heading-dial", "heading-readout", "atmosphere", "vertical-speed",
-        "altitude-card", "bottom-controls"
+        "altitude-card", "bottom-controls", "orbital-readout"
     ];
 
     private void Index(string id, PilotLayoutNode node)
@@ -184,6 +184,7 @@ internal sealed class PilotLayoutConfig
         PilotLayerOrder.VerticalSpeed => "vertical-speed",
         PilotLayerOrder.AltitudeCard => "altitude-card",
         PilotLayerOrder.BottomControls => "bottom-controls",
+        PilotLayerOrder.OrbitalReadout => "orbital-readout",
         _ => throw new ArgumentOutOfRangeException(nameof(layer))
     };
 

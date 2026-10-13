@@ -36,13 +36,56 @@ static void Near(float expected, float actual, string name, float epsilon = 0.00
     if (MathF.Abs(expected - actual) > epsilon) throw new Exception($"{name}: expected {expected}, received {actual}");
 }
 
+var orbitReference = Resolve(0, 0, 1920, 1080, new PilotUiSettings()).Component("orbital-readout");
+Near(122f, orbitReference.Position.X, "orbital panel left at reference size");
+Near(1008f, orbitReference.Position.Y, "orbital panel top at reference size");
+Near(240f, orbitReference.Width * orbitReference.Scale, "orbital panel width");
+Near(56f, orbitReference.Height * orbitReference.Scale, "orbital panel height");
+var orbitWindow = Resolve(30, 40, 1280, 720, new PilotUiSettings()).Component("orbital-readout");
+Near(30f + 122f * 2f / 3f, orbitWindow.Position.X, "orbital panel window x");
+Near(40f + 720f - 72f * 2f / 3f, orbitWindow.Position.Y, "orbital panel window y");
+var orbitPortrait = Resolve(0, 0, 900, 1200, new PilotUiSettings()).Component("orbital-readout");
+Near(122f * 900f / 1920f, orbitPortrait.Position.X, "orbital panel portrait x");
+Near(1200f - 72f * 900f / 1920f, orbitPortrait.Position.Y, "orbital panel portrait y");
+foreach (var (edge, origin) in new[] { (orbitWindow.Position.X, 30f), (orbitWindow.Max.X, 30f),
+    (orbitWindow.Position.Y, 40f), (orbitWindow.Max.Y, 40f) })
+{
+    var snapped = NavballPixelAlignment.SnapCoordinate(edge, origin, 1.25f);
+    Near(MathF.Round((edge - origin) * 1.25f), (snapped - origin) * 1.25f,
+        "orbital panel edge snaps to noninteger framebuffer scale", 0.0001f);
+}
+var orbitMoved = Resolve(0, 0, 1920, 1080,
+    new PilotUiSettings { PositionSet = true, X = 0.35f, Y = 0.62f });
+var orbitBaseline = Resolve(0, 0, 1920, 1080, new PilotUiSettings());
+Near(orbitBaseline.Component("orbital-readout").Position.X +
+    orbitMoved.Throttle.Position.X - orbitBaseline.Throttle.Position.X,
+    orbitMoved.Component("orbital-readout").Position.X, "orbital panel follows layout edit x");
+Near(orbitBaseline.Component("orbital-readout").Position.Y +
+    orbitMoved.Throttle.Position.Y - orbitBaseline.Throttle.Position.Y,
+    orbitMoved.Component("orbital-readout").Position.Y, "orbital panel follows layout edit y");
+var orbitCulture = System.Globalization.CultureInfo.InvariantCulture;
+if (OrbitalReadoutGeometry.FormatDistance(600_035, orbitCulture) != new OrbitalDistance("600.0", "km")
+    || OrbitalReadoutGeometry.FormatDistance(-75, orbitCulture) != new OrbitalDistance("-75", "m")
+    || OrbitalReadoutGeometry.FormatDistance(double.NaN, orbitCulture) is not null)
+    throw new Exception("orbital distance formatting failed");
+if (OrbitalReadoutGeometry.FormatCountdown(3661) != "in T-01:01:01"
+    || OrbitalReadoutGeometry.FormatCountdown(-1) is not null
+    || OrbitalReadoutGeometry.FormatCountdown(double.PositiveInfinity) is not null)
+    throw new Exception("orbital event countdown formatting failed");
+
 var cluster = Resolve(0, 0, 1920, 1080, new PilotUiSettings()).Navball;
+var defaultThrottle = Resolve(0, 0, 1920, 1080, new PilotUiSettings()).Throttle;
+Near(5.15f, defaultThrottle.Position.X, "KSP2-aligned throttle frame x");
+Near(689.05f, defaultThrottle.Position.Y, "KSP2-aligned throttle frame y");
+Near(30.15f, defaultThrottle.Position.X + 25f, "KSP2 throttle artwork left");
+Near(86.95f, 1080f - (defaultThrottle.Position.Y + 14f + 290f),
+    "KSP2 throttle artwork bottom");
 var speedOrigin = SpeedReadoutGeometry.TopLeft(cluster);
-Near(75.85f, speedOrigin.X, "speed card follows current navball x");
-Near(864.95f, speedOrigin.Y, "speed card follows current navball y");
+Near(57f, speedOrigin.X, "speed card follows current navball x");
+Near(816f, speedOrigin.Y, "speed card follows current navball y");
 var altitudeOrigin = AltitudeReadoutGeometry.TopLeft(cluster);
-Near(363.85f, altitudeOrigin.X, "altitude card follows current navball x");
-Near(864.95f, altitudeOrigin.Y, "altitude card follows current navball y");
+Near(345f, altitudeOrigin.X, "altitude card follows current navball x");
+Near(816f, altitudeOrigin.Y, "altitude card follows current navball y");
 var altitudeFormat = System.Globalization.CultureInfo.InvariantCulture;
 if (AltitudeReadoutGeometry.Format(99.999, altitudeFormat) != new AltitudeReadoutValue("100", "M")
     || AltitudeReadoutGeometry.Format(99.99901, altitudeFormat) != new AltitudeReadoutValue("99", "M"))
@@ -83,8 +126,8 @@ Near(-41.395893f, rocketEnd.AngleDegrees, "rocket maximum quaternion rotation");
 Near(rocketEnd.Position.X, AtmosphericIndicatorGeometry.Rocket(1.2f).Position.X,
     "rocket path clamps beyond maximum");
 var widgetOrigin = AtmosphericIndicatorGeometry.WidgetOrigin(cluster);
-Near(391.85f, widgetOrigin.X, "atmosphere widget follows navball cluster x");
-Near(901.95f, widgetOrigin.Y, "atmosphere widget follows navball cluster y");
+Near(373f, widgetOrigin.X, "atmosphere widget follows navball cluster x");
+Near(853f, widgetOrigin.Y, "atmosphere widget follows navball cluster y");
 var clusterOrigin = Resolve(0, 0, 1920, 1080, new PilotUiSettings()).Navball;
 Near(279f, widgetOrigin.X - clusterOrigin.Min.X, "authored atmosphere offset from navball x");
 Near(5f, clusterOrigin.Min.Y + clusterOrigin.PanelSize - widgetOrigin.Y - AtmosphericIndicatorGeometry.WidgetHeight,
@@ -198,10 +241,10 @@ for (var i = 1; i <= 100; i++)
         throw new Exception($"atmosphere rocket jumped at {i}%");
     previousRocket = rocket;
 }
-Near(112.85f, cluster.Min.X, "cluster left");
-Near(746.95f, cluster.Min.Y, "cluster top");
-Near(262.85f, cluster.Center.X, "navball center x");
-Near(896.95f, cluster.Center.Y, "navball center y");
+Near(94f, cluster.Min.X, "cluster left");
+Near(698f, cluster.Min.Y, "cluster top");
+Near(244f, cluster.Center.X, "navball center x");
+Near(848f, cluster.Center.Y, "navball center y");
 Near(88f, cluster.BallRadius, "navball radius");
 foreach (var (label, source, expected) in new[]
 {
