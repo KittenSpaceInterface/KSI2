@@ -26,7 +26,9 @@ fi
 
 dotnet restore KSI2.sln "-p:KsaReferencePath=$ksa_reference_native"
 dotnet build KSI2.sln --configuration Release --no-restore "-p:KsaReferencePath=$ksa_reference_native"
-dotnet run --project tests/KSI2.GeometryTests --configuration Release --no-build
+if [[ "${SKIP_GEOMETRY_CHECKS:-0}" != "1" ]]; then
+    dotnet run --project tests/KSI2.GeometryTests --configuration Release --no-build
+fi
 
 build_dir="$repository_dir/src/KSI2/bin/Release/net10.0"
 for name in KSI2.dll KSI2.deps.json mod.toml KSI2Assets.xml; do
