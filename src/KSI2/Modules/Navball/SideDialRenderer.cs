@@ -26,6 +26,9 @@ internal sealed unsafe class SideDialRenderer
     private readonly Dictionary<string, TextureReference> _textures = new();
     private List<MaskSpan>? _maskSpans;
     private bool _maskAttempted;
+    private readonly PilotUiSettings _settings;
+
+    internal SideDialRenderer(PilotUiSettings settings) => _settings = settings;
 
     internal void SetTexture(string id, TextureReference texture) => _textures[id] = texture;
 
@@ -46,32 +49,31 @@ internal sealed unsafe class SideDialRenderer
         var scale = bounds.Scale;
         var draw = ImGui.GetWindowDrawList();
         var speed = (float)vehicle.NavBallData.Speed;
-        var altitude = (float)vehicle.NavBallData.Altitude;
+        var altitude = vehicle.NavBallData.Altitude;
         if (float.IsFinite(speed))
         {
             DrawDial(speed, MathF.PI / 2f, true, 0xFF00D6FFu, 0xFF005566u,
                 0xFF00ABCCu, 0xFF008099u, "KSI2VelocityDialFrame");
         }
-        if (float.IsFinite(altitude))
+        if (double.IsFinite(altitude))
         {
-            DrawDial(altitude, -MathF.PI / 2f, false, 0xFF7D62F9u, 0xFF591E59u,
-                0xFF8C2F8Cu, 0xFF8C2F8Cu, "KSI2HeadingFrame");
+            if (_settings.ImprovedAltitudeDial || float.IsFinite((float)altitude))
+                DrawDial(altitude, -MathF.PI / 2f, false, 0xFF7D62F9u, 0xFF591E59u,
+                    0xFF8C2F8Cu, 0xFF8C2F8Cu, "KSI2HeadingFrame", _settings.ImprovedAltitudeDial);
         }
 
-        void DrawDial(float value, float sideAngle, bool clockwise, uint background,
-            uint numberHash, uint smallHash, uint frameTint, string frameId)
+        void DrawDial(double value, float sideAngle, bool clockwise, uint background,
+            uint numberHash, uint smallHash, uint frameTint, string frameId,
+            bool improvedAltitude = false)
         {
-            // The value tape resets by one label interval (1000 units / 20 degrees).
-            // This keeps the hash sprites in the same small angular range as KSP2.
-            var interval = MathF.Round(value / 1000f);
-            var tapeAngle = (value / 1000f - interval) * 20f * DegreesToRadians
-                * (clockwise ? 1f : -1f);
+            var tape = SideDialTapeGeometry.Resolve(value, clockwise, improvedAltitude);
+            var tapeAngle = tape.AngleRadians;
 
             DrawMasked("KSI2HeadingBackground", background, sideAngle, 0f);
             DrawMasked("KSI2HeadingBackground", background, sideAngle, 0f);
             DrawMasked("KSI2SideDialNumberHashes", numberHash, sideAngle, tapeAngle);
             DrawMasked("KSI2SideDialSmallHashes", smallHash, sideAngle, tapeAngle);
-            DrawLabels(value, sideAngle, tapeAngle, clockwise, frameTint);
+            DrawLabels(tape, sideAngle, clockwise, frameTint);
             DrawFrame(frameId, frameTint, sideAngle);
         }
 
@@ -108,19 +110,14 @@ internal sealed unsafe class SideDialRenderer
                 (x * tapeSin + y * tapeCos) / DialSize + 0.5f);
         }
 
-        void DrawLabels(float value, float sideAngle, float tapeAngle,
-            bool clockwise, uint tint)
+        void DrawLabels(SideDialTape tape, float sideAngle, bool clockwise, uint tint)
         {
             // Seven authored label pivots are at -60..+60 degrees on a 135-unit
             // radial RectTransform. The text is near its outer end.
-            var midpoint = (int)MathF.Round(value / 1000f);
+            var tapeAngle = tape.AngleRadians;
             for (var i = 0; i < 7; i++)
             {
-                var labelUnits = midpoint + (clockwise ? i - 3 : 3 - i);
-                // The KSP2 tape shows the value in KM, then switches to MM
-                // when the represented value reaches 1,000,000 metres.
-                var displayUnits = Math.Abs(labelUnits) >= 1000 ? labelUnits / 1000 : labelUnits;
-                var label = displayUnits.ToString("000");
+                var label = tape.Label(i, clockwise);
                 // Serialized quaternions put label 0 at +60 degrees, even
                 // though the prefab's Euler hint reports the opposite sign.
                 var labelAngle = (3 - i) * 20f * DegreesToRadians;

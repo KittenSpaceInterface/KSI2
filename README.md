@@ -43,6 +43,20 @@ and position.
 **Edit layout** lets you drag the interface as a group. Settings are saved
 beside the mod.
 
+**Improved altitude dial** is off by default. When enabled, the right dial
+uses 1 km between marks below 1 Mm (for example, `003`, `004`, `005` around
+4 km), 1 Mm between marks from 1 Mm, and 1 Gm between marks from 1 Gm.
+The scale continues in factors of 1,000 for larger distances, switching before
+neighboring dial labels would exceed three digits. The dial
+advances gradually between neighboring marks at each scale. When the option
+is off, the dial keeps KSP2's 1 km mark spacing below 1 Gm; above that it
+widens the spacing to keep the labels within three digits. The switch
+is saved in `ksi2.settings.json`. The altitude card uses the same distance unit
+order as KSA's apoapsis and periapsis readouts: mm, cm, m, km, Gm, AU, and ly.
+It uses their six-cell unit cutoff, changing from km to Gm near 100,000 km.
+The altitude card keeps ordinary numbers through 99,999.9 ly and uses compact
+scientific notation above that, matching the AP/PE numeric limit.
+
 The default instrument positions and draw order are in
 `ksi2.layout.defaults.json`. To keep personal adjustments across installs,
 place a sparse `ksi2.layout.json` beside the mod DLL; see

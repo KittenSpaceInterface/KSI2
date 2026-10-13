@@ -87,15 +87,74 @@ var altitudeOrigin = AltitudeReadoutGeometry.TopLeft(cluster);
 Near(345f, altitudeOrigin.X, "altitude card follows current navball x");
 Near(816f, altitudeOrigin.Y, "altitude card follows current navball y");
 var altitudeFormat = System.Globalization.CultureInfo.InvariantCulture;
-if (AltitudeReadoutGeometry.Format(99.999, altitudeFormat) != new AltitudeReadoutValue("100", "M")
-    || AltitudeReadoutGeometry.Format(99.99901, altitudeFormat) != new AltitudeReadoutValue("99", "M"))
-    throw new Exception("altitude first unit entry uses the serialized float threshold");
-if (AltitudeReadoutGeometry.Format(99_998.9, altitudeFormat) != new AltitudeReadoutValue("99998", "M")
-    || AltitudeReadoutGeometry.Format(99_999, altitudeFormat) != new AltitudeReadoutValue("99", "KM")
-    || AltitudeReadoutGeometry.Format(99_999_000, altitudeFormat) != new AltitudeReadoutValue("99", "MM")
-    || AltitudeReadoutGeometry.Format(-99_999, altitudeFormat) != new AltitudeReadoutValue("-99", "KM")
-    || AltitudeReadoutGeometry.Format(99_999_000_000, altitudeFormat) is not null)
-    throw new Exception("altitude integer units or truncation differs from KSP2 binder");
+foreach (var (metres, expected) in new (double, AltitudeReadoutValue)[]
+{
+    (0.005, new("5", "mm")),
+    (0.25, new("25", "cm")),
+    (75, new("75", "m")),
+    (42_000, new("42000", "m")),
+    (100_000, new("100", "km")),
+    (99_999_000, new("99999", "km")),
+    (100_000_000, new("0.1", "Gm")),
+    (375_000_000, new("0.375", "Gm")),
+    (149_597_870_700, new("149.6", "Gm")),
+    (20_000_000_000_000, new("20000", "Gm")),
+    (100_000_000_000_000, new("668.5", "AU")),
+    (9_461_000_000_000_000, new("63243", "AU")),
+    (20_000_000_000_000_000, new("2.114", "ly")),
+    (9_461_000_000_000_000d * 99_999.9, new("99999.9", "ly")),
+    (9_461_000_000_000_000d * 100_000, new("1E+5", "ly")),
+    (9_461_000_000_000_000d * 1_000_000, new("1E+6", "ly")),
+    (1e22, new("1E+6", "ly"))
+})
+    if (AltitudeReadoutGeometry.Format(metres, altitudeFormat) != expected)
+        throw new Exception($"altitude unit formatting failed at {metres} m");
+if (AltitudeReadoutGeometry.Format(double.NaN, altitudeFormat) is not null)
+    throw new Exception("invalid altitude should not format");
+var originalAltitudeTape = SideDialTapeGeometry.Resolve(216_250_000d, false, false);
+if (originalAltitudeTape.AdaptiveAltitudeMarks || originalAltitudeTape.Label(2, false) != "216"
+    || originalAltitudeTape.Label(3, false) != "216"
+    || originalAltitudeTape.Label(4, false) != "216")
+    throw new Exception("original altitude tape should repeat MM labels at kilometre spacing");
+var improvedAltitudeTape = SideDialTapeGeometry.Resolve(216_250_000d, false, true);
+if (!improvedAltitudeTape.AdaptiveAltitudeMarks || improvedAltitudeTape.Label(2, false) != "217"
+    || improvedAltitudeTape.Label(3, false) != "216"
+    || improvedAltitudeTape.Label(4, false) != "215")
+    throw new Exception("improved altitude tape should show neighboring MM marks");
+Near(-5f * MathF.PI / 180f, improvedAltitudeTape.AngleRadians,
+    "improved altitude tape moves one quarter of a mark over 250 km");
+var lowAltitudeTape = SideDialTapeGeometry.Resolve(4_250d, false, true);
+if (lowAltitudeTape.AdaptiveAltitudeMarks || lowAltitudeTape.Label(2, false) != "005"
+    || lowAltitudeTape.Label(3, false) != "004"
+    || lowAltitudeTape.Label(4, false) != "003")
+    throw new Exception("improved altitude option should retain one-kilometre marks below MM");
+Near(-5f * MathF.PI / 180f, lowAltitudeTape.AngleRadians,
+    "altitude tape moves one quarter of a mark over 250 m below MM");
+if (SideDialTapeGeometry.Resolve(999_000d, false, true).AdaptiveAltitudeMarks
+    || !SideDialTapeGeometry.Resolve(1_000_000d, false, true).AdaptiveAltitudeMarks)
+    throw new Exception("improved altitude tape switches at one megametre");
+var solarAltitudeTape = SideDialTapeGeometry.Resolve(375_500_000_000d, false, true);
+if (solarAltitudeTape.StepMetres != 1_000_000_000d
+    || solarAltitudeTape.Label(2, false) != "377"
+    || solarAltitudeTape.Label(3, false) != "376"
+    || solarAltitudeTape.Label(4, false) != "375")
+    throw new Exception("improved altitude tape should use neighboring GM marks in solar orbit");
+var highEarthAltitudeTape = SideDialTapeGeometry.Resolve(375_250_000d, false, true);
+if (highEarthAltitudeTape.StepMetres != 1_000_000d
+    || highEarthAltitudeTape.Label(2, false) != "376"
+    || highEarthAltitudeTape.Label(3, false) != "375"
+    || highEarthAltitudeTape.Label(4, false) != "374")
+    throw new Exception("improved altitude tape should show neighboring megametre marks");
+foreach (var metres in new[] { 996_000_000d, 996_000_000_000d, 1e22, 1e300 })
+{
+    var tape = SideDialTapeGeometry.Resolve(metres, false, true);
+    if (!float.IsFinite(tape.AngleRadians)
+        || Enumerable.Range(0, 7).Any(index => tape.Label(index, false).Length > 4))
+        throw new Exception($"altitude tape overflowed at {metres} m");
+}
+if (new PilotUiSettings().ImprovedAltitudeDial
+    || !PilotUiSettings.Parse("{\"ImprovedAltitudeDial\":true}").ImprovedAltitudeDial)
+    throw new Exception("improved altitude dial option should default off and survive settings parse");
 var speedFormat = System.Globalization.CultureInfo.InvariantCulture;
 if (SpeedReadoutGeometry.Format(7_784.4, speedFormat) != new SpeedReadoutValue("7784.4", "m/s"))
     throw new Exception("orbital speed below KSP2 unit switch remains in m/s");

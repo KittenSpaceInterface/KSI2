@@ -5,7 +5,7 @@ internal sealed class NavballModule : IPilotUiModule
     private readonly NavballClusterBackground _navballClusterBackground = new();
     private readonly NavballSpike _navballSpike = new();
     private readonly HeadingDialRenderer _headingDial = new();
-    private readonly SideDialRenderer _sideDials = new();
+    private readonly SideDialRenderer _sideDials;
     private readonly SpeedReadoutRenderer _speedReadout = new();
     private readonly AltitudeReadoutRenderer _altitudeReadout = new();
     private readonly NavballBottomControls _bottomControls = new();
@@ -15,8 +15,9 @@ internal sealed class NavballModule : IPilotUiModule
     internal static readonly PilotLayoutDefinition[] Definitions = [];
     public IReadOnlyList<PilotLayoutDefinition> LayoutDefinitions => Definitions;
     public IReadOnlyList<PilotUiLayer> Layers { get; }
-    public NavballModule()
+    public NavballModule(PilotUiSettings settings)
     {
+        _sideDials = new SideDialRenderer(settings);
         Layers =
         [
             new(PilotLayerOrder.ClusterBackground, (l,c) => _navballClusterBackground.Draw(l.Component("cluster-background"),c.Blur,c.Opacity)),

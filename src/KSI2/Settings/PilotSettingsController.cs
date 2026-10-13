@@ -140,6 +140,18 @@ internal sealed class PilotSettingsController : IDisposable
         }
         if (throttle.MouseUnavailableReason is { } reason)
             ImGui.TextWrapped($"Mouse throttle control unavailable until restart: {reason}");
+        var improvedAltitudeDial = _settings.ImprovedAltitudeDial;
+        if (ImGui.Checkbox("Improved altitude dial", ref improvedAltitudeDial))
+        {
+            _settings.ImprovedAltitudeDial = improvedAltitudeDial;
+            Save();
+        }
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.BeginTooltip();
+            ImGui.Text("Altitude marks widen as distance grows so nearby values stay distinct.");
+            ImGui.EndTooltip();
+        }
         ImGui.Text("Advanced");
         if (ImGui.Button("Vertical Speed Configuration"))
             VerticalSpeedConfiguration.IsOpen = !VerticalSpeedConfiguration.IsOpen;

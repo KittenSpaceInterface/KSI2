@@ -19,29 +19,34 @@ internal static class AltitudeReadoutGeometry
             cluster.Min.Y + offset[1] * cluster.Scale);
     }
 
-    // KSA's active ENU frame supplies radar altitude. All other active frames
-    // currently supply barometric altitude in NavBallData.Altitude.
     internal static AltitudeReadoutMode Mode(VehicleReferenceFrame frame) =>
         frame == VehicleReferenceFrame.EnuBody
             ? AltitudeReadoutMode.GroundLevel
             : AltitudeReadoutMode.SeaLevel;
 
-    // Mirrors the active KSP2 DataContainer's UIValue_ReadNumber_TextUnits.
-    // Its first range uses normal numeric rounding; later ranges truncate
-    // toward zero. The binder has no entry at or above the final boundary.
+    // KSA's distance unit order also drives the apoapsis and periapsis readouts.
+    // Use the same six-cell unit transition as apoapsis/periapsis, while
+    // shortening the number's decimal places to fit the compact card.
     internal static AltitudeReadoutValue? Format(double metres, CultureInfo culture)
     {
         if (!double.IsFinite(metres)) return null;
         var absolute = Math.Abs(metres);
-        if (absolute >= 99_999_000_000d) return null;
-        if (absolute >= 99_999_000d)
-            return new(Math.Truncate(metres / 1_000_000d).ToString("0", culture), "MM");
-        if (absolute >= 99_999d)
-            return new(Math.Truncate(metres / 1_000d).ToString("0", culture), "KM");
-        // The serialized 0.001 is a float; its promoted double value makes
-        // the first boundary about 99.99900475, not exactly 99.999.
-        if (absolute >= 99_999d * (double)0.001f)
-            return new(Math.Truncate(metres).ToString("0", culture), "M");
-        return new(metres.ToString("0", culture), "M");
+        foreach (var (scale, unit) in OrbitalReadoutGeometry.DistanceUnits)
+        {
+            if (unit == "mm" && absolute >= 0.1 || unit == "cm" && absolute >= 1)
+                continue;
+            var amount = absolute / scale;
+            if (!OrbitalReadoutGeometry.FitsDistanceUnit(amount, unit)) continue;
+            var signed = Math.CopySign(amount, metres);
+            var format = amount >= 1000 ? "0" : amount >= 100 ? "0.#"
+                : amount >= 10 ? "0.##" : "0.###";
+            if (unit == "ly")
+            {
+                if (Math.Round(amount * 10) > 999_999) format = "0E+0";
+                else if (amount >= 1000) format = "0.0";
+            }
+            return new(signed.ToString(format, culture), unit);
+        }
+        throw new InvalidOperationException("No altitude unit was available.");
     }
 }

@@ -8,7 +8,7 @@ internal sealed class PilotUiController : IDisposable
     private readonly PilotSettingsController _settings = new();
     private readonly LayoutEditor _editor;
     private readonly ThrottleModule _throttle;
-    private readonly NavballModule _navball = new();
+    private readonly NavballModule _navball;
     private readonly OrbitalReadoutModule _orbitalReadout = new();
     private readonly RightIndicatorsModule _rightIndicators;
     private readonly IPilotUiModule[] _modules;
@@ -21,6 +21,7 @@ internal sealed class PilotUiController : IDisposable
     {
         _editor = new LayoutEditor(_settings.Settings, _settings.Save);
         _throttle = new ThrottleModule(_settings.Settings);
+        _navball = new NavballModule(_settings.Settings);
         _rightIndicators = new RightIndicatorsModule(_settings.Settings, _settings.Save,
             _settings.VerticalSpeedConfiguration);
         _modules = [_throttle, _navball, _rightIndicators, _orbitalReadout];

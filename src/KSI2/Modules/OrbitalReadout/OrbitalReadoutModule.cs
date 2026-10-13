@@ -10,7 +10,7 @@ internal readonly record struct OrbitalDistance(string Number, string Unit);
 
 internal static class OrbitalReadoutGeometry
 {
-    private static readonly (double Metres, string Unit)[] DistanceUnits =
+    internal static readonly (double Metres, string Unit)[] DistanceUnits =
     [
         (0.001, "mm"),
         (0.01, "cm"),
@@ -20,6 +20,9 @@ internal static class OrbitalReadoutGeometry
         (149_597_870_700, "AU"),
         (9_461_000_000_000_000, "ly")
     ];
+
+    internal static bool FitsDistanceUnit(double value, string unit) =>
+        unit == "ly" || Math.Round(value * 10) <= 999_999;
 
     internal static OrbitalDistance? FormatDistance(double metres, CultureInfo culture)
     {
@@ -33,7 +36,7 @@ internal static class OrbitalReadoutGeometry
 
             var value = absolute / scale;
             // KSA's six numeric cells reserve one place for the decimal digit.
-            if (Math.Round(value * 10) > 999_999 && unit != "ly")
+            if (!FitsDistanceUnit(value, unit))
                 continue;
 
             var signedValue = Math.CopySign(Math.Min(value, 99_999.9), metres);

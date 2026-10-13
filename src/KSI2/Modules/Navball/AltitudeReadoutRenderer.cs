@@ -95,10 +95,9 @@ internal sealed unsafe class AltitudeReadoutRenderer
         var y = origin.Y;
         var draw = ImGui.GetWindowDrawList();
 
-        var value = AltitudeReadoutGeometry.Format(
-            _selectedMode == AltitudeReadoutMode.GroundLevel
-                ? vehicle.GetRadarAltitude() : vehicle.GetBarometricAltitude(),
-            CultureInfo.CurrentCulture);
+        var altitude = _selectedMode == AltitudeReadoutMode.GroundLevel
+            ? vehicle.GetRadarAltitude() : vehicle.GetBarometricAltitude();
+        var value = AltitudeReadoutGeometry.Format(altitude, CultureInfo.CurrentCulture);
         if (value is not null) _lastValue = value;
         if (_lastValue is not { } displayed) return;
 
@@ -124,7 +123,7 @@ internal sealed unsafe class AltitudeReadoutRenderer
             8f * scale, 8f * scale, FrameTint);
 
         ReadoutNumberText.Draw(draw, displayed.Number, x + 11f * scale,
-            x + 75f * scale, y + 30f * scale, scale, false, NumberTint);
+            x + 75f * scale, y + 30f * scale, scale, false, NumberTint, 12f);
 
         DrawTiledImage("KSI2AltitudeUnitsTile", x + 13.5f * scale, y + 44f * scale,
             48f, 10f, 16f, 10f, UnitsTileTint);

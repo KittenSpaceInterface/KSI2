@@ -7,7 +7,8 @@ namespace KSI2;
 internal static unsafe class ReadoutNumberText
 {
     internal static void Draw(ImDrawListPtr draw, string value, float left, float right,
-        float centerY, float scale, bool alignRight, uint tint)
+        float centerY, float scale, bool alignRight, uint tint,
+        float minimumFontSize = 18f)
     {
         var bytes = Encoding.UTF8.GetBytes(value);
         fixed (byte* text = bytes)
@@ -19,7 +20,7 @@ internal static unsafe class ReadoutNumberText
             var availableWidth = right - left;
             if (width > availableWidth)
             {
-                size = MathF.Max(18f * scale, size * availableWidth / width);
+                size = MathF.Max(minimumFontSize * scale, size * availableWidth / width);
                 width = ImGui.PInvoke.ImFont_CalcTextSizeA(font.Ptr,
                     size, 1000f, -1f, text, text + bytes.Length, null).X;
             }

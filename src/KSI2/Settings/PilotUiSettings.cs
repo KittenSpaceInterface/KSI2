@@ -12,6 +12,7 @@ internal sealed class PilotUiSettings
     public bool Editing { get; set; }
     public bool PositionSet { get; set; }
     public bool MouseThrottleControl { get; set; }
+    public bool ImprovedAltitudeDial { get; set; }
     public bool BlurPanelBackgrounds { get; set; }
     public bool ExperimentalHudMenu { get; set; }
     public bool ConfigurationVisible { get; set; } = true;
