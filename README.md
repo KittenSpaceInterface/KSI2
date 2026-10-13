@@ -56,6 +56,16 @@ KSA exits unexpectedly while blur is enabled, KSI2 turns it off on the next
 launch. To recover manually, set `BlurPanelBackgrounds` to `false` in that
 settings file and remove `ksi2.blur-active` from the mod folder.
 
+The **Experimental** setting **Add KSI2 to HUD menu** adds a checked **KSI2
+Configuration** item below Navball in KSA's HUD menu. The item shows or hides
+the KSI2 settings window. Once the HUD item has appeared, the settings window's
+title-bar close button also hides that window; the HUD item can show it again.
+The flight instruments remain visible independently. This option is off by default. Its Harmony patch is loaded only
+when enabled and is removed when disabled. If KSA exits unexpectedly while it
+is enabled, KSI2 disables the option on the next launch. A missing patch or a
+changed KSA HUD list also leaves the option off and the flight instruments
+visible. This option does not change KSA's Navball visibility.
+
 Under **Advanced**, **Vertical Speed Configuration** toggles the calibration
 window. The window also has a Close button and starts closed when KSI2 loads.
 

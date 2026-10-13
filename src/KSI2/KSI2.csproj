@@ -26,6 +26,22 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <PackageReference Include="StarMap.API" Version="0.3.6" />
+    <ProjectReference Include="../KSI2.HudMenuPatch/KSI2.HudMenuPatch.csproj" ReferenceOutputAssembly="false" />
+    <Content Include="../KSI2.HudMenuPatch/bin/$(Configuration)/net10.0/0Harmony.dll">
+      <Link>assets/optional/0Harmony.dll</Link>
+      <TargetPath>assets/optional/0Harmony.dll</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="../KSI2.HudMenuPatch/bin/$(Configuration)/net10.0/KSI2.HudMenuPatch.dll">
+      <Link>assets/optional/KSI2.HudMenuPatch.dll</Link>
+      <TargetPath>assets/optional/KSI2.HudMenuPatch.dll</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="$(NuGetPackageRoot)lib.harmony/2.4.2/LICENSE">
+      <Link>assets/optional/Harmony.LICENSE.txt</Link>
+      <TargetPath>assets/optional/Harmony.LICENSE.txt</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Reference Include="$(KsaReferencePath)\Planet.Render.Core.dll" Private="false" Condition="'$(UseKsaReferencePackage)' != 'true'" />
   </ItemGroup>
 

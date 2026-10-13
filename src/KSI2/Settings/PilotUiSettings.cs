@@ -13,6 +13,8 @@ internal sealed class PilotUiSettings
     public bool PositionSet { get; set; }
     public bool MouseThrottleControl { get; set; }
     public bool BlurPanelBackgrounds { get; set; }
+    public bool ExperimentalHudMenu { get; set; }
+    public bool ConfigurationVisible { get; set; } = true;
     public int BlurOpacityTicks { get; set; } = 398;
     public float[] VerticalSpeedMarkSpeeds { get; set; } = (float[])VerticalSpeedIndicatorGeometry.DefaultMarkSpeeds.Clone();
     public float VerticalSpeedNeedleOffset { get; set; } = 2f;

@@ -7,17 +7,39 @@ internal sealed class PilotSettingsController : IDisposable
 {
     private readonly PilotUiSettings _settings = PilotUiSettings.Load();
     private readonly BlurCrashGuard _blurCrashGuard;
+    private readonly HudMenuIntegration _hudMenu;
     internal PilotUiSettings Settings => _settings;
+    internal HudMenuIntegration HudMenu => _hudMenu;
     internal VerticalSpeedConfigurationState VerticalSpeedConfiguration { get; } = new();
     internal void Save() => _settings.Save();
     internal bool BlurPanelBackgrounds => _blurCrashGuard.Enabled;
     internal float BlurOpacity => _settings.BlurOpacityTicks / 400f;
-    internal PilotSettingsController() => _blurCrashGuard = new BlurCrashGuard(_settings, _settings.Save);
+    internal PilotSettingsController()
+    {
+        _blurCrashGuard = new BlurCrashGuard(_settings, _settings.Save);
+        _hudMenu = new HudMenuIntegration(_settings, _settings.Save);
+    }
+
+    internal void Initialize() => _hudMenu.Initialize();
 
     internal void DrawWindow(ThrottleUiState throttle, LayoutEditor editor, Action cancelThrottle)
     {
+        if (!_settings.ConfigurationVisible) return;
         ImGui.SetNextWindowPos(new float2(24, 72), ImGuiCond.FirstUseEver);
-        if (!ImGui.Begin("KSI2", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings))
+        var windowFlags = ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings;
+        bool windowExpanded;
+        if (_hudMenu.Enabled && _hudMenu.MenuItemSeen)
+        {
+            var configurationVisible = _settings.ConfigurationVisible;
+            windowExpanded = ImGui.Begin("KSI2", ref configurationVisible, windowFlags);
+            if (configurationVisible != _settings.ConfigurationVisible)
+                _hudMenu.SetConfigurationVisible(configurationVisible);
+        }
+        else
+        {
+            windowExpanded = ImGui.Begin("KSI2", windowFlags);
+        }
+        if (!windowExpanded)
         {
             ImGui.End();
             return;
@@ -39,6 +61,11 @@ internal sealed class PilotSettingsController : IDisposable
             Save();
         }
         ImGui.Text("Experimental");
+        var hudMenu = _hudMenu.Enabled;
+        if (ImGui.Checkbox("Add KSI2 to HUD menu", ref hudMenu)) _hudMenu.SetEnabled(hudMenu);
+        if (_hudMenu.RecoveredAfterCrash)
+            ImGui.TextWrapped("HUD menu integration was disabled after the previous run ended unexpectedly.");
+        if (_hudMenu.Error is { } hudMenuError) ImGui.TextWrapped(hudMenuError);
         var blurPanelBackgrounds = BlurPanelBackgrounds;
         if (ImGui.Checkbox("Blur panel backgrounds", ref blurPanelBackgrounds))
             _blurCrashGuard.SetEnabled(blurPanelBackgrounds);
@@ -75,5 +102,9 @@ internal sealed class PilotSettingsController : IDisposable
         ImGui.End();
     }
 
-    public void Dispose() => _blurCrashGuard.OnCleanUnload();
+    public void Dispose()
+    {
+        _hudMenu.Dispose();
+        _blurCrashGuard.OnCleanUnload();
+    }
 }

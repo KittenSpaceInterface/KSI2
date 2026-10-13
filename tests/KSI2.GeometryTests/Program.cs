@@ -1,5 +1,7 @@
 using KSI2;
 using System.Text.Json;
+using System.Reflection;
+using System.Runtime.Loader;
 
 PilotLayoutDefinition[] definitions =
 [
@@ -354,6 +356,50 @@ finally
     if (File.Exists(marker)) File.Delete(marker);
 }
 
+var hudMarker = Path.Combine(Path.GetTempPath(), $"ksi2-hud-menu-test-{Guid.NewGuid():N}");
+try
+{
+    var hudSettings = new PilotUiSettings();
+    using (var disabled = new HudMenuIntegration(hudSettings, () => true, hudMarker))
+    {
+        disabled.Initialize();
+        if (typeof(KSI2Mod).Assembly.GetReferencedAssemblies()
+            .Any(assembly => assembly.Name is "0Harmony" or "KSI2.HudMenuPatch"))
+            throw new Exception("main KSI2 assembly references optional patch code while disabled");
+        if (disabled.Enabled || File.Exists(hudMarker) ||
+            AppDomain.CurrentDomain.GetAssemblies().Any(assembly =>
+                assembly.GetName().Name is "0Harmony" or "KSI2.HudMenuPatch"))
+            throw new Exception("disabled HUD menu integration loaded patch code or armed crash recovery");
+    }
+    File.WriteAllText(hudMarker, "unclean exit");
+    hudSettings.ExperimentalHudMenu = true;
+    hudSettings.ConfigurationVisible = false;
+    using var recoveredHudMenu = new HudMenuIntegration(hudSettings, () => true, hudMarker);
+    if (recoveredHudMenu.Enabled || !recoveredHudMenu.RecoveredAfterCrash ||
+        !hudSettings.ConfigurationVisible || File.Exists(hudMarker))
+        throw new Exception("unclean HUD menu session was not recovered");
+}
+finally
+{
+    if (File.Exists(hudMarker)) File.Delete(hudMarker);
+}
+
+AssemblyLoadContext.Default.LoadFromAssemblyPath(Path.Combine(AppContext.BaseDirectory,
+    "assets", "optional", "0Harmony.dll"));
+var patchAssembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(Path.Combine(AppContext.BaseDirectory,
+    "assets", "optional", "KSI2.HudMenuPatch.dll"));
+var patchType = patchAssembly.GetType("KSI2.Optional.HarmonyHudMenuPatch", true)!;
+var patchFlags = BindingFlags.Static | BindingFlags.Public;
+var probeMethod = typeof(HudMenuPatchProbe).GetMethod(nameof(HudMenuPatchProbe.Run))!;
+var observedPatch = false;
+patchType.GetMethod("Install", patchFlags)!.Invoke(null, [probeMethod, (Action)(() => observedPatch = true)]);
+HudMenuPatchProbe.Run();
+if (!observedPatch) throw new Exception("Harmony did not invoke the HUD menu postfix on .NET 10");
+patchType.GetMethod("Uninstall", patchFlags)!.Invoke(null, null);
+observedPatch = false;
+HudMenuPatchProbe.Run();
+if (observedPatch) throw new Exception("Harmony retained the HUD menu postfix after disabling it");
+
 Console.WriteLine("Throttle geometry and telemetry checks passed.");
 
 
@@ -464,4 +510,10 @@ if (args.Length > 0)
     }
     File.WriteAllText(Path.Combine(directory, "preview.json"), JsonSerializer.Serialize(frames));
     Console.WriteLine($"Real artwork checks passed; {art.RunCount} cached runs, preview geometry exported.");
+}
+
+internal static class HudMenuPatchProbe
+{
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    public static void Run() { }
 }

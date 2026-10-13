@@ -1,4 +1,5 @@
 using Brutal.ImGuiApi;
+using Brutal.Numerics;
 
 namespace KSI2;
 
@@ -40,6 +41,7 @@ internal sealed class PilotUiController : IDisposable
     internal void Draw(double dt)
     {
         if (ImGui.GetCurrentContext().IsNull()) return;
+        _settings.Initialize();
         if (!KSA.Program.DrawUI || KSA.Program.ControlledVehicle is not { IsDisposed: false })
         {
             foreach (var module in _modules) module.CancelInteraction();
