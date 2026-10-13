@@ -15,6 +15,7 @@ internal sealed class PilotUiSettings
     public bool BlurPanelBackgrounds { get; set; }
     public bool ExperimentalHudMenu { get; set; }
     public bool ConfigurationVisible { get; set; } = true;
+    public string LastKsaVersion { get; set; } = string.Empty;
     public int BlurOpacityTicks { get; set; } = 398;
     public float[] VerticalSpeedMarkSpeeds { get; set; } = (float[])VerticalSpeedIndicatorGeometry.DefaultMarkSpeeds.Clone();
     public float VerticalSpeedNeedleOffset { get; set; } = 2f;

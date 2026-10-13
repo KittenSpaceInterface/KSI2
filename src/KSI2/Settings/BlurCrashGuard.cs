@@ -1,12 +1,15 @@
 namespace KSI2;
 
-// A marker remains throughout a blur-enabled run. An unclean exit leaves it
-// behind, so the next launch disables blur before any Vulkan blur setup.
+// A marker protects only the five seconds after blur is enabled. Once that
+// window passes, normal shutdown does not need a mod-unload callback.
 internal sealed class BlurCrashGuard
 {
+    private static readonly TimeSpan ActivationGracePeriod = TimeSpan.FromSeconds(5);
     private readonly PilotUiSettings _settings;
     private readonly Func<bool> _save;
     private readonly string _markerPath;
+    private long _trialStartedAt;
+    private bool _trialComplete;
 
     internal bool Enabled => _settings.BlurPanelBackgrounds;
     internal bool RecoveredAfterCrash { get; private set; }
@@ -26,12 +29,6 @@ internal sealed class BlurCrashGuard
             if (RecoveredAfterCrash)
                 Console.Error.WriteLine("KSI2: disabled panel blur after an unclean exit while blur was enabled.");
         }
-        else if (_settings.BlurPanelBackgrounds && !ArmMarker())
-        {
-            _settings.BlurPanelBackgrounds = false;
-            _save();
-            Error = "Could not arm blur crash recovery; blur stays off for this run.";
-        }
     }
 
     internal void SetEnabled(bool enabled)
@@ -47,6 +44,11 @@ internal sealed class BlurCrashGuard
         if (_save())
         {
             if (!enabled) ClearMarker();
+            else
+            {
+                _trialStartedAt = System.Diagnostics.Stopwatch.GetTimestamp();
+                _trialComplete = false;
+            }
             Error = null;
             RecoveredAfterCrash = false;
         }
@@ -59,6 +61,27 @@ internal sealed class BlurCrashGuard
     internal void OnCleanUnload()
     {
         if (Enabled) ClearMarker();
+    }
+
+    internal void Tick()
+    {
+        if (!Enabled || _trialComplete) return;
+        if (_trialStartedAt == 0)
+        {
+            if (!ArmMarker())
+            {
+                _settings.BlurPanelBackgrounds = false;
+                _save();
+                Error = "Could not arm the five-second blur check; blur stays off.";
+                return;
+            }
+            _trialStartedAt = System.Diagnostics.Stopwatch.GetTimestamp();
+            return;
+        }
+        if (System.Diagnostics.Stopwatch.GetElapsedTime(_trialStartedAt) < ActivationGracePeriod) return;
+        ClearMarker();
+        _trialStartedAt = 0;
+        _trialComplete = true;
     }
 
     private bool ArmMarker()

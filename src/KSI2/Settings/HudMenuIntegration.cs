@@ -9,6 +9,7 @@ namespace KSI2;
 // remains until a clean unload, like the existing panel blur crash guard.
 internal sealed class HudMenuIntegration : IDisposable
 {
+    private static readonly TimeSpan ActivationGracePeriod = TimeSpan.FromSeconds(5);
     private readonly PilotUiSettings _settings;
     private readonly Func<bool> _save;
     private readonly string _markerPath;
@@ -16,6 +17,8 @@ internal sealed class HudMenuIntegration : IDisposable
     private bool _installed;
     private bool _initialized;
     private bool _callbackFailed;
+    private long _trialStartedAt;
+    private bool _trialComplete;
 
     internal bool Enabled => _settings.ExperimentalHudMenu;
     internal bool MenuItemSeen { get; private set; }
@@ -45,7 +48,7 @@ internal sealed class HudMenuIntegration : IDisposable
         }
         _initialized = true;
         if (!Enabled) return;
-        if (!ArmMarker() || !TryInstall()) DisableAfterFailure();
+        if (!TryInstall()) DisableAfterFailure();
     }
 
     internal void SetEnabled(bool enabled)
@@ -56,6 +59,8 @@ internal sealed class HudMenuIntegration : IDisposable
             Uninstall();
             _settings.ExperimentalHudMenu = false;
             _settings.ConfigurationVisible = true;
+            _trialStartedAt = 0;
+            _trialComplete = false;
             MenuItemSeen = false;
             if (_save()) ClearMarker();
             else Error = "Could not save the disabled HUD menu setting; it will recover on next launch.";
@@ -71,7 +76,13 @@ internal sealed class HudMenuIntegration : IDisposable
             DisableAfterFailure();
             return;
         }
-        if (!TryInstall()) DisableAfterFailure();
+        if (!TryInstall())
+        {
+            DisableAfterFailure();
+            return;
+        }
+        _trialStartedAt = System.Diagnostics.Stopwatch.GetTimestamp();
+        _trialComplete = false;
     }
 
     internal void SetConfigurationVisible(bool visible)
@@ -79,6 +90,25 @@ internal sealed class HudMenuIntegration : IDisposable
         if (_settings.ConfigurationVisible == visible) return;
         _settings.ConfigurationVisible = visible;
         _save();
+    }
+
+    internal void Tick()
+    {
+        if (!Enabled || _trialComplete) return;
+        if (_trialStartedAt == 0)
+        {
+            if (!ArmMarker())
+            {
+                DisableAfterFailure();
+                return;
+            }
+            _trialStartedAt = System.Diagnostics.Stopwatch.GetTimestamp();
+            return;
+        }
+        if (System.Diagnostics.Stopwatch.GetElapsedTime(_trialStartedAt) < ActivationGracePeriod) return;
+        ClearMarker();
+        _trialStartedAt = 0;
+        _trialComplete = true;
     }
 
     private void DrawHudMenuItem()
@@ -187,6 +217,8 @@ internal sealed class HudMenuIntegration : IDisposable
         Uninstall();
         _settings.ExperimentalHudMenu = false;
         _settings.ConfigurationVisible = true;
+        _trialStartedAt = 0;
+        _trialComplete = false;
         MenuItemSeen = false;
         _callbackFailed = false;
         if (_save()) ClearMarker();
