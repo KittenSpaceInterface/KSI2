@@ -1,4 +1,34 @@
 <Assets>
   <Shader Id="KSI2PanelBlurVert" Path="assets/shaders/panel-blur.vert" />
   <Shader Id="KSI2PanelBlurFrag" Path="assets/shaders/panel-blur.frag" />
+  <GaugeCanvas Id="KSI2WarpButtons" AlwaysEnabled="true">
+    <VisibleInContext>Vehicle</VisibleInContext>
+    <DisplayName Value="KSI2 Warp Buttons" />
+    <AnchorUv X="0" Y="0" Locked="true" />
+    <PivotUv X="0" Y="0" Locked="true" />
+    <OffsetUv X="0.3" Y="0.9" Locked="true" />
+    <SizeUv X="0.025926" Y="0.030556" Locked="true" />
+    <Component Name="Buttons">
+      <AnchorUv X="0" Y="0" />
+      <PivotUv X="0" Y="0" />
+      <OffsetUv X="0" Y="0" />
+      <SizeUv X="1" Y="1" />
+      <Fragment Id="GaugeButtonFace" />
+      <Vertex Id="GaugeInstancedVert" />
+      <Button X="-0.071429" Y="-0.060606" Width="1.142857" Height="0.575758" TextScale="0.32" Label="WARP">
+        <TextColor Name="Black" />
+        <ActiveColor Name="Green" />
+        <Tooltip Value="Warp to the next apoapsis." />
+        <WarpTo Event="NextApoapsis" />
+        <SoundEvent SoundId="LedButtonDown" Action="Pressed" />
+      </Button>
+      <Button X="-0.071429" Y="0.484848" Width="1.142857" Height="0.575758" TextScale="0.32" Label="WARP">
+        <TextColor Name="Black" />
+        <ActiveColor Name="Green" />
+        <Tooltip Value="Warp to the next periapsis." />
+        <WarpTo Event="NextPeriapsis" />
+        <SoundEvent SoundId="LedButtonDown" Action="Pressed" />
+      </Button>
+    </Component>
+  </GaugeCanvas>
 </Assets>

@@ -1,5 +1,8 @@
 using System.Globalization;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
+using Brutal.Pointers;
 using Brutal.ImGuiApi;
 using Brutal.Numerics;
 using KSA;
@@ -57,6 +60,15 @@ internal static class OrbitalReadoutGeometry
 
 internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
 {
+    [StructLayout(LayoutKind.Sequential)]
+    private struct GaugeDrawCallbackData
+    {
+        public int CanvasIndex;
+        public float2 RectMin;
+        public float2 RectSize;
+        public float4 Tint;
+    }
+
     // ImGui draw-list colors are ABGR. These are the active Root's serialized tints.
     private const uint PanelColor = 0xFD190B03u;
     private const uint OpaquePanelColor = 0xFF190B03u;
@@ -68,6 +80,13 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
     private const uint PeriapsisColor = 0xFFA07B24u;
     private const uint TitleColor = 0xFFFF6D69u;
     private readonly Dictionary<string, TextureReference> _textures = new();
+    private static readonly MethodInfo? MarkEditorWindowDirty = typeof(GaugeCanvas).GetMethod(
+        "MarkEditorWindowDirty", BindingFlags.Instance | BindingFlags.NonPublic);
+    private static readonly ImDrawCallback? GaugeDrawCallback = typeof(GaugeCanvas).GetField(
+        "_gaugeDrawCallback", BindingFlags.Static | BindingFlags.NonPublic)?.GetValue(null) as ImDrawCallback;
+    private static readonly MethodInfo? DrawGaugeWidgetText = typeof(GaugeCanvas).GetMethod(
+        "DrawWidgetText", BindingFlags.Instance | BindingFlags.NonPublic);
+    private GaugeCanvas? _warpCanvas;
     public string Id => "orbital-readout";
     public IReadOnlyList<PilotLayoutDefinition> LayoutDefinitions => [];
     public IReadOnlyList<PilotUiLayer> Layers { get; }
@@ -75,7 +94,8 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
     internal OrbitalReadoutModule() => Layers =
     [
         new(PilotLayerOrder.OrbitalReadout,
-            (layout, context) => Draw(layout.Component(Id), context.Blur, context.Opacity))
+            (layout, context) => Draw(layout.Component(Id), context.Blur, context.Opacity,
+                context.Mode == PilotInteractionMode.Instruments && !Program.IsModalOpen()))
     ];
 
     public void Initialize(TextureRegistry assets)
@@ -93,7 +113,8 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
     public void CancelInteraction() { }
     public void Dispose() { }
 
-    private void Draw(PilotComponentBounds bounds, PanelBackgroundBlur? blur, float opacity)
+    private void Draw(PilotComponentBounds bounds, PanelBackgroundBlur? blur, float opacity,
+        bool allowInteraction)
     {
         var vehicle = Program.ControlledVehicle;
         if (vehicle is null || vehicle.IsDisposed) return;
@@ -110,15 +131,18 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
         DrawNineSlice("KSI2OrbitBorder", 2, 2, 236, 52, BorderColor, false);
         DrawNineSlice("KSI2OrbitBracket", 2, 2, 236, 52, BracketColor, false);
 
-        DrawLcd("AP", 14, 37, 8, 21, 14.5f, ApoapsisColor);
-        DrawLcd("PE", 14, 37, 25, 38, 14.5f, PeriapsisColor);
+        DrawLcd("AP", 10, 33, 8, 21, 14.5f, ApoapsisColor);
+        DrawLcd("PE", 10, 33, 25, 38, 14.5f, PeriapsisColor);
         DrawRow(vehicle.Orbit.IsUnbound() ? double.NaN : vehicle.Orbit.ApoapsisAltitude,
             vehicle.NextApoapsisTime, 4);
         DrawRow(vehicle.Orbit.PeriapsisAltitude, vehicle.NextPeriapsisTime, 22);
 
         // An opaque label interrupts the lower frame; no accent bars flank the text.
         DrawRect(70, 42, 170, 56, OpaquePanelColor);
-        DrawLcd("ORBITAL.INFO", 73, 167, 45, 56, 11, TitleColor, center: true);
+        DrawLcd("ORBITAL.INFO", 69, 163, 45, 56, 11, TitleColor, center: true);
+
+        SyncWarpCanvas(bounds);
+        if (allowInteraction) QueueWarpCanvas(draw);
 
         void DrawRow(double altitude, UniverseTime eventTime, float top)
         {
@@ -129,12 +153,12 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
             var inkBottom = Snap(0, textBottom).Y;
             if (distance is { } value)
             {
-                DrawText(value.Number, 37, 115, distanceBottom, 18, true, ValueColor);
-                DrawLcd(value.Unit, 117, 130, textBottom - 16f, textBottom, 9.1f,
-                    AccentColor, alignedBottom: inkBottom - secondaryTextBottomOffset - 2f * s);
+                DrawText(value.Number, 23, 101, distanceBottom + 1f, 18, true, ValueColor);
+                DrawLcd(value.Unit, 103, 116, textBottom - 15f, textBottom + 1f, 9.1f,
+                    AccentColor, alignedBottom: inkBottom - secondaryTextBottomOffset - 1f * s);
             }
             else
-                DrawText("—", 37, 115, distanceBottom, 18, true, ValueColor);
+                DrawText("—", 23, 101, distanceBottom + 1f, 18, true, ValueColor);
             var countdown = distance is null || eventTime.IsEndOfTime() ? null
                 : OrbitalReadoutGeometry.FormatCountdown((eventTime - now).Seconds());
             DrawCountdown(countdown,
@@ -204,7 +228,7 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
             }
             var fit = MathF.Min(1f, 100f * s / totalWidth);
             // The prefab's TMP field is left-aligned, leaving its unused width on the right.
-            var cursor = x + 132f * s;
+            var cursor = x + 118f * s;
             for (var i = 0; i < parts.Length; i++)
             {
                 var bytes = Encoding.UTF8.GetBytes(parts[i].Text);
@@ -254,5 +278,62 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
         }
 
         float2 Snap(float dx, float dy) => NavballPixelAlignment.Snap(new float2(x + dx * s, y + dy * s));
+    }
+
+    private void SyncWarpCanvas(PilotComponentBounds bounds)
+    {
+        _warpCanvas ??= GaugeCanvas.AllCanvases.FirstOrDefault(canvas => canvas.Id == "KSI2WarpButtons");
+        if (_warpCanvas is not { CanvasRenderer: not null } canvas) return;
+
+        canvas.Locked = true;
+        var viewport = ImGui.GetMainViewport();
+        if (viewport.Size.Y <= 0) return;
+        var target = NavballPixelAlignment.Snap(new float2(
+            bounds.Position.X + 207f * bounds.Scale - viewport.Pos.X,
+            bounds.Position.Y + 7f * bounds.Scale - viewport.Pos.Y));
+        var size = new float2(28f * bounds.Scale, 33f * bounds.Scale);
+        var current = canvas.GetPixelsMin();
+        var currentSize = canvas.GetPixelsSize();
+        if (MathF.Abs(current.X - target.X) > 0.5f ||
+            MathF.Abs(current.Y - target.Y) > 0.5f ||
+            MathF.Abs(currentSize.X - size.X) > 0.5f ||
+            MathF.Abs(currentSize.Y - size.Y) > 0.5f)
+        {
+            canvas.Offset.X = target.X / viewport.Size.Y;
+            canvas.Offset.Y = target.Y / viewport.Size.Y;
+            canvas.Size.X = size.X / viewport.Size.Y;
+            canvas.Size.Y = size.Y / viewport.Size.Y;
+            canvas.Offset.OnDataLoad(KSA.Mod.Empty);
+            canvas.Size.OnDataLoad(KSA.Mod.Empty);
+            canvas.CacheTransform();
+            MarkEditorWindowDirty?.Invoke(canvas, null);
+        }
+
+    }
+
+    private void QueueWarpCanvas(ImDrawListPtr draw)
+    {
+        if (_warpCanvas is not { CanvasRenderer: not null } canvas || GaugeDrawCallback is null) return;
+
+        var canvases = GaugeCanvas.AllCanvases;
+        var canvasIndex = -1;
+        for (var i = 0; i < canvases.Count; i++)
+        {
+            if (!ReferenceEquals(canvases[i], canvas)) continue;
+            canvasIndex = i;
+            break;
+        }
+        if (canvasIndex < 0) return;
+
+        var viewport = ImGui.GetMainViewport();
+        var data = new GaugeDrawCallbackData
+        {
+            CanvasIndex = canvasIndex,
+            RectMin = viewport.Pos + canvas.GetPixelsMin(),
+            RectSize = canvas.GetPixelsSize(),
+            Tint = new float4(1f)
+        };
+        draw.AddCallback(GaugeDrawCallback, new Ptr(&data), (nuint)sizeof(GaugeDrawCallbackData));
+        DrawGaugeWidgetText?.Invoke(canvas, [data.RectMin, data.RectSize, data.Tint]);
     }
 }
