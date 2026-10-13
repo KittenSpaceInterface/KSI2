@@ -10,13 +10,10 @@ internal sealed unsafe class NavballSpike
     private const float RawImageSize = 195f;
     private const float BallRadiusInRawImage = 88.47f;
 
-    // Rotate the imported KSP2 sphere into KSA's navball frame. The opposite
-    // signs on the X/Z axes preserve KSP2's 90/270 order around North.
-    private static readonly float4x4 Ksp2ToKsaNavball = new(
-        0f, 0f, 1f, 0f,
-        0f, 1f, 0f, 0f,
-        -1f, 0f, 0f, 0f,
-        0f, 0f, 0f, 1f);
+    // The imported sphere has N/S on +/-Y and 90/270 on -/+Z. KSA's
+    // BODY2UPFRAME reverses both axes, so rotate 180 degrees around mesh X.
+    internal static Vector3 AlignSphereAxis(Vector3 position) =>
+        new(position.Z, -position.Y, position.X);
 
     internal readonly struct ProjectedVertex(Vector3 position, Vector2 uv)
     {
@@ -123,8 +120,8 @@ internal sealed unsafe class NavballSpike
             var position = mesh.Positions[i];
             if (live)
             {
-                var aligned = float4.Transform(new float4(position.X, position.Y, position.Z, 0f), Ksp2ToKsaNavball);
-                var transformed = float4.Transform(aligned, inverse);
+                var aligned = AlignSphereAxis(position);
+                var transformed = float4.Transform(new float4(aligned.X, aligned.Y, aligned.Z, 0f), inverse);
                 position = new Vector3(transformed.X, transformed.Y, transformed.Z);
             }
             vertices[i] = new ProjectedVertex(position, mesh.Uvs[i]);

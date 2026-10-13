@@ -203,6 +203,20 @@ Near(746.95f, cluster.Min.Y, "cluster top");
 Near(262.85f, cluster.Center.X, "navball center x");
 Near(896.95f, cluster.Center.Y, "navball center y");
 Near(88f, cluster.BallRadius, "navball radius");
+foreach (var (label, source, expected) in new[]
+{
+    ("north", new System.Numerics.Vector3(0f, 1f, 0f), new System.Numerics.Vector3(0f, -1f, 0f)),
+    ("south", new System.Numerics.Vector3(0f, -1f, 0f), new System.Numerics.Vector3(0f, 1f, 0f)),
+    ("90 degrees", new System.Numerics.Vector3(0f, 0f, -1f), new System.Numerics.Vector3(-1f, 0f, 0f)),
+    ("270 degrees", new System.Numerics.Vector3(0f, 0f, 1f), new System.Numerics.Vector3(1f, 0f, 0f)),
+    ("front hemisphere", new System.Numerics.Vector3(1f, 0f, 0f), new System.Numerics.Vector3(0f, 0f, 1f))
+})
+{
+    var mapped = NavballSpike.AlignSphereAxis(source);
+    Near(expected.X, mapped.X, $"navball {label} x");
+    Near(expected.Y, mapped.Y, $"navball {label} y");
+    Near(expected.Z, mapped.Z, $"navball {label} z");
+}
 if (NavballClusterLayout.BackgroundColor != 0xFF190B03u)
     throw new Exception("cluster background color mismatch");
 var scaledCluster = Resolve(10, 20, 1280, 720, new PilotUiSettings()).Navball;
