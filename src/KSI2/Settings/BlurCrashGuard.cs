@@ -29,6 +29,10 @@ internal sealed class BlurCrashGuard
             if (RecoveredAfterCrash)
                 Console.Error.WriteLine("KSI2: disabled panel blur after an unclean exit while blur was enabled.");
         }
+        else if (Enabled)
+        {
+            Tick();
+        }
     }
 
     internal void SetEnabled(bool enabled)
