@@ -185,7 +185,7 @@ internal sealed unsafe class HeadingDialRenderer
             east /= eastLength;
             var north = double3.Cross(up, east);
             var forward4 = double4.Transform(new double4(1d, 0d, 0d, 0d),
-                double4x4.CreateFromQuaternion(vehicle.GetCtrl2Cci()));
+                double4x4.CreateFromQuaternion(vehicle.GetHelm2Cci()));
             var forward = new double3(forward4.X, forward4.Y, forward4.Z);
             var eastward = double3.Dot(forward, east);
             var northward = double3.Dot(forward, north);
