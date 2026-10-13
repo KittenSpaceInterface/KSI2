@@ -14,7 +14,17 @@ public sealed class KSI2Mod
     public void OnAllModsLoaded() => _ui.Initialize();
 
     [StarMapAfterGui]
-    public void OnAfterGui(double dt) => _ui.Draw(dt);
+    public void OnAfterGui(double dt)
+    {
+        if (!_hudLayoutProfileInstalled)
+        {
+            KsaHudLayoutProfile.EnsureInstalled();
+            _hudLayoutProfileInstalled = true;
+        }
+        _ui.Draw(dt);
+    }
+
+    private bool _hudLayoutProfileInstalled;
 
     [StarMapUnload]
     public void Unload() => _ui.Dispose();
