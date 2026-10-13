@@ -21,6 +21,7 @@ public sealed class KSI2Mod
             KsaHudLayoutProfile.EnsureInstalled();
             _hudLayoutProfileInstalled = true;
         }
+        KsaHudLayoutProfile.UpdatePortraitPosition();
         _ui.Draw(dt);
     }
 

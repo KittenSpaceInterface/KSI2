@@ -1,4 +1,4 @@
-using Brutal.ImGuiApi;
+using System.Reflection;
 using KSA;
 
 namespace KSI2;
@@ -6,7 +6,22 @@ namespace KSI2;
 internal static class KsaHudLayoutProfile
 {
     private const string ProfileName = "KSI2 Default";
-    private const int ProfileRevision = 6;
+    private const int ProfileRevision = 9;
+    private const float RightMarginUv = 0.017778f;
+    private const float PortraitTopOffsetUv = -0.04f;
+    private const float PortraitTopOffsetPixels = 75f;
+    private static readonly MethodInfo? MarkEditorWindowDirty = typeof(GaugeCanvas).GetMethod(
+        "MarkEditorWindowDirty", BindingFlags.Instance | BindingFlags.NonPublic);
+    private static readonly FieldInfo? LastAutoSizedTileCount = typeof(CrewPortraitPanel).GetField(
+        "_lastAutoSizedTileCount", BindingFlags.Static | BindingFlags.NonPublic);
+    private static readonly MethodInfo? ResizeCanvasToOccupantCount = typeof(CrewPortraitPanel).GetMethod(
+        "ResizeCanvasToOccupantCount", BindingFlags.Static | BindingFlags.NonPublic);
+    private static LayoutSave? _lastSelectedLayout;
+    private static int _lastWindowWidth;
+    private static int _lastWindowHeight;
+    private static float _lastPortraitWidth;
+    private static float _lastPortraitHeight;
+    private static bool _portraitAutoSizeFailed;
     private static string ProfileRevisionPath => Path.Combine(PilotUiSettings.ModDirectory,
         "ksi2.hud-layout-profile-revision");
 
@@ -39,9 +54,9 @@ internal static class KsaHudLayoutProfile
             return;
         }
         navballLayout.Enabled = false;
-        if (!AlignPortraitWithPeriapsis(layout))
+        if (!PositionPortraitAtRightMargin(layout))
         {
-            Console.Error.WriteLine("KSI2: could not create the HUD layout because KSA's portrait or periapsis canvas was not found.");
+            Console.Error.WriteLine("KSI2: could not create the HUD layout because KSA's portrait canvas was not found.");
             return;
         }
 
@@ -73,7 +88,7 @@ internal static class KsaHudLayoutProfile
             else
             {
                 WriteProfileRevision();
-                Console.WriteLine("KSI2: added the 'KSI2 Default' KSA HUD layout (navball hidden, portrait aligned with periapsis).");
+                Console.WriteLine("KSI2: added the 'KSI2 Default' KSA HUD layout (navball hidden, portrait at the right margin).");
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
@@ -94,11 +109,77 @@ internal static class KsaHudLayoutProfile
         }
     }
 
+    internal static void UpdatePortraitPosition()
+    {
+        var selected = LayoutSaves.Selected;
+        if (selected?.Id != ProfileName)
+        {
+            _lastSelectedLayout = selected;
+            return;
+        }
+
+        var portrait = GaugeCanvas.AllCanvases.FirstOrDefault(canvas => canvas.Id == "CrewPortraits");
+        if (portrait is null) return;
+
+        var windowSize = KSA.Program.GetWindow().Size;
+        if (windowSize.X <= 0 || windowSize.Y <= 0) return;
+
+        var portraitSize = portrait.GetPixelsSize();
+        var changed = selected != _lastSelectedLayout || windowSize.X != _lastWindowWidth
+            || windowSize.Y != _lastWindowHeight || portraitSize.X != _lastPortraitWidth
+            || portraitSize.Y != _lastPortraitHeight;
+
+        if (changed && CrewPortraitPanel.HasOccupants && !_portraitAutoSizeFailed
+            && LastAutoSizedTileCount is not null && ResizeCanvasToOccupantCount is not null)
+        {
+            // KSA only recalculates this size when the crew count changes.
+            // Applying a HUD layout resets it even when the crew is unchanged.
+            try
+            {
+                LastAutoSizedTileCount.SetValue(null, -1);
+                ResizeCanvasToOccupantCount.Invoke(null, null);
+                portrait.ClearDirty();
+            }
+            catch (Exception ex) when (ex is TargetInvocationException or FieldAccessException
+                or MethodAccessException or ArgumentException)
+            {
+                _portraitAutoSizeFailed = true;
+                Console.Error.WriteLine($"KSI2: could not refresh KSA's crew portrait size: {ex.Message}");
+            }
+            portraitSize = portrait.GetPixelsSize();
+        }
+
+        _lastSelectedLayout = selected;
+        _lastWindowWidth = windowSize.X;
+        _lastWindowHeight = windowSize.Y;
+        _lastPortraitWidth = portraitSize.X;
+        _lastPortraitHeight = portraitSize.Y;
+
+        // KSA keeps an edited canvas dirty until the profile is reapplied. Let
+        // the user move it freely, but still respond to resolution changes.
+        if (!changed && LayoutSaves.IsCurrentModified()) return;
+
+        var portraitMin = portrait.GetPixelsMin();
+        var targetRight = windowSize.X - RightMarginUv * windowSize.Y;
+        var horizontalAdjustment = targetRight - (portraitMin.X + portraitSize.X);
+        var verticalAdjustment = PortraitTopOffsetUv * windowSize.Y
+            + PortraitTopOffsetPixels - portraitMin.Y;
+        if (MathF.Abs(horizontalAdjustment) < 0.5f && MathF.Abs(verticalAdjustment) < 0.5f)
+            return;
+
+        portrait.Offset.X += horizontalAdjustment / windowSize.Y;
+        portrait.Offset.Y += verticalAdjustment / windowSize.Y;
+        portrait.Offset.OnDataLoad(KSA.Mod.Empty);
+        portrait.CacheTransform();
+        portrait.Update(portrait.GetPixelsMin(), portrait.GetPixelsSize(), resetWindow: true);
+        MarkEditorWindowDirty?.Invoke(portrait, null);
+    }
+
     private static bool TryUpdateProfile(LayoutSave save)
     {
         var navball = save.LayoutData.Canvases.FirstOrDefault(canvas => canvas.Id == "Navball");
         var portrait = save.LayoutData.Canvases.FirstOrDefault(canvas => canvas.Id == "CrewPortraits");
-        if (navball is null || portrait is null || !AlignPortraitWithPeriapsis(save.LayoutData)) return false;
+        if (navball is null || portrait is null || !PositionPortraitAtRightMargin(save.LayoutData)) return false;
 
         navball.Enabled = false;
         var stagingDirectory = Path.Combine(save.Directory.Parent!.FullName,
@@ -110,7 +191,7 @@ internal static class KsaHudLayoutProfile
             File.Move(Path.Combine(stagingDirectory, "layout.xml"),
                 Path.Combine(save.Directory.FullName, "layout.xml"), overwrite: true);
             LayoutSave.FromDirectory(save.Directory.FullName);
-            Console.WriteLine("KSI2: updated the 'KSI2 Default' KSA HUD layout (navball hidden, portrait aligned with periapsis).");
+            Console.WriteLine("KSI2: updated the 'KSI2 Default' KSA HUD layout (navball hidden, portrait at the right margin).");
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
@@ -132,30 +213,22 @@ internal static class KsaHudLayoutProfile
         }
     }
 
-    private static bool AlignPortraitWithPeriapsis(SerializedLayout layout)
+    private static bool PositionPortraitAtRightMargin(SerializedLayout layout)
     {
         var portraitCanvas = GaugeCanvas.AllCanvases.FirstOrDefault(item => item.Id == "CrewPortraits");
-        var periapsisCanvas = GaugeCanvas.AllCanvases.FirstOrDefault(item => item.Id == "Telemetry");
         var portrait = layout.Canvases.FirstOrDefault(item => item.Id == "CrewPortraits");
-        var periapsis = layout.Canvases.FirstOrDefault(item => item.Id == "Telemetry");
-        var viewport = ImGui.GetMainViewport();
-        if (portraitCanvas is null || periapsisCanvas is null || portrait is null || periapsis is null
-            || viewport.Size.Y <= 0) return false;
+        var windowSize = KSA.Program.GetWindow().Size;
+        if (portraitCanvas is null || portrait is null || windowSize.Y <= 0) return false;
 
-        // Periapsis is part of KSA's Telemetry canvas. Align the portrait's
-        // right edge with that canvas and shift it above the viewport edge to
-        // account for the portrait's internal top spacing.
-        var aspect = viewport.Size.X / viewport.Size.Y;
+        // Match KSA's original Telemetry right margin without following later
+        // movements of that canvas.
+        var aspect = (float)windowSize.X / windowSize.Y;
         var sizeX = (float)portrait.Size.X;
         var sizeY = (float)portrait.Size.Y;
         var portraitAnchor = portraitCanvas.Anchor.ToUv();
         var portraitPivot = portraitCanvas.Pivot.ToUv();
-        var periapsisAnchor = periapsisCanvas.Anchor.ToUv();
-        var periapsisPivot = periapsisCanvas.Pivot.ToUv();
-        var periapsisRight = periapsisAnchor.X * aspect + (float)periapsis.Offset.X
-            + (1f - periapsisPivot.X) * (float)periapsis.Size.X;
-        var portraitLeft = periapsisRight - sizeX;
-        var topOffset = -0.04f + 6f / viewport.Size.Y;
+        var portraitLeft = aspect - RightMarginUv - sizeX;
+        var topOffset = PortraitTopOffsetUv + PortraitTopOffsetPixels / windowSize.Y;
         portrait.Offset.X = portraitLeft - portraitAnchor.X * aspect + portraitPivot.X * sizeX;
         portrait.Offset.Y = topOffset - portraitAnchor.Y + portraitPivot.Y * sizeY;
         return true;
