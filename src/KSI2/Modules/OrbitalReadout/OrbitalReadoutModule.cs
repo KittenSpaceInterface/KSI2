@@ -10,14 +10,37 @@ internal readonly record struct OrbitalDistance(string Number, string Unit);
 
 internal static class OrbitalReadoutGeometry
 {
+    private static readonly (double Metres, string Unit)[] DistanceUnits =
+    [
+        (0.001, "mm"),
+        (0.01, "cm"),
+        (1, "m"),
+        (1_000, "km"),
+        (1_000_000_000, "Gm"),
+        (149_597_870_700, "AU"),
+        (9_461_000_000_000_000, "ly")
+    ];
+
     internal static OrbitalDistance? FormatDistance(double metres, CultureInfo culture)
     {
         if (!double.IsFinite(metres)) return null;
         var absolute = Math.Abs(metres);
-        if (absolute >= 1_000_000_000) return new((metres / 1_000_000_000).ToString("0.0", culture), "Gm");
-        if (absolute >= 1_000_000) return new((metres / 1_000_000).ToString("0.0", culture), "Mm");
-        if (absolute >= 1_000) return new((metres / 1_000).ToString("0.0", culture), "km");
-        return new(metres.ToString("0", culture), "m");
+        foreach (var (scale, unit) in DistanceUnits)
+        {
+            // KSA avoids mm at 0.1 m and above, and cm at 1 m and above.
+            if (unit == "mm" && absolute >= 0.1 || unit == "cm" && absolute >= 1)
+                continue;
+
+            var value = absolute / scale;
+            // KSA's six numeric cells reserve one place for the decimal digit.
+            if (Math.Round(value * 10) > 999_999 && unit != "ly")
+                continue;
+
+            var signedValue = Math.CopySign(Math.Min(value, 99_999.9), metres);
+            return new(signedValue.ToString(unit == "m" ? "0" : "0.0", culture), unit);
+        }
+
+        throw new InvalidOperationException("No distance unit was available.");
     }
 
     internal static string? FormatCountdown(double seconds)
@@ -149,7 +172,7 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
             => ReadoutLcdText.Draw(draw, value, Snap(left, top).X, Snap(right, bottom).X,
                 Snap(left, top).Y, Snap(right, bottom).Y, fontSize, s, false, tint,
                 alignCenter: center, snapPosition: true, alignBottom: alignedBottom is not null,
-                alignBottomY: alignedBottom, layoutReference: alignedBottom is null ? null : "km");
+                alignBottomY: alignedBottom);
 
         void DrawCountdown(string? value, float alignedBottom)
         {
