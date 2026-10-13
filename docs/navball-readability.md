@@ -16,11 +16,20 @@ texture's base level with bilinear sampling, like the single-mip KSP2 source
 texture. If the source pixels are unavailable, KSI2 falls back to its previous
 direct mesh draw with `NavballTextureFiltering`.
 
+For color-aware filtering, the CPU rasterizer decodes the source RGB
+from sRGB before bilinear sampling, averages the high-resolution samples in
+linear light, then encodes the resolved RGB for ImGui. This keeps solid source
+colors unchanged and can brighten partially covered white markings. The user
+reported an in-game improvement. KSP2's runtime color-space and render-target
+handling have not been measured.
+
 The locally extracted `Flight-Navball-Shadow` remains a single full-opacity
 copy over the ball. KSP2's prefab contains multiple shadow Images, but the
 single copy is KSI2's existing readability adjustment.
 
 The earlier twofold sphere render improved readability in an in-game check.
-The exact RawImage dimensions and pixel alignment have not yet had an in-game
-visual comparison. Frame cost has not been measured. KSP2's GPU texture
-filtering and color-space handling remain different from this CPU pass.
+Replacing the reflected KSP2-to-KSA mapping with a quarter turn placed 90 to
+the left of North and aligned the sphere with the prograde and radial markers.
+The user reported a large further quality improvement with that rotation and
+color-aware filtering installed. Their separate contributions were not
+measured. Frame cost and KSP2's GPU color handling remain unmeasured.

@@ -10,13 +10,12 @@ internal sealed unsafe class NavballSpike
     private const float RawImageSize = 195f;
     private const float BallRadiusInRawImage = 88.47f;
 
-    // KSP2's blue hemisphere points along -X in the imported mesh; KSA uses
-    // -Z for sky. The quarter turn maps KSP2 east (-Z) to KSA's forward
-    // azimuth (-X), while preserving the 0, 90, 180, 270 heading order.
+    // Rotate the imported KSP2 sphere into KSA's navball frame. The opposite
+    // signs on the X/Z axes preserve KSP2's 90/270 order around North.
     private static readonly float4x4 Ksp2ToKsaNavball = new(
         0f, 0f, 1f, 0f,
         0f, 1f, 0f, 0f,
-        1f, 0f, 0f, 0f,
+        -1f, 0f, 0f, 0f,
         0f, 0f, 0f, 1f);
 
     internal readonly struct ProjectedVertex(Vector3 position, Vector2 uv)

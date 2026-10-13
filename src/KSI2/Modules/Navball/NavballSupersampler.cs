@@ -11,11 +11,13 @@ namespace KSI2;
 // render pass inside ImGui's already active presentation pass.
 internal sealed unsafe class NavballSupersampler
 {
+    private static readonly float[] LinearChannels = CreateLinearChannels();
+    private static readonly byte[] SrgbChannels = CreateSrgbChannels();
     private TextureReference? _source;
     private byte[]? _sourcePixels;
     private int _sourceWidth;
     private int _sourceHeight;
-    private uint[] _highPixels = [];
+    private Vector4[] _highPixels = [];
     private uint[] _resolvedPixels = [];
     private int _highSize;
     private float _highRadius;
@@ -35,7 +37,7 @@ internal sealed unsafe class NavballSupersampler
             if (highSize != _highSize)
             {
                 _highSize = highSize;
-                _highPixels = new uint[highSize * highSize];
+                _highPixels = new Vector4[highSize * highSize];
                 _resolvedPixels = new uint[highSize * highSize / 4];
             }
             else
@@ -120,7 +122,7 @@ internal sealed unsafe class NavballSupersampler
     private static float Edge(float ax, float ay, float bx, float by, float px, float py) =>
         (px - ax) * (by - ay) - (py - ay) * (bx - ax);
 
-    private uint SampleBilinear(float u, float v)
+    private Vector4 SampleBilinear(float u, float v)
     {
         var sx = Math.Clamp(u * _sourceWidth - 0.5f, 0f, _sourceWidth - 1f);
         var sy = Math.Clamp(v * _sourceHeight - 0.5f, 0f, _sourceHeight - 1f);
@@ -135,15 +137,14 @@ internal sealed unsafe class NavballSupersampler
         var p10 = (y0 * _sourceWidth + x1) * 4;
         var p01 = (y1 * _sourceWidth + x0) * 4;
         var p11 = (y1 * _sourceWidth + x1) * 4;
-        uint color = 0;
-        for (var channel = 0; channel < 4; channel++)
-        {
-            var top = pixels[p00 + channel] + (pixels[p10 + channel] - pixels[p00 + channel]) * tx;
-            var bottom = pixels[p01 + channel] + (pixels[p11 + channel] - pixels[p01 + channel]) * tx;
-            color |= (uint)Math.Clamp((int)MathF.Round(top + (bottom - top) * ty), 0, 255) << (channel * 8);
-        }
-        return color;
+        var top = Vector4.Lerp(ReadLinearPixel(pixels, p00), ReadLinearPixel(pixels, p10), tx);
+        var bottom = Vector4.Lerp(ReadLinearPixel(pixels, p01), ReadLinearPixel(pixels, p11), tx);
+        return Vector4.Lerp(top, bottom, ty);
     }
+
+    private static Vector4 ReadLinearPixel(byte[] pixels, int offset) => new(
+        LinearChannels[pixels[offset]], LinearChannels[pixels[offset + 1]],
+        LinearChannels[pixels[offset + 2]], pixels[offset + 3] / 255f);
 
     private void Resolve()
     {
@@ -157,26 +158,51 @@ internal sealed unsafe class NavballSupersampler
                 var p1 = _highPixels[highIndex + 1];
                 var p2 = _highPixels[highIndex + _highSize];
                 var p3 = _highPixels[highIndex + _highSize + 1];
-                var alphaSum = (int)(p0 >> 24) + (int)(p1 >> 24) + (int)(p2 >> 24) + (int)(p3 >> 24);
-                if (alphaSum == 0)
+                var alphaSum = p0.W + p1.W + p2.W + p3.W;
+                if (alphaSum <= 0f)
                 {
                     _resolvedPixels[y * size + x] = 0;
                     continue;
                 }
-                uint result = (uint)((alphaSum + 2) / 4) << 24;
-                for (var channel = 0; channel < 3; channel++)
-                {
-                    var shift = channel * 8;
-                    var weighted = (int)((p0 >> shift) & 255) * (int)(p0 >> 24)
-                        + (int)((p1 >> shift) & 255) * (int)(p1 >> 24)
-                        + (int)((p2 >> shift) & 255) * (int)(p2 >> 24)
-                        + (int)((p3 >> shift) & 255) * (int)(p3 >> 24);
-                    result |= (uint)((weighted + alphaSum / 2) / alphaSum) << shift;
-                }
-                _resolvedPixels[y * size + x] = result;
+                var color = (p0 * p0.W + p1 * p1.W + p2 * p2.W + p3 * p3.W) / alphaSum;
+                var alpha = (uint)Math.Clamp((int)MathF.Round(alphaSum * 255f / 4f), 0, 255);
+                _resolvedPixels[y * size + x] = alpha << 24
+                    | (uint)EncodeSrgb(color.Z) << 16
+                    | (uint)EncodeSrgb(color.Y) << 8
+                    | EncodeSrgb(color.X);
             }
         }
     }
+
+    private static float[] CreateLinearChannels()
+    {
+        var channels = new float[256];
+        for (var i = 0; i < channels.Length; i++)
+        {
+            var value = i / 255f;
+            channels[i] = value <= 0.04045f
+                ? value / 12.92f
+                : MathF.Pow((value + 0.055f) / 1.055f, 2.4f);
+        }
+        return channels;
+    }
+
+    private static byte[] CreateSrgbChannels()
+    {
+        var channels = new byte[65536];
+        for (var i = 0; i < channels.Length; i++)
+        {
+            var value = i / 65535f;
+            var encoded = value <= 0.0031308f
+                ? value * 12.92f
+                : 1.055f * MathF.Pow(value, 1f / 2.4f) - 0.055f;
+            channels[i] = (byte)Math.Clamp((int)MathF.Round(encoded * 255f), 0, 255);
+        }
+        return channels;
+    }
+
+    private static byte EncodeSrgb(float value) =>
+        SrgbChannels[Math.Clamp((int)MathF.Round(value * 65535f), 0, 65535)];
 
     private void DrawResolved(ImDrawListPtr draw, Vector2 center, float rawImageSize)
     {
