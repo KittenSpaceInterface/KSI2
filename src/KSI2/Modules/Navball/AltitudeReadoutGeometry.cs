@@ -38,7 +38,8 @@ internal static class AltitudeReadoutGeometry
             var amount = absolute / scale;
             if (!OrbitalReadoutGeometry.FitsDistanceUnit(amount, unit)) continue;
             var signed = Math.CopySign(amount, metres);
-            var format = amount >= 1000 ? "0" : amount >= 100 ? "0.#"
+            var format = unit == "km" && amount >= 100 && amount < 1000 ? "0.0"
+                : amount >= 1000 ? "0" : amount >= 100 ? "0.#"
                 : amount >= 10 ? "0.##" : "0.###";
             if (unit == "ly")
             {
