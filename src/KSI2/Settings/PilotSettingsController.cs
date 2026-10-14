@@ -160,7 +160,7 @@ internal sealed class PilotSettingsController : IDisposable
             var io = ImGui.GetIO();
             ImGui.Text($"Display: {io.DisplaySize.X:0} x {io.DisplaySize.Y:0}; framebuffer scale: {io.DisplayFramebufferScale.X:0.##} x {io.DisplayFramebufferScale.Y:0.##}");
         }
-        if (throttle.AssetError is not null) ImGui.TextWrapped($"Throttle artwork unavailable: {throttle.AssetError}\nReimport the assets into [asset package] beside KSI2.dll.");
+        if (throttle.AssetError is not null) ImGui.TextWrapped($"Throttle artwork unavailable: {throttle.AssetError}\nCheck the installed asset package.");
         ImGui.End();
     }
 

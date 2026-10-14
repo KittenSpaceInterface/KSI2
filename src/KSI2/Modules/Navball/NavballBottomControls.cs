@@ -8,11 +8,11 @@ namespace KSI2;
 internal sealed unsafe class NavballBottomControls
 {
     internal const string FontKey = "KSI2-LCD-Solid";
-    internal static readonly (string Id, string File)[] Assets =
+    internal static readonly string[] Assets =
     [
-        ("KSI2BottomToggleOutline", "[asset]"),
-        ("KSI2BottomObjectCycle", "[asset]"),
-        ("KSI2BottomCommNet", "[asset]")
+        "KSI2BottomToggleOutline",
+        "KSI2BottomObjectCycle",
+        "KSI2BottomCommNet"
     ];
 
     private readonly Dictionary<string, TextureReference> _textures = new();

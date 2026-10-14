@@ -7,13 +7,13 @@ namespace KSI2;
 
 internal sealed unsafe class AltitudeReadoutRenderer
 {
-    internal static readonly (string Id, string File)[] Assets =
+    internal static readonly string[] Assets =
     [
-        ("KSI2AltitudeBackground", "[asset]"),
-        ("KSI2AltitudeModeTile", "[asset]"),
-        ("KSI2AltitudeUnitsTile", "[asset]"),
-        ("KSI2AltitudeSeaLevel", "[asset]"),
-        ("KSI2AltitudeGround", "[asset]")
+        "KSI2AltitudeBackground",
+        "KSI2AltitudeModeTile",
+        "KSI2AltitudeUnitsTile",
+        "KSI2AltitudeSeaLevel",
+        "KSI2AltitudeGround"
     ];
 
     private const uint FrameTint = 0xFFBF40BFu; // serialized #BF40BF
@@ -50,7 +50,7 @@ internal sealed unsafe class AltitudeReadoutRenderer
             _hovered = false;
             return;
         }
-        if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
+        if (!Assets.All(asset => _textures.TryGetValue(asset, out var texture)
             && texture.ImguiTextureRef is not null))
         {
             _hovered = false;

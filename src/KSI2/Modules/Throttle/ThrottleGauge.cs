@@ -67,8 +67,9 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         _artworkAttempted = true;
         try
         {
-            var modDirectory = Path.GetDirectoryName(typeof(ThrottleGauge).Assembly.Location) ?? AppContext.BaseDirectory;
-            _artwork = RasterArtwork.Load(Path.Combine(modDirectory, "assets", "throttle"));
+            var artworkPath = _bgTexture?.ModPath
+                ?? throw new FileNotFoundException("Throttle texture ID is unavailable.");
+            _artwork = RasterArtwork.Load(Path.GetDirectoryName(artworkPath)!);
             Console.WriteLine($"KSI2: prepared original throttle artwork as {_artwork.RunCount} CPU draw runs.");
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -97,10 +98,10 @@ internal sealed unsafe class ThrottleGauge : IDisposable
             blur?.Queue(draw, alignedOrigin,
                 NavballPixelAlignment.Snap(alignedOrigin + new float2(85f * scale, 290f * scale)),
                 mask, blurOpacity) == true;
-        if (!blurQueued) DrawStaticLayer(draw, _bgTexture, art, "[asset]", origin, scale, 0xFD190B03u);
-        DrawStaticLayer(draw, _barsTexture, art, "[asset]", origin, scale, 0xFF99413Eu);
-        DrawStaticLayer(draw, _borderTexture, art, "[asset]", origin, scale, 0xFF662B29u);
-        DrawStaticLayer(draw, _bracketTexture, art, "[asset]", origin, scale, 0xFFFF6D69u);
+        if (!blurQueued) DrawStaticLayer(draw, _bgTexture, art, "Background", origin, scale, 0xFD190B03u);
+        DrawStaticLayer(draw, _barsTexture, art, "Bars", origin, scale, 0xFF99413Eu);
+        DrawStaticLayer(draw, _borderTexture, art, "Border", origin, scale, 0xFF662B29u);
+        DrawStaticLayer(draw, _bracketTexture, art, "Bracket", origin, scale, 0xFFFF6D69u);
         if (_fillTexture?.ImguiTextureRef is { } fillTexture)
             DrawFillTexture(draw, fillTexture, origin, scale, throttle);
         else

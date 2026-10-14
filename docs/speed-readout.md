@@ -4,13 +4,7 @@
 
 The KSP2 readout uses separate TextMeshPro fields for `VEL`, the mode title, speed digits, and units. KSI2 draws the number with KSA's current ImGui font, matching the heading popup. The mode title, units, and vertical VEL title use the `LCD_Solid.ttf` face already loaded for the RCS/SAS buttons.
 
-Prepare the local artwork after a Unity Project export of the KSP2 UI bundles:
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/Prepare-SpeedReadoutAssets.ps1 -ExportedAssets '<AssetRipper-export>\ExportedProject\Assets'
-```
-
-The script writes into ignored `external asset package/navball/`. Build normally afterward; the project copies the active sprites to `[asset] in the Release output.
 
 The speed card follows KSA's current navball frame: `EnuBody` selects Surface, `Dock` with a target selects Target, and STAR (`EclBody`), ORBT (`Lvlh`), OVEL (`VlfBody`), and BURN (`BurnBody`) select Orbit. Clicking the card cycles Surface → Orbit → Target → Surface, skipping Target when no target exists, and selects KSA's corresponding SURF, ORBT, or TGT frame. The displayed speed uses KSA's surface, inertial, or target-relative velocity for that selected mode. The navball sphere uses the matching KSP2 Surface, Orbit, or Target texture. The card's black backing covers the side dial beneath it. The active card formats one decimal place and changes from `m/s` to `km/s` at 99,999 m/s and to `mm/s` at 99,999,000 m/s.
 

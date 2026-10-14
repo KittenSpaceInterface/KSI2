@@ -24,17 +24,14 @@ internal sealed class RightIndicatorsModule : IPilotUiModule
     }
     public void Initialize(TextureRegistry assets)
     {
-        var atmosphereDirectory = Path.Combine(assets.AssetDirectory, "atmosphere");
-        foreach (var (id, file) in AtmosphericIndicatorRenderer.Assets)
-            if (File.Exists(Path.Combine(atmosphereDirectory, file)))
-                assets.Register(id, tex =>
-                {
-                    _atmosphericIndicator.SetTexture(id, tex);
-                    _verticalSpeedIndicator.SetTexture(id, tex);
-                });
-        foreach (var (id, file) in VerticalSpeedIndicatorRenderer.Assets)
-            if (File.Exists(Path.Combine(atmosphereDirectory, file)))
-                assets.Register(id, tex => _verticalSpeedIndicator.SetTexture(id, tex));
+        foreach (var id in AtmosphericIndicatorRenderer.Assets)
+            assets.Register(id, tex =>
+            {
+                _atmosphericIndicator.SetTexture(id, tex);
+                _verticalSpeedIndicator.SetTexture(id, tex);
+            });
+        foreach (var id in VerticalSpeedIndicatorRenderer.Assets)
+            assets.Register(id, tex => _verticalSpeedIndicator.SetTexture(id, tex));
     }
     public void CancelInteraction() { }
     public void Dispose() { }

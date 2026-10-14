@@ -30,13 +30,14 @@ internal sealed unsafe class RasterArtwork
         foreach (var item in manifest.RootElement.GetProperty("textures").EnumerateArray())
         {
             var name = item.GetProperty("name").GetString()!;
+            var role = item.GetProperty("role").GetString()!;
             if (Path.GetFileName(name) != name) throw new InvalidDataException("Invalid artwork filename.");
             var texture = TextureLoader.LoadFromFile(Path.Combine(directory, name), Loader.LoadSettings.ForceRgba8);
             try
             {
                 if (texture.Extent.X != item.GetProperty("width").GetInt32() || texture.Extent.Y != item.GetProperty("height").GetInt32())
                     throw new InvalidDataException($"Unexpected dimensions for {name}; reimport throttle assets.");
-                bitmaps.Add(name, new(texture.Extent.X, texture.Extent.Y, texture.Data.ToArray()));
+                bitmaps.Add(role, new(texture.Extent.X, texture.Extent.Y, texture.Data.ToArray()));
             }
             finally { TextureLoader.Unload(texture); }
         }
@@ -46,22 +47,22 @@ internal sealed unsafe class RasterArtwork
     internal static RasterArtwork Prepare(IReadOnlyDictionary<string, Bitmap> bitmaps)
     {
         var result = new RasterArtwork();
-        result._handleBitmap = bitmaps["[asset]"];
+        result._handleBitmap = bitmaps["Handle"];
         // Exported PNGs share their original complete texture canvas. Do not
         // stretch each sprite's tight rectangle over the complete widget.
         foreach (var (name, tint, width, height) in new[] {
-            ("[asset]", 0xFD190B03u, 85f, 290f),
-            ("[asset]", 0xFF99413Eu, 85f, 290f),
-            ("[asset]", 0xFF662B29u, 85f, 290f),
-            ("[asset]", 0xFFFF6D69u, 85f, 290f),
-            ("[asset]", 0xFFFFFFFFu, 65f, 34f),
-            ("[asset]", 0xFF141110u, ThrottleGeometry.PercentGlyphWidth, ThrottleGeometry.PercentGlyphHeight) })
+            ("Background", 0xFD190B03u, 85f, 290f),
+            ("Bars", 0xFF99413Eu, 85f, 290f),
+            ("Border", 0xFF662B29u, 85f, 290f),
+            ("Bracket", 0xFFFF6D69u, 85f, 290f),
+            ("Handle", 0xFFFFFFFFu, 65f, 34f),
+            ("PercentGlyph", 0xFF141110u, ThrottleGeometry.PercentGlyphWidth, ThrottleGeometry.PercentGlyphHeight) })
         {
             var bitmap = bitmaps[name];
             result._layers.Add(name, Runs(bitmap, width, height, (x, y) => Tint(Pixel(bitmap, x, y), tint)));
         }
-        var mask = bitmaps["[asset]"];
-        var radial = bitmaps["[asset]"];
+        var mask = bitmaps["BarsMask"];
+        var radial = bitmaps["RadialMask"];
         result._fill = Runs(mask, 85, 290, (x, y) =>
         {
             var px = (x + .5f) * 85 / mask.Width - ThrottleGeometry.RadialCenter.X;
@@ -323,7 +324,7 @@ internal sealed unsafe class RasterArtwork
 
             Span<Point> clipped = stackalloc Point[8];
             var points = stackalloc float2[8];
-            foreach (var run in _layers["[asset]"])
+            foreach (var run in _layers["PercentGlyph"])
             {
                 var lx = run.X - ThrottleGeometry.PercentGlyphWidth / 2;
                 var ly = run.Y - ThrottleGeometry.PercentGlyphHeight / 2;

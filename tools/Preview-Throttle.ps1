@@ -1,7 +1,10 @@
-param([string]$OutputDirectory = "$PSScriptRoot\..\artifacts\throttle-preview")
+param(
+    [Parameter(Mandatory = $true)][string]$AssetDirectory,
+    [string]$OutputDirectory = "$PSScriptRoot\..\artifacts\throttle-preview"
+)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
-$assets = Join-Path $PSScriptRoot '..\external asset package\throttle'
+$assets = (Resolve-Path -LiteralPath $AssetDirectory).Path
 $null = New-Item -ItemType Directory -Force -Path $OutputDirectory
 $output = (Resolve-Path -LiteralPath $OutputDirectory).Path
 Copy-Item -LiteralPath (Join-Path $assets 'throttle-assets.json') -Destination $output -Force
@@ -47,6 +50,6 @@ try {
         $graphics.Restore($state)
         $index++
     }
-    $image.Save((Join-Path $output '[asset]'), [Drawing.Imaging.ImageFormat]::Png)
+    $image.Save((Join-Path $output 'throttle-preview.png'), [Drawing.Imaging.ImageFormat]::Png)
 } finally { $font.Dispose(); $graphics.Dispose(); $image.Dispose() }
-Write-Host "Preview: $output\[asset] (preview font differs from KSA)"
+Write-Host "Preview: $output\throttle-preview.png (preview font differs from KSA)"

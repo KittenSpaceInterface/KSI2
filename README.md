@@ -52,7 +52,8 @@ dotnet restore KSI2.sln -p:KsaReferencePath="C:\path\to\Kitten Space Agency"
 dotnet build KSI2.sln --configuration Release --no-restore -p:KsaReferencePath="C:\path\to\Kitten Space Agency"
 ```
 
-Build output is written to `src/KSI2/bin/Release/net10.0`.
+Build output is written to `src/KSI2/bin/Release/net10.0`. It contains KSI2's
+code, shaders, optional libraries, and LCD font.
 
 ## Throttle gauge
 
@@ -114,12 +115,6 @@ Run the focused handle, fill, telemetry, and settings checks with:
 dotnet run --project tests/KSI2.GeometryTests --configuration Release
 ```
 
-To verify the locally imported artwork and generate a five-position preview without launching KSA:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/Preview-Throttle.ps1
-```
-
 ## Install
 
 Create `KSI2` under KSA's user mod directory:
@@ -136,8 +131,6 @@ Copy these files from the Release output:
 - `KSI2Assets.xml`
 - `ksi2.layout.defaults.json`
 - `assets/` (the complete folder)
-
-Enable `KSI2` in KSA's user `manifest.toml`, then open the game through StarMap. Current StarMap versions look for installed mods and show them when the game opens. If StarMap does not recognize the mod automatically, check that `KSI2` is in the user manifest and installed under the user `mods/` directory.
 
 ## License
 

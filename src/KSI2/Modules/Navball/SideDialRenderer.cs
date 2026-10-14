@@ -14,11 +14,11 @@ internal sealed unsafe class SideDialRenderer
     private const float LabelRadius = 128f;
     private const float DegreesToRadians = MathF.PI / 180f;
 
-    internal static readonly (string Id, string File)[] Assets =
+    internal static readonly string[] Assets =
     [
-        ("KSI2SideDialNumberHashes", "[asset]"),
-        ("KSI2SideDialSmallHashes", "[asset]"),
-        ("KSI2VelocityDialFrame", "[asset]")
+        "KSI2SideDialNumberHashes",
+        "KSI2SideDialSmallHashes",
+        "KSI2VelocityDialFrame"
     ];
 
     private readonly record struct MaskSpan(float Left, float Top, float Right);
@@ -293,8 +293,7 @@ internal sealed unsafe class SideDialRenderer
         _maskAttempted = true;
         try
         {
-            var path = Path.Combine(Path.GetDirectoryName(typeof(SideDialRenderer).Assembly.Location)!,
-                "assets", "navball", "[asset]");
+            var path = ModLibrary.Get<TextureReference>("KSI2HeadingMask").ModPath;
             var bitmap = TextureLoader.LoadFromFile(path, Brutal.TextureApi.Stb.Loader.LoadSettings.ForceRgba8);
             try
             {

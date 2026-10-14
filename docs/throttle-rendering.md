@@ -47,13 +47,6 @@ and derived green fill to ImGui with its linear texture sampler. The mod keeps
 CPU decoded artwork as a fallback if native registration is unavailable. It
 submits no custom Vulkan work and reads no files during steady rendering.
 
-The importer builds `[asset]` at 170 x 580 from the source bar
-mask and radial texture. It preserves fractional alpha at the bar edges and
-uses bilinear radial samples for the green shade. The renderer maps this image
-to the 85 x 290 widget and clips its triangles to the moving radial sector.
-The native sampler blends source texels at the displayed size, avoiding the
-seams and pixel stair steps of thousands of CPU rectangles.
-
 The source radial PNG contains a repeating alpha lattice. The derived fill
 uses it as a green shade over coverage: brighter cells use `#00FF66`, darker
 cells remain green. This approximates the KSP2 mask and blend behavior.
@@ -80,17 +73,7 @@ color-space conversion differ.
 
 Rather than uploading raw Vulkan textures manually (which caused `VK_ERROR_DEVICE_LOST` during earlier experiments), KSA provides a native asset and texture registration pipeline:
 
-1. **Asset Manifest Declaration (`mod.toml` & `KSI2Assets.xml`)**:
-   - In `mod.toml`: `assets = ["KSI2Assets.xml"]`
-   - In `KSI2Assets.xml`:
-     ```xml
-     <Assets>
-       <Texture Id="KSI2ThrottleHandle" Path="[asset]" />
-     </Assets>
-     ```
-   - KSA's mod loader loads the file reference prior to renderer initialization.
-
-2. **ImGui Binding Lifecycle (`KSI2Mod.cs`)**:
+1. **ImGui Binding Lifecycle (`KSI2Mod.cs`)**:
    - During `[StarMapAllModsLoaded]`, retrieve the reference and mark it for ImGui before KSA binds renderer assets:
      ```csharp
      var textureRef = ModLibrary.Get<TextureReference>("KSI2ThrottleHandle");
@@ -99,7 +82,7 @@ Rather than uploading raw Vulkan textures manually (which caused `VK_ERROR_DEVIC
    - When KSA runs `ModLibrary.Bind(_renderer)`, it creates the `SimpleVkTexture` using its own memory allocator and staging command buffer, transitions the image layout to `ShaderReadOnlyOptimal`, and registers it into the ImGui Vulkan backend (`ImGuiBackend.Vulkan.AddTexture(renderer.LinearSampler, ImageView)`).
    - This populates `textureRef.ImguiTextureRef`, which can be passed directly to ImGui draw calls without custom GPU submissions or synchronization hazards.
 
-3. **ImGui Quad Rendering & UV Mapping Rules (`RasterArtwork.cs`)**:
+2. **ImGui Quad Rendering & UV Mapping Rules (`RasterArtwork.cs`)**:
    - ImGui provides `ImDrawList_AddImageQuad` for arbitrary rotating quads:
      ```csharp
      ImDrawList_AddImageQuad(target, tex_ref, &p1, &p2, &p3, &p4, &uv1, &uv2, &uv3, &uv4, col);

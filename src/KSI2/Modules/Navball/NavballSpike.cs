@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text.Json;
 using Brutal.ImGuiApi;
 using Brutal.Numerics;
 using KSA;
@@ -95,8 +96,14 @@ internal sealed unsafe class NavballSpike
         _loadAttempted = true;
         try
         {
-            var directory = Path.GetDirectoryName(typeof(NavballSpike).Assembly.Location)!;
-            _mesh = NavballMesh.Load(Path.Combine(directory, "assets", "navball", "[asset]"));
+            var texturePath = _surfaceTexture?.ModPath
+                ?? throw new FileNotFoundException("Navball texture ID is unavailable.");
+            var directory = Path.GetDirectoryName(texturePath)!;
+            using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory, "geometry.json")));
+            var meshName = manifest.RootElement.GetProperty("mesh").GetString()!;
+            if (Path.GetFileName(meshName) != meshName)
+                throw new InvalidDataException("Invalid navball mesh filename.");
+            _mesh = NavballMesh.Load(Path.Combine(directory, meshName));
             _vertices = new ProjectedVertex[_mesh.Positions.Length];
             Console.WriteLine($"KSI2: loaded local navball mesh ({_mesh.Positions.Length} vertices, {_mesh.Indices.Length / 3} triangles).");
         }

@@ -12,15 +12,15 @@ internal sealed unsafe class HeadingDialRenderer
     private const float DialSize = 296f;
     private const float SourceSize = 592f;
 
-    internal static readonly (string Id, string File)[] Assets =
+    internal static readonly string[] Assets =
     [
-        ("KSI2HeadingMask", "[asset]"),
-        ("KSI2HeadingBackground", "[asset]"),
-        ("KSI2HeadingTicks", "[asset]"),
-        ("KSI2HeadingNumbers", "[asset]"),
-        ("KSI2HeadingCardinals", "[asset]"),
-        ("KSI2HeadingFrame", "[asset]"),
-        ("KSI2HeadingReadout", "[asset]")
+        "KSI2HeadingMask",
+        "KSI2HeadingBackground",
+        "KSI2HeadingTicks",
+        "KSI2HeadingNumbers",
+        "KSI2HeadingCardinals",
+        "KSI2HeadingFrame",
+        "KSI2HeadingReadout"
     ];
 
     private readonly record struct MaskSpan(float Left, float Top, float Right);
@@ -38,7 +38,7 @@ internal sealed unsafe class HeadingDialRenderer
     private void Draw(PilotComponentBounds bounds, bool readout)
     {
         if (!KSA.Program.DrawUI || !TryReadHeading(out var heading)) return;
-        if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
+        if (!Assets.All(asset => _textures.TryGetValue(asset, out var texture)
             && texture.ImguiTextureRef is not null)) return;
         if (!readout && !EnsureMask()) return;
 
@@ -137,8 +137,7 @@ internal sealed unsafe class HeadingDialRenderer
         _maskAttempted = true;
         try
         {
-            var path = Path.Combine(Path.GetDirectoryName(typeof(HeadingDialRenderer).Assembly.Location)!,
-                "assets", "navball", "[asset]");
+            var path = ModLibrary.Get<TextureReference>("KSI2HeadingMask").ModPath;
             var bitmap = TextureLoader.LoadFromFile(path, Brutal.TextureApi.Stb.Loader.LoadSettings.ForceRgba8);
             try
             {

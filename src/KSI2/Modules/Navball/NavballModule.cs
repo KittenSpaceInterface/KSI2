@@ -41,64 +41,41 @@ internal sealed class NavballModule : IPilotUiModule
     }
     public void Initialize(TextureRegistry assets)
     {
-        var navballTexture = Path.Combine(assets.AssetDirectory, "navball", "[asset]");
-        if (File.Exists(navballTexture))
-            assets.Register("KSI2NavballSurface", tex => _navballSpike.SetSurfaceTexture(tex));
-        var navballDirectory = Path.Combine(assets.AssetDirectory, "navball");
-        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
-            assets.Register("KSI2NavballOrbit", tex => _navballSpike.SetOrbitTexture(tex));
-        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
-            assets.Register("KSI2NavballTargetMode", tex => _navballSpike.SetTargetModeTexture(tex));
-        var fontsDirectory = Path.Combine(assets.AssetDirectory, "fonts");
-        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
-            assets.Register("KSI2NavballShadow", tex => _navballSpike.SetShadowTexture(tex));
-        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
-            assets.Register("KSI2NavballClusterBackground", tex => _navballClusterBackground.SetBackgroundTexture(tex));
-        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
-            assets.Register("KSI2NavballClusterBorder", tex => _navballClusterBackground.SetBorderTexture(tex));
-        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
-            assets.Register("KSI2NavballCrosshair", tex => _navballSpike.SetCrosshairTexture(tex));
-        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
-            assets.Register("KSI2NavballPrograde", tex => _navballSpike.SetProgradeTexture(tex));
-        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
-            assets.Register("KSI2NavballRetrograde", tex => _navballSpike.SetRetrogradeTexture(tex));
-        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
-            assets.Register("KSI2NavballTarget", tex => _navballSpike.SetTargetTexture(tex));
-        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
-            assets.Register("KSI2NavballAntiTarget", tex => _navballSpike.SetAntiTargetTexture(tex));
-        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
-            assets.Register("KSI2NavballNormal", tex => _navballSpike.SetNormalTexture(tex));
-        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
-            assets.Register("KSI2NavballAntiNormal", tex => _navballSpike.SetAntiNormalTexture(tex));
-        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
-            assets.Register("KSI2NavballRadialOut", tex => _navballSpike.SetRadialOutTexture(tex));
-        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
-            assets.Register("KSI2NavballRadialIn", tex => _navballSpike.SetRadialInTexture(tex));
-        if (File.Exists(Path.Combine(navballDirectory, "[asset]")))
-            assets.Register("KSI2NavballManeuver", tex => _navballSpike.SetBurnTexture(tex));
-        foreach (var (id, file) in HeadingDialRenderer.Assets)
-            if (File.Exists(Path.Combine(navballDirectory, file)))
-                assets.Register(id, tex =>
-                {
-                    _headingDial.SetTexture(id, tex);
-                    _sideDials.SetTexture(id, tex);
-                });
-        foreach (var (id, file) in SideDialRenderer.Assets)
-            if (File.Exists(Path.Combine(navballDirectory, file)))
-                assets.Register(id, tex => _sideDials.SetTexture(id, tex));
-        foreach (var (id, file) in SpeedReadoutRenderer.Assets)
-            if (File.Exists(Path.Combine(navballDirectory, file)))
-                assets.Register(id, tex =>
-                {
-                    _speedReadout.SetTexture(id, tex);
-                    _altitudeReadout.SetTexture(id, tex);
-                });
-        foreach (var (id, file) in AltitudeReadoutRenderer.Assets)
-            if (File.Exists(Path.Combine(navballDirectory, file)))
-                assets.Register(id, tex => _altitudeReadout.SetTexture(id, tex));
-        foreach (var (id, file) in NavballBottomControls.Assets)
-            if (File.Exists(Path.Combine(navballDirectory, file)))
-                assets.Register(id, tex => _bottomControls.SetTexture(id, tex));
+        assets.Register("KSI2NavballSurface", tex => _navballSpike.SetSurfaceTexture(tex));
+        assets.Register("KSI2NavballOrbit", tex => _navballSpike.SetOrbitTexture(tex));
+        assets.Register("KSI2NavballTargetMode", tex => _navballSpike.SetTargetModeTexture(tex));
+        assets.Register("KSI2NavballShadow", tex => _navballSpike.SetShadowTexture(tex));
+        assets.Register("KSI2NavballClusterBackground", tex => _navballClusterBackground.SetBackgroundTexture(tex));
+        assets.Register("KSI2NavballClusterBorder", tex => _navballClusterBackground.SetBorderTexture(tex));
+        assets.Register("KSI2NavballCrosshair", tex => _navballSpike.SetCrosshairTexture(tex));
+        assets.Register("KSI2NavballPrograde", tex => _navballSpike.SetProgradeTexture(tex));
+        assets.Register("KSI2NavballRetrograde", tex => _navballSpike.SetRetrogradeTexture(tex));
+        assets.Register("KSI2NavballTarget", tex => _navballSpike.SetTargetTexture(tex));
+        assets.Register("KSI2NavballAntiTarget", tex => _navballSpike.SetAntiTargetTexture(tex));
+        assets.Register("KSI2NavballNormal", tex => _navballSpike.SetNormalTexture(tex));
+        assets.Register("KSI2NavballAntiNormal", tex => _navballSpike.SetAntiNormalTexture(tex));
+        assets.Register("KSI2NavballRadialOut", tex => _navballSpike.SetRadialOutTexture(tex));
+        assets.Register("KSI2NavballRadialIn", tex => _navballSpike.SetRadialInTexture(tex));
+        assets.Register("KSI2NavballManeuver", tex => _navballSpike.SetBurnTexture(tex));
+        foreach (var id in HeadingDialRenderer.Assets)
+            assets.Register(id, tex =>
+            {
+                _headingDial.SetTexture(id, tex);
+                _sideDials.SetTexture(id, tex);
+            });
+        foreach (var id in SideDialRenderer.Assets)
+            assets.Register(id, tex => _sideDials.SetTexture(id, tex));
+        foreach (var id in SpeedReadoutRenderer.Assets)
+            assets.Register(id, tex =>
+            {
+                _speedReadout.SetTexture(id, tex);
+                _altitudeReadout.SetTexture(id, tex);
+            });
+        foreach (var id in AltitudeReadoutRenderer.Assets)
+            assets.Register(id, tex => _altitudeReadout.SetTexture(id, tex));
+        foreach (var id in NavballBottomControls.Assets)
+            assets.Register(id, tex => _bottomControls.SetTexture(id, tex));
+        var fontsDirectory = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "fonts");
         _bottomControls.LoadFont(Path.Combine(fontsDirectory, "LCD_Solid.ttf"));
     }
     public void CancelInteraction()

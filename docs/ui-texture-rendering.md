@@ -18,7 +18,7 @@ For future UI elements:
    size. Keep UVs consistent across a clipped or rotated shape.
 3. If several source masks must be combined, generate a derived texture at
    source resolution, preserve fractional edge alpha, then let the sampler
-   reduce it. The throttle importer does this for `[asset]`.
+   reduce it. The throttle importer does this for the fill texture.
 4. Treat signed distance font atlases separately. Their alpha represents
    distance, so a fixed binary threshold or narrow coverage ramp can make
    small glyphs look thick and jagged. Use the source font and material data

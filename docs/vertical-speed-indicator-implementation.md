@@ -77,7 +77,5 @@ The backing, color band, number artwork, border, bracket, arrow, and shade use
 the serialized KSP2 sprites and prefab tint values. The widget root flips
 vertically: the color band and numbers have a compensating child flip, while
 the backing, border, bracket, arrow, and shade retain the root flip. The arrow
-is clipped to the prefab's `Atmo-MSK-Needle` UI mask. The color and number sprite
-PNGs are local ignored assets copied from the focused AssetRipper export; the
-renderer reuses the existing atmosphere backing, border, bracket, arrow, and
-shade textures. Runtime visual comparison in KSA remains open.
+is clipped to the prefab's `Atmo-MSK-Needle` UI mask. Runtime visual
+comparison in KSA remains open.

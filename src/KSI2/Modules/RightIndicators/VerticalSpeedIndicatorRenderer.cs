@@ -17,10 +17,10 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
     private const float TestMaximumSpeed = 150f;
     private const float MaximumOutwardMovementAfterPositiveHundred = 2f;
 
-    internal static readonly (string Id, string File)[] Assets =
+    internal static readonly string[] Assets =
     [
-        ("KSI2VertSpeedColors", "[asset]"),
-        ("KSI2VertSpeedNumbers", "[asset]")
+        "KSI2VertSpeedColors",
+        "KSI2VertSpeedNumbers"
     ];
 
     private readonly Dictionary<string, TextureReference> _textures = new();
@@ -61,7 +61,7 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
         if (_useTestSpeed) speed = _testSpeed;
         else if (!KsaVerticalSpeedSource.TryRead(out speed)) return;
 
-        if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture) && texture.ImguiTextureRef is not null)) return;
+        if (!Assets.All(asset => _textures.TryGetValue(asset, out var texture) && texture.ImguiTextureRef is not null)) return;
         if (!SharedAssets.All(id => _textures.TryGetValue(id, out var texture) && texture.ImguiTextureRef is not null)) return;
         if (!EnsureMask()) return;
 
@@ -260,8 +260,7 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
         _maskAttempted = true;
         try
         {
-            var path = Path.Combine(Path.GetDirectoryName(typeof(VerticalSpeedIndicatorRenderer).Assembly.Location)!,
-                "assets", "atmosphere", "[asset]");
+            var path = ModLibrary.Get<TextureReference>("KSI2AtmoNeedleMask").ModPath;
             var bitmap = TextureLoader.LoadFromFile(path, Brutal.TextureApi.Stb.Loader.LoadSettings.ForceRgba8);
             try
             {

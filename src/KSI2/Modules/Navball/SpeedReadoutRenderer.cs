@@ -7,14 +7,14 @@ namespace KSI2;
 
 internal sealed unsafe class SpeedReadoutRenderer
 {
-    internal static readonly (string Id, string File)[] Assets =
+    internal static readonly string[] Assets =
     [
-        ("KSI2SpeedBackground", "[asset]"),
-        ("KSI2SpeedModeTile", "[asset]"),
-        ("KSI2SpeedUnitsTile", "[asset]"),
-        ("KSI2SpeedSurface", "[asset]"),
-        ("KSI2SpeedOrbit", "[asset]"),
-        ("KSI2SpeedTarget", "[asset]")
+        "KSI2SpeedBackground",
+        "KSI2SpeedModeTile",
+        "KSI2SpeedUnitsTile",
+        "KSI2SpeedSurface",
+        "KSI2SpeedOrbit",
+        "KSI2SpeedTarget"
     ];
 
     private readonly Dictionary<string, TextureReference> _textures = new();
@@ -64,7 +64,7 @@ internal sealed unsafe class SpeedReadoutRenderer
         var vehicle = KSA.Program.ControlledVehicle;
         if (vehicle is null || vehicle.IsDisposed) { _hovered = false; return; }
         ObserveMode();
-        if (!Assets.All(asset => _textures.TryGetValue(asset.Id, out var texture)
+        if (!Assets.All(asset => _textures.TryGetValue(asset, out var texture)
             && texture.ImguiTextureRef is not null))
         {
             _hovered = false;

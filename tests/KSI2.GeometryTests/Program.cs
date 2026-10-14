@@ -570,14 +570,15 @@ if (args.Length > 0)
     foreach (var texture in json.RootElement.GetProperty("textures").EnumerateArray())
     {
         var name = texture.GetProperty("name").GetString()!;
-        bitmaps[name] = new(texture.GetProperty("width").GetInt32(), texture.GetProperty("height").GetInt32(),
+        var role = texture.GetProperty("role").GetString()!;
+        bitmaps[role] = new(texture.GetProperty("width").GetInt32(), texture.GetProperty("height").GetInt32(),
             File.ReadAllBytes(Path.Combine(directory, name + ".rgba")));
     }
     var art = RasterArtwork.Prepare(bitmaps);
     if (art.FillRuns.Count == 0) throw new Exception("No masked fill artwork");
-    if (!art.Layer("[asset]").Any(r => (r.Color & 0xFFFFFF) < 0x202020))
+    if (!art.Layer("Handle").Any(r => (r.Color & 0xFFFFFF) < 0x202020))
         throw new Exception("Handle lost its dark original RGB pixels");
-    if (art.Layer("[asset]").Count == 0)
+    if (art.Layer("PercentGlyph").Count == 0)
         throw new Exception("Original bottom percentage glyph was not imported");
     foreach (var run in art.FillRuns)
         if ((run.Color & 255) != 0 || ((run.Color >> 8) & 255) is < 80 or > 255 || ((run.Color >> 16) & 255) is < 40 or > 102 ||
@@ -600,14 +601,14 @@ if (args.Length > 0)
             }
             primitives.Add(new { points = corners, color = run.Color });
         }
-        foreach (var name in new[] { "[asset]", "[asset]", "[asset]", "[asset]" })
+        foreach (var name in new[] { "Background", "Bars", "Border", "Bracket" })
             foreach (var run in art.Layer(name)) Add(run);
         foreach (var run in art.FillRuns)
         {
             var count = ThrottleGeometry.ClipFill(run.X, run.Y, run.Width, run.Height, t, polygon);
             if (count >= 3) primitives.Add(new { points = polygon[..count].ToArray(), color = run.Color });
         }
-        foreach (var run in art.Layer("[asset]"))
+        foreach (var run in art.Layer("PercentGlyph"))
         {
             var lx = run.X - ThrottleGeometry.PercentGlyphWidth / 2;
             var ly = run.Y - ThrottleGeometry.PercentGlyphHeight / 2;

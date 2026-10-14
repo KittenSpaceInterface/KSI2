@@ -100,14 +100,11 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
 
     public void Initialize(TextureRegistry assets)
     {
-        foreach (var (id, file) in new[]
+        foreach (var id in new[]
         {
-            ("KSI2OrbitFill", "[asset]"),
-            ("KSI2OrbitBorder", "[asset]"),
-            ("KSI2OrbitBracket", "[asset]")
+            "KSI2OrbitFill", "KSI2OrbitBorder", "KSI2OrbitBracket"
         })
-            if (File.Exists(Path.Combine(assets.AssetDirectory, "orbital-readout", file)))
-                assets.Register(id, texture => _textures[id] = texture);
+            assets.Register(id, texture => _textures[id] = texture);
     }
 
     public void CancelInteraction() { }

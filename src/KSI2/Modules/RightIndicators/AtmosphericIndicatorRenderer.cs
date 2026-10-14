@@ -8,17 +8,17 @@ namespace KSI2;
 
 internal sealed unsafe class AtmosphericIndicatorRenderer
 {
-    internal static readonly (string Id, string File)[] Assets =
+    internal static readonly string[] Assets =
     [
-        ("KSI2AtmoFill", "[asset]"),
-        ("KSI2AtmoLayers", "[asset]"),
-        ("KSI2AtmoBorder", "[asset]"),
-        ("KSI2AtmoBracket", "[asset]"),
-        ("KSI2AtmoNeedleMask", "[asset]"),
-        ("KSI2AtmoNeedle", "[asset]"),
-        ("KSI2AtmoRocket", "[asset]"),
-        ("KSI2AtmoRocketThrust", "[asset]"),
-        ("KSI2AtmoShade", "[asset]")
+        "KSI2AtmoFill",
+        "KSI2AtmoLayers",
+        "KSI2AtmoBorder",
+        "KSI2AtmoBracket",
+        "KSI2AtmoNeedleMask",
+        "KSI2AtmoNeedle",
+        "KSI2AtmoRocket",
+        "KSI2AtmoRocketThrust",
+        "KSI2AtmoShade"
     ];
 
     private readonly Dictionary<string, TextureReference> _textures = new();
@@ -36,7 +36,7 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
     internal void Draw(Point widgetOrigin, float scale, PanelBackgroundBlur? blur, float opacity)
     {
         if (!KSA.Program.DrawUI || !KsaAtmosphereSource.TryRead(out var gauge)) return;
-        if (Assets.Any(asset => !_textures.TryGetValue(asset.Id, out var texture) || texture.ImguiTextureRef is null)) return;
+        if (Assets.Any(asset => !_textures.TryGetValue(asset, out var texture) || texture.ImguiTextureRef is null)) return;
         if (!EnsureMask()) return;
 
         var origin = new float2(widgetOrigin.X, widgetOrigin.Y);
@@ -144,8 +144,7 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
         _maskAttempted = true;
         try
         {
-            var path = Path.Combine(Path.GetDirectoryName(typeof(AtmosphericIndicatorRenderer).Assembly.Location)!,
-                "assets", "atmosphere", "[asset]");
+            var path = ModLibrary.Get<TextureReference>("KSI2AtmoNeedleMask").ModPath;
             var bitmap = TextureLoader.LoadFromFile(path, Brutal.TextureApi.Stb.Loader.LoadSettings.ForceRgba8);
             try
             {

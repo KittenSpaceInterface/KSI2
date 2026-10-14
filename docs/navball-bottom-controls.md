@@ -18,6 +18,5 @@ RCS and SAS labels are drawn from `LCD_Solid.ttf` through KSA's ImGui font
 manager, so they are rasterized at display density rather than scaled from a
 small PNG. The existing speed and altitude PNG font atlases are unchanged.
 
-Run `tools/Prepare-BottomControlsAssets.ps1` to copy the locally exported
-outline and icon sprites into ignored `external asset package/navball/`. The LCD font is
-committed under `src/KSI2/assets/fonts/` and packaged under `assets/fonts/`.
+The LCD font is committed under `src/KSI2/assets/fonts/` and packaged under
+`assets/fonts/`.

@@ -4,7 +4,6 @@ namespace KSI2;
 
 internal sealed class TextureRegistry
 {
-    internal string AssetDirectory => Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets");
     internal void Register(string id, Action<TextureReference> assign)
     {
         try

@@ -23,10 +23,6 @@ colors unchanged and can brighten partially covered white markings. The user
 reported an in-game improvement. KSP2's runtime color-space and render-target
 handling have not been measured.
 
-The locally extracted `Flight-Navball-Shadow` remains a single full-opacity
-copy over the ball. KSP2's prefab contains multiple shadow Images, but the
-single copy is KSI2's existing readability adjustment.
-
 The earlier twofold sphere render improved readability in an in-game check.
 Replacing the reflected KSP2-to-KSA mapping with a quarter turn placed 90 to
 the left of North and aligned the sphere with the prograde and radial markers.

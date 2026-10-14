@@ -2,8 +2,7 @@
 
 ## Goal and scope
 
-The first prototype targeted the atmospheric gauge's `[asset]`
-shape. The shared render path now also covers the throttle, vertical-speed,
+The first prototype targeted the atmospheric gauge background shape. The shared render path now also covers the throttle, vertical-speed,
 and navball-cluster backing shapes identified in the KSP2 investigation.
 Borders, needles, readouts, and other foreground layers retain their order.
 
@@ -16,7 +15,7 @@ cleanup, the next launch disables blur before rendering. See
 ## Evidence and constraints
 
 - KSP2's `UIBlur2` samples a blurred scene image for color and uses the panel
-  sprite for alpha. `[asset]` is the atmospheric panel's shape mask.
+  sprite for alpha. The atmospheric background is the panel shape mask.
   The KSP2 blur kernel and live render parameters are not fully known, so this
   phase targets the behavior rather than a pixel-identical copy. See the
   separate `interface-investigation/blur-panel-rendering-investigation.md`.

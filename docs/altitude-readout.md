@@ -16,18 +16,9 @@ cycles it. The active KSP2 side card displays whole numbers, changing
 from M to KM at 99,999 m and to MM at 99,999,000 m. The narrower rounding
 boundary near 100 m follows KSP2's serialized float threshold.
 
-Prepare the locally extracted artwork with the same AssetRipper export used
-for the speed card:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/Prepare-SpeedReadoutAssets.ps1 -ExportedAssets '<AssetRipper-export>\ExportedProject\Assets'
-```
-
-The script copies the SEA/GROUND icons into ignored
-`external asset package/navball/`, along with the shared tiles. The
-number uses KSA's current ImGui font, matching the heading popup. The SEA/GROUND
-mode, units, and vertical ALT title use the `LCD_Solid.ttf` face loaded for the RCS/SAS buttons. Build
-normally afterward. The source prefab IDs and exact binder behavior are in
+The number uses KSA's current ImGui font, matching the heading popup. The SEA/GROUND
+mode, units, and vertical ALT title use the `LCD_Solid.ttf` face loaded for the RCS/SAS buttons.
+The source prefab IDs and exact binder behavior are in
 `interface-investigation/altitude-readout-investigation.md` in the companion
 repository.
 
