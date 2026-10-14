@@ -4,6 +4,24 @@ KSI2 is a KSP2-inspired interface mod for Kitten Space Agency, loaded through St
 
 The project is in early development.
 
+## Releases
+
+`v0.0.1` is the baseline for automated releases. Earlier commits have no
+historical release versions or changelog entries. New work uses Conventional
+Commits: `feat:` proposes a minor version, `fix:` proposes a patch version,
+and a breaking change before `1.0.0` proposes a minor version. Other commit
+types such as `chore:` do not start a release.
+
+Release Please opens or updates one release pull request for unreleased work
+on `main`. Merging that pull request updates `version.txt` and `CHANGELOG.md`
+and creates the version tag and GitHub Release. A mixed batch of features and
+fixes uses the minor version. Reaching `1.0.0` requires an intentional release
+decision after the pilot interface is complete. GitHub Releases created by
+this workflow do not include mod binaries; build and install locally as below.
+
+The workflow uses `GITHUB_TOKEN`. Repository and organization Actions settings
+must allow GitHub Actions to create pull requests for the release PR to open.
+
 The current viewport and navball placement calculations are documented in
 [docs/screen-layout.md](docs/screen-layout.md).
 Deferred experimental controls and panel blur are recorded in
