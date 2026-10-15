@@ -13,6 +13,16 @@
       "size": [240, 56],
       "z": 1950
     },
+    "direction-selector": {
+      "anchor": "viewport-bottom-left",
+      "offset": [460, -16],
+      "size": [184, 240],
+      "z": 1850,
+      "children": {
+        "direction-selector-wheel": { "offset": [4, 0], "size": [176, 176] },
+        "direction-selector-sas-reserved": { "offset": [0, 184], "size": [184, 56] }
+      }
+    },
     "navball-cluster": {
       "anchor": "viewport-bottom-left",
       "offset": [94, -82],

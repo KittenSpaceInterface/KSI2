@@ -65,7 +65,8 @@ internal sealed class PilotSettingsController : IDisposable
             : assembly.GetName().Version?.ToString() ?? "unknown";
     }
 
-    internal void DrawWindow(ThrottleUiState throttle, LayoutEditor editor, Action cancelThrottle)
+    internal void DrawWindow(ThrottleUiState throttle, LayoutEditor editor,
+        Action cancelThrottle)
     {
         if (!_settings.ConfigurationVisible) return;
         ImGui.SetNextWindowPos(new float2(24, 72), ImGuiCond.FirstUseEver);

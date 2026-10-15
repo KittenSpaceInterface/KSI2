@@ -2,6 +2,7 @@ using KSI2;
 using System.Text.Json;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Numerics;
 
 PilotLayoutDefinition[] definitions =
 [
@@ -11,6 +12,54 @@ PilotLayoutDefinition[] definitions =
 ];
 PilotFrameLayout Resolve(float x, float y, float width, float height, PilotUiSettings settings) =>
     PilotFrameLayout.Resolve(x, y, width, height, settings, definitions);
+
+// KSA helm is forward/right/down. These orbital marker vectors describe a
+// prograde-aligned ship with its top toward radial out. KSP2's source formula
+// returns identity for that pose, followed by axis rotations as the ship turns.
+var alignedNormal = -Vector3.UnitY;
+var alignedRadial = -Vector3.UnitZ;
+static void NearRotation(Quaternion expected, Quaternion actual, string name)
+{
+    if (MathF.Abs(Quaternion.Dot(expected, actual)) < 0.9999f)
+        throw new Exception($"{name}: expected {expected}, received {actual}");
+}
+NearRotation(Quaternion.Identity,
+    DirectionSelectorShipRenderer.GetShipPivotRotation(alignedNormal, alignedRadial),
+    "prograde-aligned selector ship pivot");
+foreach (var (helmAxis, expectedAxis, name) in new[]
+{
+    (Vector3.UnitX, Vector3.UnitY, "roll"),
+    (Vector3.UnitY, -Vector3.UnitZ, "pitch"),
+    (Vector3.UnitZ, -Vector3.UnitX, "yaw")
+})
+{
+    var orbitToTurnedHelm = Quaternion.CreateFromAxisAngle(helmAxis, -MathF.PI / 2f);
+    var normal = Vector3.Transform(alignedNormal, orbitToTurnedHelm);
+    var radial = Vector3.Transform(alignedRadial, orbitToTurnedHelm);
+    NearRotation(Quaternion.CreateFromAxisAngle(expectedAxis, MathF.PI / 2f),
+        DirectionSelectorShipRenderer.GetShipPivotRotation(normal, radial),
+        $"selector ship pivot {name}");
+}
+var rolledNormal = Vector3.Transform(alignedNormal,
+    Quaternion.CreateFromAxisAngle(Vector3.UnitX, -MathF.PI / 2f));
+var rolledRadial = Vector3.Transform(alignedRadial,
+    Quaternion.CreateFromAxisAngle(Vector3.UnitX, -MathF.PI / 2f));
+var rolledShip = DirectionSelectorShipRenderer.GetShipPivotRotation(
+    rolledNormal, rolledRadial);
+if (Vector3.Distance(Vector3.Transform(Vector3.UnitY, rolledShip), Vector3.UnitY) > 0.001f)
+    throw new Exception("selector roll moved the mesh nose away from its pivot axis");
+foreach (var (current, corrected, name) in new[]
+{
+    (Vector3.UnitY, -Vector3.UnitZ, "mesh nose prograde display alignment"),
+    (Vector3.UnitX, Vector3.UnitY, "radial-out display alignment"),
+    (Vector3.UnitZ, Vector3.UnitX, "normal display alignment")
+})
+{
+    var actual = Vector3.Transform(current,
+        DirectionSelectorShipRenderer.SelectorFrameConversion);
+    if (Vector3.Distance(actual, corrected) > 0.001f)
+        throw new Exception($"{name}: expected {corrected}, received {actual}");
+}
 
 var speedState = new SpeedModeState();
 var firstVehicle = new object();

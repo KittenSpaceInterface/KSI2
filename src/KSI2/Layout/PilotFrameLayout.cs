@@ -87,6 +87,22 @@ internal readonly record struct PilotFrameLayout(
                 orbitPosition.Y + throttle.Position.Y - throttle.InitialPosition.Y);
         components.Add("orbital-readout", new PilotComponentBounds(orbitPosition, orbitScale,
             orbitNode.Size[0], orbitNode.Size[1]));
+        var selectorNode = config.Node("direction-selector");
+        var selectorWidth = selectorNode.Size[0] * scale;
+        var selectorHeight = selectorNode.Size[1] * scale;
+        var selectorAvailableX = MathF.Max(0, width - selectorWidth);
+        var selectorAvailableY = MathF.Max(0, height - selectorHeight);
+        var selectorPosition = selectorNode.Anchor == "viewport-bottom-left"
+            ? new Point(viewportX + Math.Clamp(selectorNode.Offset[0] * scale, 0, selectorAvailableX),
+                viewportY + Math.Clamp(selectorAvailableY + selectorNode.Offset[1] * scale, 0, selectorAvailableY))
+            : new Point(viewportX + Math.Clamp(selectorNode.Offset[0] * scale, 0, selectorAvailableX),
+                viewportY + Math.Clamp(selectorNode.Offset[1] * scale, 0, selectorAvailableY));
+        if (settings.PositionSet)
+            selectorPosition = new Point(selectorPosition.X + throttle.Position.X - throttle.InitialPosition.X,
+                selectorPosition.Y + throttle.Position.Y - throttle.InitialPosition.Y);
+        components.Add("direction-selector", new PilotComponentBounds(selectorPosition, scale,
+            selectorNode.Size[0], selectorNode.Size[1]));
+        config.ResolveChildren("direction-selector", selectorPosition, scale, components);
         var layout = new PilotFrameLayout(new(viewportX, viewportY), new(width, height), throttle, navball,
             new ReadOnlyDictionary<string, PilotComponentBounds>(components), throttle.Position, throttle.Position);
         var editorMin = new Point(float.PositiveInfinity, float.PositiveInfinity);

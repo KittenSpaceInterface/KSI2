@@ -31,7 +31,7 @@ if [[ "${SKIP_GEOMETRY_CHECKS:-0}" != "1" ]]; then
 fi
 
 build_dir="$repository_dir/src/KSI2/bin/Release/net10.0"
-for name in KSI2.dll KSI2.deps.json mod.toml KSI2Assets.xml; do
+for name in KSI2.dll KSI2.deps.json mod.toml KSI2Assets.xml ksi2.layout.defaults.json; do
     [[ -f "$build_dir/$name" ]] || { echo "Missing build output: $name" >&2; exit 1; }
 done
 [[ -d "$build_dir/assets" ]] || { echo 'Missing build output: assets/' >&2; exit 1; }
@@ -45,10 +45,18 @@ done
 }
 
 mkdir -p "$install_dir/assets"
-for name in KSI2.dll KSI2.deps.json mod.toml KSI2Assets.xml; do
+for name in KSI2.dll KSI2.deps.json mod.toml KSI2Assets.xml ksi2.layout.defaults.json; do
     cp -f -- "$build_dir/$name" "$install_dir/$name"
 done
-cp -R -- "$build_dir/assets/." "$install_dir/assets/"
+while IFS= read -r -d '' source_file; do
+    relative_path="${source_file#"$build_dir/assets/"}"
+    destination_file="$install_dir/assets/$relative_path"
+    mkdir -p -- "$(dirname -- "$destination_file")"
+    if [[ ! -f "$destination_file" ]] || ! cmp -s -- "$source_file" "$destination_file"; then
+        cp -f -- "$source_file" "$destination_file"
+    fi
+done < <(find "$build_dir/assets" -type f -print0)
 cmp -s -- "$build_dir/KSI2.dll" "$install_dir/KSI2.dll"
+cmp -s -- "$build_dir/ksi2.layout.defaults.json" "$install_dir/ksi2.layout.defaults.json"
 echo "Installed KSI2 in: $install_dir"
 echo 'Existing ksi2.settings.json was left in place.'
