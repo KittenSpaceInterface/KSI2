@@ -9,9 +9,10 @@ internal sealed class PilotSettingsController : IDisposable
 {
     private readonly PilotUiSettings _settings = PilotUiSettings.Load();
     private readonly BlurCrashGuard _blurCrashGuard;
-    private readonly HudMenuIntegration _hudMenu;
+    private static PilotSettingsController? _current;
+    private bool _modMenuInstalled;
+    private bool _initialized;
     internal PilotUiSettings Settings => _settings;
-    internal HudMenuIntegration HudMenu => _hudMenu;
     internal VerticalSpeedConfigurationState VerticalSpeedConfiguration { get; } = new();
     internal void Save() => _settings.Save();
     internal bool BlurPanelBackgrounds => _blurCrashGuard.Enabled;
@@ -24,22 +25,42 @@ internal sealed class PilotSettingsController : IDisposable
             && !string.Equals(_settings.LastKsaVersion, currentVersion, StringComparison.Ordinal))
         {
             _settings.BlurPanelBackgrounds = false;
-            _settings.ExperimentalHudMenu = false;
-            _settings.ConfigurationVisible = true;
             OptionsResetAfterKsaVersionChange = true;
         }
         _settings.LastKsaVersion = currentVersion;
         _settings.Save();
         _blurCrashGuard = new BlurCrashGuard(_settings, _settings.Save);
-        _hudMenu = new HudMenuIntegration(_settings, _settings.Save);
+        _current = this;
     }
 
-    internal void Initialize() => _hudMenu.Initialize();
+    internal void Initialize()
+    {
+        if (_initialized) return;
+        _initialized = true;
+        _modMenuInstalled = AppDomain.CurrentDomain.GetAssemblies()
+            .Any(assembly => assembly.GetName().Name == "ModMenu");
+        if (_settings.EnsureConfigurationAccess(_modMenuInstalled)) Save();
+    }
+
+    [ModMenuEntry("KSI2")]
+    public static void DrawModMenu()
+    {
+        if (_current is not { } current) return;
+        var visible = current._settings.ConfigurationVisible;
+        if (ImGui.MenuItem("Configuration", default, ref visible))
+            current.SetConfigurationVisible(visible);
+    }
+
+    private void SetConfigurationVisible(bool visible)
+    {
+        if (_settings.ConfigurationVisible == visible) return;
+        _settings.ConfigurationVisible = visible;
+        Save();
+    }
 
     internal void Tick()
     {
         _blurCrashGuard.Tick();
-        _hudMenu.Tick();
     }
 
     private static string ReadKsaVersion()
@@ -72,12 +93,12 @@ internal sealed class PilotSettingsController : IDisposable
         ImGui.SetNextWindowPos(new float2(24, 72), ImGuiCond.FirstUseEver);
         var windowFlags = ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings;
         bool windowExpanded;
-        if (_hudMenu.Enabled && _hudMenu.MenuItemSeen)
+        if (_modMenuInstalled)
         {
             var configurationVisible = _settings.ConfigurationVisible;
             windowExpanded = ImGui.Begin("KSI2", ref configurationVisible, windowFlags);
             if (configurationVisible != _settings.ConfigurationVisible)
-                _hudMenu.SetConfigurationVisible(configurationVisible);
+                SetConfigurationVisible(configurationVisible);
         }
         else
         {
@@ -113,11 +134,6 @@ internal sealed class PilotSettingsController : IDisposable
         }
         if (OptionsResetAfterKsaVersionChange)
             ImGui.TextWrapped("Experimental options were disabled because the KSA version changed. Re-enable them to test this version.");
-        var hudMenu = _hudMenu.Enabled;
-        if (ImGui.Checkbox("Add KSI2 to HUD menu", ref hudMenu)) _hudMenu.SetEnabled(hudMenu);
-        if (_hudMenu.RecoveredAfterCrash)
-            ImGui.TextWrapped("HUD menu integration was disabled because its five-second activation check did not complete.");
-        if (_hudMenu.Error is { } hudMenuError) ImGui.TextWrapped(hudMenuError);
         var blurPanelBackgrounds = BlurPanelBackgrounds;
         if (ImGui.Checkbox("Blur panel backgrounds", ref blurPanelBackgrounds))
             _blurCrashGuard.SetEnabled(blurPanelBackgrounds);
@@ -167,7 +183,7 @@ internal sealed class PilotSettingsController : IDisposable
 
     public void Dispose()
     {
-        _hudMenu.Dispose();
+        if (ReferenceEquals(_current, this)) _current = null;
         _blurCrashGuard.OnCleanUnload();
     }
 }

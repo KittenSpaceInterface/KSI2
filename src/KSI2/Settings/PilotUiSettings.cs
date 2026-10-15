@@ -14,7 +14,6 @@ internal sealed class PilotUiSettings
     public bool MouseThrottleControl { get; set; }
     public bool ImprovedAltitudeDial { get; set; }
     public bool BlurPanelBackgrounds { get; set; }
-    public bool ExperimentalHudMenu { get; set; }
     public bool ConfigurationVisible { get; set; } = true;
     public string LastKsaVersion { get; set; } = string.Empty;
     public int BlurOpacityTicks { get; set; } = 398;
@@ -22,6 +21,13 @@ internal sealed class PilotUiSettings
     public float VerticalSpeedNeedleOffset { get; set; } = 2f;
     internal static string ModDirectory => Path.GetDirectoryName(typeof(PilotUiSettings).Assembly.Location) ?? AppContext.BaseDirectory;
     private static string FilePath => Path.Combine(ModDirectory, "ksi2.settings.json");
+
+    internal bool EnsureConfigurationAccess(bool modMenuInstalled)
+    {
+        if (modMenuInstalled || ConfigurationVisible) return false;
+        ConfigurationVisible = true;
+        return true;
+    }
 
     internal static PilotUiSettings Load()
     {

@@ -70,6 +70,7 @@ Compatibility baseline: the default 1920 x 1080 navball root is
 normalized saved position, and 0.5-2 user scale. The settings window
 still offers combined dragging, reset, mouse throttle control,
 and guarded experimental blur. `Editing` resets to false on load. The existing
-JSON names and meanings are unchanged. Checks cover default and saved positions,
+JSON names and meanings are unchanged except for the removed experimental HUD menu
+setting. Checks cover default and saved positions,
 viewport origins, aspect ratios, scale limits, drag cancellation, speed mode
 changes while editing, settings reload, and blur marker cleanup.

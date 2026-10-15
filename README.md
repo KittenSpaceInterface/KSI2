@@ -90,19 +90,13 @@ The **Experimental** setting **Blur panel backgrounds** covers the four flight
 panel backings. Its switch and opacity are saved in `ksi2.settings.json`. After
 enabling blur, KSI2 checks for five seconds that KSA stays open; if KSA exits
 during that period, blur is turned off on the next launch. The same check runs
-when KSI2 starts with blur enabled. A KSA version change also turns off both
-experimental options so they can be rechecked against the new version.
+when KSI2 starts with blur enabled. A KSA version change also turns off blur
+so it can be rechecked against the new version.
 
-The **Experimental** setting **Add KSI2 to HUD menu** adds a checked **KSI2
-Configuration** item below Navball in KSA's HUD menu. The item shows or hides
-the KSI2 settings window. Once the HUD item has appeared, the settings window's
-title-bar close button also hides that window; the HUD item can show it again.
-The flight instruments remain visible independently. This option is off by default. Its Harmony patch is loaded only
-when enabled and is removed when disabled. If KSA exits unexpectedly while it
-is enabled during the five-second check, KSI2 disables the option on the next
-launch. The same check runs at startup when the option is enabled. A missing patch or a
-changed KSA HUD list also leaves the option off and the flight instruments
-visible. This option does not change KSA's Navball visibility.
+When ModMenu is installed, **Mods > KSI2 > Configuration** toggles the settings
+window. Its title-bar close button also hides the window. Without ModMenu, KSI2
+opens the settings window by default, including when it was hidden in a previous
+session. The flight instruments remain visible independently.
 
 Under **Advanced**, **Vertical Speed Configuration** toggles the calibration
 window. The window also has a Close button and starts closed when KSI2 loads.

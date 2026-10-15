@@ -36,13 +36,16 @@ for name in KSI2.dll KSI2.deps.json mod.toml KSI2Assets.xml ksi2.layout.defaults
 done
 [[ -d "$build_dir/assets" ]] || { echo 'Missing build output: assets/' >&2; exit 1; }
 [[ -f "$build_dir/assets/optional/0Harmony.dll" ]] || {
-    echo 'Missing optional HUD menu library in build output.' >&2
+    echo 'Missing optional flight-computer input library in build output.' >&2
     exit 1
 }
-[[ -f "$build_dir/assets/optional/KSI2.HudMenuPatch.dll" ]] || {
-    echo 'Missing optional HUD menu adapter in build output.' >&2
+[[ -f "$build_dir/assets/optional/KSI2.FlightComputerInputPatch.dll" ]] || {
+    echo 'Missing optional flight-computer input adapter in build output.' >&2
     exit 1
 }
+
+# Remove the retired adapter left by installs from older KSI2 builds.
+rm -f -- "$build_dir/assets/optional/KSI2.HudMenuPatch.dll" "$install_dir/assets/optional/KSI2.HudMenuPatch.dll"
 
 mkdir -p "$install_dir/assets"
 for name in KSI2.dll KSI2.deps.json mod.toml KSI2Assets.xml ksi2.layout.defaults.json; do

@@ -19,7 +19,7 @@ internal sealed class DirectionSelectorInputBridge : IDisposable
             var optionalDir = Path.Combine(PilotUiSettings.ModDirectory, "assets", "optional");
             OptionalAssemblyLoader.Load(Path.Combine(optionalDir, "0Harmony.dll"));
             var patchAssembly = OptionalAssemblyLoader.Load(
-                Path.Combine(optionalDir, "KSI2.HudMenuPatch.dll"));
+                Path.Combine(optionalDir, "KSI2.FlightComputerInputPatch.dll"));
             _patchType = patchAssembly.GetType("KSI2.Optional.HarmonyFlightComputerInputPatch", true);
             _patchType!.GetMethod("Install", BindingFlags.Public | BindingFlags.Static)!
                 .Invoke(null, [target, afterInput]);

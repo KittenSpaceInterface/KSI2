@@ -26,15 +26,15 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <PackageReference Include="StarMap.API" Version="0.3.6" />
-    <ProjectReference Include="../KSI2.HudMenuPatch/KSI2.HudMenuPatch.csproj" ReferenceOutputAssembly="false" />
-    <Content Include="../KSI2.HudMenuPatch/bin/$(Configuration)/net10.0/0Harmony.dll">
+    <ProjectReference Include="../KSI2.FlightComputerInputPatch/KSI2.FlightComputerInputPatch.csproj" ReferenceOutputAssembly="false" />
+    <Content Include="../KSI2.FlightComputerInputPatch/bin/$(Configuration)/net10.0/0Harmony.dll">
       <Link>assets/optional/0Harmony.dll</Link>
       <TargetPath>assets/optional/0Harmony.dll</TargetPath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="../KSI2.HudMenuPatch/bin/$(Configuration)/net10.0/KSI2.HudMenuPatch.dll">
-      <Link>assets/optional/KSI2.HudMenuPatch.dll</Link>
-      <TargetPath>assets/optional/KSI2.HudMenuPatch.dll</TargetPath>
+    <Content Include="../KSI2.FlightComputerInputPatch/bin/$(Configuration)/net10.0/KSI2.FlightComputerInputPatch.dll">
+      <Link>assets/optional/KSI2.FlightComputerInputPatch.dll</Link>
+      <TargetPath>assets/optional/KSI2.FlightComputerInputPatch.dll</TargetPath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="$(NuGetPackageRoot)lib.harmony/2.4.2/LICENSE">
