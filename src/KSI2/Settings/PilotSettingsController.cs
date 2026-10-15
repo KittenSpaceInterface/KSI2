@@ -12,6 +12,8 @@ internal sealed class PilotSettingsController : IDisposable
     private static PilotSettingsController? _current;
     private bool _modMenuInstalled;
     private bool _initialized;
+    private bool _layoutWindowOpen;
+    private bool _confirmResetLayout;
     internal PilotUiSettings Settings => _settings;
     internal VerticalSpeedConfigurationState VerticalSpeedConfiguration { get; } = new();
     internal void Save() => _settings.Save();
@@ -89,7 +91,11 @@ internal sealed class PilotSettingsController : IDisposable
     internal void DrawWindow(ThrottleUiState throttle, LayoutEditor editor,
         Action cancelThrottle)
     {
-        if (!_settings.ConfigurationVisible) return;
+        if (!_settings.ConfigurationVisible)
+        {
+            CloseLayoutWindow(editor);
+            return;
+        }
         ImGui.SetNextWindowPos(new float2(24, 72), ImGuiCond.FirstUseEver);
         var windowFlags = ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings;
         bool windowExpanded;
@@ -107,24 +113,10 @@ internal sealed class PilotSettingsController : IDisposable
         if (!windowExpanded)
         {
             ImGui.End();
+            DrawLayoutWindow(editor);
             return;
         }
         PilotImGui.PlaceCurrentWindow();
-        var editing = _settings.Editing;
-        if (ImGui.Checkbox("Edit layout", ref editing))
-        {
-            _settings.Editing = editing;
-            if (!editing) { editor.Cancel(); Save(); }
-        }
-        var scale = _settings.Scale;
-        if (ImGui.SliderFloat("Scale", ref scale, 0.5f, 2f, "%.2fx")) _settings.Scale = scale;
-        if (ImGui.IsItemDeactivatedAfterEdit()) Save();
-        if (ImGui.Button("Reset layout"))
-        {
-            editor.Cancel();
-            _settings.Reset();
-            Save();
-        }
         ImGui.Text("Experimental");
         if (ImGui.IsItemHovered())
         {
@@ -170,16 +162,148 @@ internal sealed class PilotSettingsController : IDisposable
             ImGui.EndTooltip();
         }
         ImGui.Text("Advanced");
+        if (ImGui.Button("Layout Configuration")) _layoutWindowOpen = true;
         if (ImGui.Button("Vertical Speed Configuration"))
             VerticalSpeedConfiguration.IsOpen = !VerticalSpeedConfiguration.IsOpen;
-        if (_settings.Editing)
-        {
-            var io = ImGui.GetIO();
-            ImGui.Text($"Display: {io.DisplaySize.X:0} x {io.DisplaySize.Y:0}; framebuffer scale: {io.DisplayFramebufferScale.X:0.##} x {io.DisplayFramebufferScale.Y:0.##}");
-        }
         if (throttle.AssetError is not null) ImGui.TextWrapped($"Throttle artwork unavailable: {throttle.AssetError}\nCheck the installed asset package.");
         ImGui.End();
+        DrawLayoutWindow(editor);
     }
+
+    private void CloseLayoutWindow(LayoutEditor editor)
+    {
+        if (!_layoutWindowOpen && !_settings.Editing) return;
+        _layoutWindowOpen = false;
+        _confirmResetLayout = false;
+        _settings.Editing = false;
+        _settings.SelectedElement = "none";
+        _settings.MoveAllElements = false;
+        editor.Cancel();
+        Save();
+    }
+
+    private void DrawLayoutWindow(LayoutEditor editor)
+    {
+        if (!_layoutWindowOpen) return;
+        var viewport = ImGui.GetMainViewport();
+        ImGui.SetNextWindowPos(new float2(viewport.Pos.X + MathF.Max(24, viewport.Size.X * 0.5f - 180),
+            viewport.Pos.Y + 72), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new float2(400, 330), ImGuiCond.Always);
+        var open = _layoutWindowOpen;
+        var expanded = ImGui.Begin("KSI2 Layout", ref open,
+            ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoSavedSettings);
+        if (!open)
+        {
+            ImGui.End();
+            CloseLayoutWindow(editor);
+            return;
+        }
+        if (!expanded)
+        {
+            ImGui.End();
+            return;
+        }
+        PilotImGui.PlaceCurrentWindow();
+        if (_confirmResetLayout)
+        {
+            ImGui.TextWrapped("Reset the entire layout? This restores all six elements to their default positions and scales.");
+            if (ImGui.Button("Confirm reset layout"))
+            {
+                editor.Cancel();
+                _settings.Reset();
+                _confirmResetLayout = false;
+                Save();
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Cancel")) _confirmResetLayout = false;
+            ImGui.End();
+            return;
+        }
+        ImGui.Text("Overall scale");
+        var scale = _settings.Scale;
+        if (ImGui.SliderFloat("##KSI2OverallScale", ref scale, 0.5f, 2f, "%.2fx")) _settings.Scale = scale;
+        if (ImGui.IsItemDeactivatedAfterEdit()) Save();
+
+        ImGui.Text("Element");
+        ImGui.SetNextItemWidth(-1f);
+        if (ImGui.BeginCombo("##KSI2LayoutElement", ElementLabel(_settings.SelectedElement)))
+        {
+            // KSI2 raises its windows above the flight HUD each frame. Raise
+            // the combo popup as well so its choices stay above those windows.
+            PilotImGui.PlaceCurrentWindow();
+            if (ImGui.Selectable("No Element Selected", _settings.SelectedElement == "none"))
+            {
+                editor.Cancel();
+                _settings.SelectedElement = "none";
+                _settings.MoveAllElements = false;
+                _settings.Editing = false;
+            }
+            foreach (var id in PilotUiSettings.EditableElements)
+            {
+                if (ImGui.Selectable(ElementLabel(id), id == _settings.SelectedElement))
+                {
+                    editor.Cancel();
+                    _settings.SelectedElement = id;
+                    _settings.MoveAllElements = false;
+                    _settings.Editing = true;
+                }
+            }
+            ImGui.EndCombo();
+        }
+        var selectedElement = _settings.SelectedElement;
+        if (selectedElement != "none")
+        {
+            var element = _settings.ElementLayouts.TryGetValue(selectedElement, out var stored) ? stored : null;
+            var elementScale = element?.Scale ?? 1f;
+            if (ImGui.SliderFloat("Element scale", ref elementScale, 0.5f, 2f, "%.2fx"))
+            {
+                if (element is null) _settings.ElementLayouts[selectedElement] = element = new();
+                element.Scale = elementScale;
+            }
+            if (ImGui.IsItemDeactivatedAfterEdit()) Save();
+            if (ImGui.Button("Reset element"))
+            {
+                editor.Cancel();
+                _settings.ElementLayouts.Remove(selectedElement);
+                Save();
+            }
+        }
+        else ImGui.TextWrapped("Choose an element to enable dragging and individual scale.");
+        ImGui.SetCursorPos(new float2(28f, 288f));
+        if (_settings.MoveAllElements)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Button, new byte4(255, 255, 255, 255));
+            ImGui.PushStyleColor(ImGuiCol.Text, new byte4(0, 0, 0, 255));
+        }
+        if (ImGui.Button("Move all elements"))
+        {
+            editor.Cancel();
+            _settings.MoveAllElements = !_settings.MoveAllElements;
+            _settings.SelectedElement = "none";
+            _settings.Editing = _settings.MoveAllElements;
+        }
+        if (_settings.MoveAllElements) ImGui.PopStyleColor(2);
+        ImGui.SameLine();
+        if (ImGui.Button("Reset layout"))
+        {
+            editor.Cancel();
+            _confirmResetLayout = true;
+        }
+        ImGui.SameLine();
+        if (ImGui.Button("Done")) CloseLayoutWindow(editor);
+        ImGui.End();
+    }
+
+    private static string ElementLabel(string id) => id switch
+    {
+        "none" => "No Element Selected",
+        "throttle" => "Throttle",
+        "navball-cluster" => "Navball Cluster",
+        "atmosphere" => "Atmospheric Indicator",
+        "vertical-speed" => "Vertical Speed Indicator",
+        "orbital-readout" => "AP/PE Readout",
+        _ => "Direction Selector"
+    };
 
     public void Dispose()
     {

@@ -375,31 +375,67 @@ Near(10f + cluster.Min.X * 2f / 3f, scaledCluster.Min.X, "scaled cluster left");
 Near(20f + cluster.Min.Y * 2f / 3f, scaledCluster.Min.Y, "scaled cluster top");
 Near(88f * 2f / 3f, scaledCluster.BallRadius, "scaled navball radius");
 
-// Saved offsets move every module by the same screen-space delta, including
-// when the host viewport begins away from (0, 0).
+// Each independently saved position moves only its selected element.
 foreach (var (vx, vy, width, height) in new[]
     { (0f, 0f, 1920f, 1080f), (120f, 45f, 1280f, 720f), (75f, 90f, 900f, 1200f) })
 {
     var baseline = Resolve(vx, vy, width, height, new PilotUiSettings());
-    var saved = new PilotUiSettings { PositionSet = true, X = 0.35f, Y = 0.62f };
+    var throttleRoot = baseline.Component("throttle");
+    var throttleEditBounds = baseline.EditorBounds("throttle");
+    Near(throttleRoot.Position.X + 25f * throttleRoot.Scale, throttleEditBounds.Position.X,
+        "throttle editor starts at artwork inset");
+    Near(throttleEditBounds.Position.X + ThrottleGauge.ArtworkWidth * throttleEditBounds.Scale,
+        throttleEditBounds.Max.X, "throttle editor ends at artwork right edge");
+    var saved = new PilotUiSettings();
+    saved.ElementLayouts["throttle"] = new() { PositionSet = true, X = 0.35f, Y = 0.62f };
     var moved = Resolve(vx, vy, width, height, saved);
-    var dx = moved.Throttle.Position.X - baseline.Throttle.Position.X;
-    var dy = moved.Throttle.Position.Y - baseline.Throttle.Position.Y;
     Near(vx + 0.35f * moved.Throttle.AvailableX, moved.Throttle.Position.X, "saved throttle x");
     Near(vy + 0.62f * moved.Throttle.AvailableY, moved.Throttle.Position.Y, "saved throttle y");
-    Near(baseline.Navball.Min.X + dx, moved.Navball.Min.X, "saved navball x");
-    Near(baseline.Navball.Min.Y + dy, moved.Navball.Min.Y, "saved navball y");
-    Near(baseline.Component(RightIndicatorsModule.AtmosphereId).Position.X + dx,
-        moved.Component(RightIndicatorsModule.AtmosphereId).Position.X, "saved atmosphere x");
-    Near(baseline.Component(RightIndicatorsModule.VerticalSpeedId).Position.Y + dy,
-        moved.Component(RightIndicatorsModule.VerticalSpeedId).Position.Y, "saved vertical speed y");
-    Near(MathF.Min(moved.Throttle.Position.X, moved.Navball.Min.X - 37f * moved.Navball.Scale),
-        moved.EditorMin.X, "editor includes module extents");
-    var duringDrag = baseline.Translate(new Point(dx, dy));
-    Near(moved.Throttle.Position.X, duringDrag.Throttle.Position.X, "drag moves throttle before drawing");
-    Near(moved.Component(NavballModule.SpeedCardId).Position.Y,
-        duringDrag.Component(NavballModule.SpeedCardId).Position.Y, "drag moves speed card before drawing");
-    Near(moved.EditorMax.X, duringDrag.EditorMax.X, "drag moves editor extent before drawing");
+    Near(baseline.Navball.Min.X, moved.Navball.Min.X, "throttle movement leaves navball");
+    Near(baseline.Component(RightIndicatorsModule.AtmosphereId).Position.X,
+        moved.Component(RightIndicatorsModule.AtmosphereId).Position.X, "throttle movement leaves atmosphere");
+    var independent = new PilotUiSettings();
+    independent.ElementLayouts["atmosphere"] = new() { PositionSet = true, X = 0.35f, Y = 0.62f, Scale = 1.5f };
+    var indicatorLayout = Resolve(vx, vy, width, height, independent);
+    Near(1.5f, indicatorLayout.Component("atmosphere").Scale / baseline.Component("atmosphere").Scale,
+        "individual scale multiplier");
+    Near(baseline.Navball.Min.X, indicatorLayout.Navball.Min.X, "indicator scale leaves navball");
+    var selectorSettings = new PilotUiSettings();
+    selectorSettings.ElementLayouts["direction-selector"] = new()
+        { PositionSet = true, X = .35f, Y = .62f, Scale = 1.5f };
+    var selectorLayout = Resolve(vx, vy, width, height, selectorSettings);
+    var selectorRoot = selectorLayout.Component("direction-selector");
+    var selectorWheel = selectorLayout.Component("direction-selector-wheel");
+    var selectorEditBounds = selectorLayout.EditorBounds("direction-selector");
+    Near(240f, selectorRoot.Height, "selector layout retains reserved future area");
+    Near(176f, selectorEditBounds.Height, "selector edit bounds stop at visible wheel");
+    Near(selectorRoot.Position.Y, selectorEditBounds.Position.Y,
+        "selector edit bounds preserve artwork position");
+    Near(selectorRoot.Position.X + 4f * selectorRoot.Scale, selectorWheel.Position.X,
+        "selector wheel follows its root horizontally");
+    Near(selectorRoot.Position.Y, selectorWheel.Position.Y,
+        "selector wheel follows its root vertically");
+    Near(selectorRoot.Scale, selectorWheel.Scale, "selector wheel follows root scale");
+    var clusterSettings = new PilotUiSettings();
+    clusterSettings.ElementLayouts["navball-cluster"] = new()
+        { PositionSet = true, X = .35f, Y = .62f };
+    var clusterLayout = Resolve(vx, vy, width, height, clusterSettings);
+    Near(baseline.Component("atmosphere").Position.X,
+        clusterLayout.Component("atmosphere").Position.X, "cluster move leaves atmosphere");
+    Near(baseline.Component("vertical-speed").Position.Y,
+        clusterLayout.Component("vertical-speed").Position.Y, "cluster move leaves vertical speed");
+    foreach (var id in PilotUiSettings.EditableElements)
+    foreach (var (px, py) in new[] { (0f, 0f), (1f, 1f) })
+    {
+        var edgeSettings = new PilotUiSettings();
+        edgeSettings.ElementLayouts[id] = new() { PositionSet = true, X = px, Y = py, Scale = 2f };
+        var edge = Resolve(vx, vy, width, height, edgeSettings).Component(id);
+        Near(vx + px * MathF.Max(0, width - edge.Width * edge.Scale), edge.Position.X, $"{id} horizontal edge clamp");
+        Near(vy + py * MathF.Max(0, height - edge.Height * edge.Scale), edge.Position.Y, $"{id} vertical edge clamp");
+        if (edge.Position.X < vx - .001f || edge.Max.X > vx + width + .001f ||
+            edge.Position.Y < vy - .001f || edge.Max.Y > vy + height + .001f)
+            throw new Exception($"{id} full bounds escaped the viewport");
+    }
 }
 foreach (var scale in new[] { 0.5f, 1f, 2f })
 {
@@ -503,6 +539,14 @@ reloaded.Reset();
 if (!reloaded.Show || reloaded.Scale != 1f || reloaded.PositionSet ||
     reloaded.X != 0.01355f || reloaded.Y != 0.97f || !reloaded.MouseThrottleControl)
     throw new Exception("reset changed settings outside the existing layout fields");
+var resetLayout = new PilotUiSettings();
+resetLayout.Editing = true;
+resetLayout.SelectedElement = "direction-selector";
+foreach (var id in PilotUiSettings.EditableElements)
+    resetLayout.ElementLayouts[id] = new() { PositionSet = true, X = .8f, Y = .2f, Scale = 1.8f };
+resetLayout.Reset();
+if (resetLayout.ElementLayouts.Count != 0 || resetLayout.Editing || resetLayout.SelectedElement != "none")
+    throw new Exception("reset retained independent element layout or edit state");
 var marker = Path.Combine(Path.GetTempPath(), $"ksi2-blur-test-{Guid.NewGuid():N}");
 try
 {

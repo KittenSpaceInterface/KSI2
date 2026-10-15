@@ -22,10 +22,7 @@ internal static class ThrottleLayout
                 viewportY + Math.Clamp(availableY + node.Offset[1] * scale, 0, availableY))
             : new Point(viewportX + Math.Clamp(node.Offset[0] * scale, 0, availableX),
                 viewportY + Math.Clamp(node.Offset[1] * scale, 0, availableY));
-        var position = settings.PositionSet
-            ? new Point(viewportX + settings.X * availableX,
-                viewportY + settings.Y * availableY)
-            : initial;
+        var position = initial;
         return new ThrottleBounds(position, initial, scale, frameWidth, frameHeight,
             availableX, availableY);
     }

@@ -54,8 +54,14 @@ internal sealed class PilotUiController : IDisposable
         }
         var viewport = ImGui.GetMainViewport();
         _throttle.UpdateSnapshot();
-        _settings.DrawWindow(_throttle.UiState, _editor, _throttle.CancelInteraction);
         var scaleViewport = PilotScaleViewport.Resolve(viewport.Size.X, viewport.Size.Y);
+        if (_settings.Settings.Editing
+            && !_settings.Settings.MoveAllElements
+            && !PilotUiSettings.EditableElements.Contains(_settings.Settings.SelectedElement))
+        {
+            _settings.Settings.Editing = false;
+            _editor.Cancel();
+        }
         var layout = PilotFrameLayout.Resolve(viewport.Pos.X, viewport.Pos.Y,
             viewport.Size.X, viewport.Size.Y, scaleViewport, _settings.Settings, _layoutDefinitions);
         var mode = _settings.Settings.Editing ? PilotInteractionMode.LayoutEditing : PilotInteractionMode.Instruments;
@@ -74,11 +80,16 @@ internal sealed class PilotUiController : IDisposable
         }
         if (mode == PilotInteractionMode.LayoutEditing && !modalOpen)
         {
+            if (PilotImGui.BeginArtworkWindow(viewport))
+            {
+                foreach (var layer in _layers) layer.Draw(layout, context);
+            }
+            PilotImGui.EndArtworkWindow();
+            // Create the selected element's hit area after instrument canvases
+            // so the editor remains the topmost input target for every element.
             _editor.BeginCanvas(ref layout);
             try
             {
-                // The navball artwork and its drag hit area share this canvas.
-                foreach (var layer in _layers) layer.Draw(layout, context);
                 _editor.DrawOverlay(layout);
             }
             finally
@@ -96,6 +107,8 @@ internal sealed class PilotUiController : IDisposable
             }
             PilotImGui.EndArtworkWindow();
         }
+        // Keep configuration and combo popups above the flight artwork windows.
+        _settings.DrawWindow(_throttle.UiState, _editor, _throttle.CancelInteraction);
     }
 
     private PanelBackgroundBlur? GetPanelBlur()

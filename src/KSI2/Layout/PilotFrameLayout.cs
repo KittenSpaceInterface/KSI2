@@ -23,6 +23,22 @@ internal readonly record struct PilotFrameLayout(
 {
     internal PilotComponentBounds Component(string id) => Components[id];
 
+    internal PilotComponentBounds EditorBounds(string id)
+    {
+        var bounds = Component(id);
+        return id switch
+        {
+            "direction-selector" => bounds with { Height = Component("direction-selector-wheel").Height },
+            "throttle" => bounds with
+            {
+                Position = new(bounds.Position.X + ThrottleGauge.ArtworkInsetX * bounds.Scale,
+                    bounds.Position.Y),
+                Width = ThrottleGauge.ArtworkWidth
+            },
+            _ => bounds
+        };
+    }
+
     internal PilotFrameLayout Translate(Point delta)
     {
         static Point Move(Point position, Point offset) => new(position.X + offset.X, position.Y + offset.Y);
@@ -59,9 +75,6 @@ internal readonly record struct PilotFrameLayout(
                 viewportY + Math.Clamp(availableY + root.Offset[1] * scale, 0, availableY))
             : new Point(viewportX + Math.Clamp(root.Offset[0] * scale, 0, availableX),
                 viewportY + Math.Clamp(root.Offset[1] * scale, 0, availableY));
-        if (settings.PositionSet)
-            min = new Point(min.X + throttle.Position.X - throttle.InitialPosition.X,
-                min.Y + throttle.Position.Y - throttle.InitialPosition.Y);
         var navball = new NavballClusterBounds(min, scale);
         var components = new Dictionary<string, PilotComponentBounds>(definitions.Count + 16)
         {
@@ -82,9 +95,6 @@ internal readonly record struct PilotFrameLayout(
                 viewportY + Math.Clamp(orbitAvailableY + orbitNode.Offset[1] * orbitScale, 0, orbitAvailableY))
             : new Point(viewportX + Math.Clamp(orbitNode.Offset[0] * orbitScale, 0, orbitAvailableX),
                 viewportY + Math.Clamp(orbitNode.Offset[1] * orbitScale, 0, orbitAvailableY));
-        if (settings.PositionSet)
-            orbitPosition = new Point(orbitPosition.X + throttle.Position.X - throttle.InitialPosition.X,
-                orbitPosition.Y + throttle.Position.Y - throttle.InitialPosition.Y);
         components.Add("orbital-readout", new PilotComponentBounds(orbitPosition, orbitScale,
             orbitNode.Size[0], orbitNode.Size[1]));
         var selectorNode = config.Node("direction-selector");
@@ -97,12 +107,46 @@ internal readonly record struct PilotFrameLayout(
                 viewportY + Math.Clamp(selectorAvailableY + selectorNode.Offset[1] * scale, 0, selectorAvailableY))
             : new Point(viewportX + Math.Clamp(selectorNode.Offset[0] * scale, 0, selectorAvailableX),
                 viewportY + Math.Clamp(selectorNode.Offset[1] * scale, 0, selectorAvailableY));
-        if (settings.PositionSet)
-            selectorPosition = new Point(selectorPosition.X + throttle.Position.X - throttle.InitialPosition.X,
-                selectorPosition.Y + throttle.Position.Y - throttle.InitialPosition.Y);
         components.Add("direction-selector", new PilotComponentBounds(selectorPosition, scale,
             selectorNode.Size[0], selectorNode.Size[1]));
         config.ResolveChildren("direction-selector", selectorPosition, scale, components);
+        foreach (var id in PilotUiSettings.EditableElements)
+        {
+            var original = components[id];
+            var saved = settings.ElementLayouts.TryGetValue(id, out var value) ? value : null;
+            var elementScale = MathF.Min(original.Scale * (saved?.Scale ?? 1f),
+                MathF.Min(width / original.Width, height / original.Height));
+            var scaleFactor = elementScale / original.Scale;
+            var fullWidth = original.Width * elementScale;
+            var fullHeight = original.Height * elementScale;
+            var elementAvailableX = MathF.Max(0, width - fullWidth);
+            var elementAvailableY = MathF.Max(0, height - fullHeight);
+            var position = saved?.PositionSet == true
+                ? new Point(viewportX + saved.X * elementAvailableX, viewportY + saved.Y * elementAvailableY)
+                : original.Position;
+            position = new Point(viewportX + Math.Clamp(position.X - viewportX, 0, elementAvailableX),
+                viewportY + Math.Clamp(position.Y - viewportY, 0, elementAvailableY));
+            components[id] = new PilotComponentBounds(position, elementScale, original.Width, original.Height);
+            if (id is "navball-cluster" or "throttle" or "direction-selector")
+            {
+                foreach (var childId in components.Keys.Where(key => key != id
+                    && !PilotUiSettings.EditableElements.Contains(key)
+                    && IsDescendant(config.Node(id), key)).ToArray())
+                {
+                    var child = components[childId];
+                    var relative = new Point(child.Position.X - original.Position.X, child.Position.Y - original.Position.Y);
+                    components[childId] = new PilotComponentBounds(
+                        new(position.X + relative.X * scaleFactor, position.Y + relative.Y * scaleFactor),
+                        child.Scale * scaleFactor, child.Width, child.Height);
+                }
+            }
+        }
+        throttle = throttle with { Position = components["throttle"].Position, Scale = components["throttle"].Scale,
+            Width = components["throttle"].Width * components["throttle"].Scale,
+            Height = components["throttle"].Height * components["throttle"].Scale,
+            AvailableX = MathF.Max(0, width - components["throttle"].Width * components["throttle"].Scale),
+            AvailableY = MathF.Max(0, height - components["throttle"].Height * components["throttle"].Scale) };
+        navball = navball with { Min = components["navball-cluster"].Position, Scale = components["navball-cluster"].Scale };
         var layout = new PilotFrameLayout(new(viewportX, viewportY), new(width, height), throttle, navball,
             new ReadOnlyDictionary<string, PilotComponentBounds>(components), throttle.Position, throttle.Position);
         var editorMin = new Point(float.PositiveInfinity, float.PositiveInfinity);
@@ -128,5 +172,11 @@ internal readonly record struct PilotFrameLayout(
         }
         if (!float.IsFinite(editorMin.X)) editorMin = editorMax = throttle.Position;
         return layout with { EditorMin = editorMin, EditorMax = editorMax };
+    }
+
+    private static bool IsDescendant(PilotLayoutNode root, string id)
+    {
+        if (root.Children.ContainsKey(id)) return true;
+        return root.Children.Values.Any(child => IsDescendant(child, id));
     }
 }

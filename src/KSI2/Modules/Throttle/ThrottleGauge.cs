@@ -7,6 +7,8 @@ namespace KSI2;
 
 internal sealed unsafe class ThrottleGauge : IDisposable
 {
+    internal const float ArtworkInsetX = 25f;
+    internal const float ArtworkWidth = 85f;
     private readonly PilotUiSettings _settings;
     private readonly ThrottleUiState _uiState;
     private readonly ThrottleMouseController _mouseControl = new();
@@ -89,14 +91,14 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         var frame = layout.Position;
         var draw = ImGui.GetWindowDrawList();
 
-        var left = frame.X + 25 * scale;
+        var left = frame.X + ArtworkInsetX * scale;
         var top = frame.Y + 14 * scale;
         var alignedOrigin = NavballPixelAlignment.Snap(new float2(left, top));
         var origin = new Point(alignedOrigin.X, alignedOrigin.Y);
         var art = _artwork!;
         var blurQueued = _bgTexture is { } mask &&
             blur?.Queue(draw, alignedOrigin,
-                NavballPixelAlignment.Snap(alignedOrigin + new float2(85f * scale, 290f * scale)),
+                NavballPixelAlignment.Snap(alignedOrigin + new float2(ArtworkWidth * scale, 290f * scale)),
                 mask, blurOpacity) == true;
         if (!blurQueued) DrawStaticLayer(draw, _bgTexture, art, "Background", origin, scale, 0xFD190B03u);
         DrawStaticLayer(draw, _barsTexture, art, "Bars", origin, scale, 0xFF99413Eu);
