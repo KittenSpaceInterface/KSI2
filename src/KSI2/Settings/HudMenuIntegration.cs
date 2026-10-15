@@ -1,12 +1,11 @@
 using System.Collections;
 using System.Reflection;
-using System.Runtime.Loader;
 using Brutal.ImGuiApi;
 
 namespace KSI2;
 
-// Harmony is loaded only after the experimental option is enabled. A marker
-// remains until a clean unload, like the existing panel blur crash guard.
+// The optional HUD menu patch is enabled only by its setting. Its Harmony
+// assembly may already be loaded for the direction selector input hook.
 internal sealed class HudMenuIntegration : IDisposable
 {
     private static readonly TimeSpan ActivationGracePeriod = TimeSpan.FromSeconds(5);
@@ -155,10 +154,10 @@ internal sealed class HudMenuIntegration : IDisposable
                 Error = "The optional HUD menu library is missing; integration stays off.";
                 return false;
             }
-            AssemblyLoadContext.Default.LoadFromAssemblyPath(harmonyPath);
+            OptionalAssemblyLoader.Load(harmonyPath);
             var patchPath = Path.Combine(PilotUiSettings.ModDirectory,
                 "assets", "optional", "KSI2.HudMenuPatch.dll");
-            var patchAssembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(patchPath);
+            var patchAssembly = OptionalAssemblyLoader.Load(patchPath);
             _patchType = patchAssembly.GetType("KSI2.Optional.HarmonyHudMenuPatch", true);
             var install = _patchType!.GetMethod("Install", BindingFlags.Static | BindingFlags.Public)!;
             install.Invoke(null, [target, (Action)DrawHudMenuItem]);
