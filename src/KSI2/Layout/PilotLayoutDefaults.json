@@ -5,19 +5,19 @@
       "anchor": "viewport-bottom-left",
       "offset": [5.15, -72.95],
       "size": [175, 318],
-      "z": 1100
+      "z": 1300
     },
     "orbital-readout": {
       "anchor": "viewport-bottom-left",
       "offset": [122, -16],
       "size": [240, 56],
-      "z": 1950
+      "z": 1200
     },
     "direction-selector": {
       "anchor": "viewport-bottom-left",
       "offset": [460, -16],
       "size": [184, 240],
-      "z": 1850,
+      "z": 1200,
       "children": {
         "direction-selector-wheel": { "offset": [4, 0], "size": [176, 176] },
         "direction-selector-sas-reserved": { "offset": [0, 184], "size": [184, 56] }
@@ -29,19 +29,19 @@
       "size": [300, 300],
       "children": {
         "cluster-background": { "offset": [0, 0], "size": [300, 300], "z": 1000 },
-        "navball-sphere": { "offset": [62, 62], "size": [176, 176], "z": 1200 },
-        "side-dials": { "offset": [2, 2], "size": [296, 296], "z": 1300 },
-        "speed-card": { "offset": [-37, 118], "size": [86, 64], "z": 1400 },
+        "navball-sphere": { "offset": [62, 62], "size": [176, 176], "z": 1100 },
+        "side-dials": { "offset": [2, 2], "size": [296, 296], "z": 1200 },
+        "speed-card": { "offset": [-37, 118], "size": [86, 64], "z": 1200 },
         "heading-dial": {
-          "offset": [2, 2], "size": [296, 296], "z": 1500,
+          "offset": [2, 2], "size": [296, 296], "z": 1200,
           "children": {
-            "heading-readout": { "offset": [117, -24], "size": [62, 40], "z": 1501 }
+            "heading-readout": { "offset": [117, -24], "size": [62, 40], "z": 1200 }
           }
         },
-        "atmosphere": { "offset": [279, 155], "size": [85, 140], "z": 1600 },
-        "vertical-speed": { "offset": [279, 7], "size": [85, 140], "z": 1700 },
-        "altitude-card": { "offset": [251, 118], "size": [86, 64], "z": 1800 },
-        "bottom-controls": { "offset": [0, 0], "size": [300, 300], "z": 1900 }
+        "atmosphere": { "offset": [279, 155], "size": [85, 140], "z": 1200 },
+        "vertical-speed": { "offset": [279, 7], "size": [85, 140], "z": 1200 },
+        "altitude-card": { "offset": [251, 118], "size": [86, 64], "z": 1200 },
+        "bottom-controls": { "offset": [0, 0], "size": [300, 300], "z": 1200 }
       }
     }
   }

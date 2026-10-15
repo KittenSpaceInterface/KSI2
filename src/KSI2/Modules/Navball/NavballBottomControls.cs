@@ -76,6 +76,7 @@ internal sealed unsafe class NavballBottomControls
         var scale = cluster.Scale;
         var x = cluster.Position.X;
         var y = cluster.Position.Y;
+        var draw = ImGui.GetWindowDrawList();
 
         // The two outer prefab widgets are 48x48, 63/189 px from the cluster
         // left and 240 px from its top. The middle status images are 24x24.
@@ -94,13 +95,13 @@ internal sealed unsafe class NavballBottomControls
         var sasOn = !sasDisabled && (eva?.IsSet(KittenEvaAction.RateTrim, clicked: false) ??
             vehicle.IsStabilizationOn());
         var rcsInput = DrawButton("RCS", rcsTopLeft, buttonSize,
-            _rcsVisual, rcsOn, (float)dt, allowInteraction, rcsDisabled,
+            draw, _rcsVisual, rcsOn, (float)dt, allowInteraction, rcsDisabled,
             "No vehicle control module"u8);
         var sasTooltip = eva?.ControlMode == KittenControlMode.View
             ? "Enables auto trim: the flight computer damps body rates. Not applicable in View mode."u8
             : "No vehicle control module"u8;
         var sasInput = DrawButton("SAS", sasTopLeft, buttonSize,
-            _sasVisual, sasOn, (float)dt, allowInteraction, sasDisabled,
+            draw, _sasVisual, sasOn, (float)dt, allowInteraction, sasDisabled,
             sasTooltip);
         if (rcsInput.Clicked)
         {
@@ -122,7 +123,6 @@ internal sealed unsafe class NavballBottomControls
                     : sasOn ? KittenEvaAction.ManualTrim : KittenEvaAction.RateTrim
             });
         }
-        var draw = ImGui.GetWindowDrawList();
         // The two status icons use the authored 24-unit layout. CommNet snaps
         // both edges to physical framebuffer pixels.
         // Restore the icon state colors used before the raster investigation.
@@ -141,6 +141,7 @@ internal sealed unsafe class NavballBottomControls
     }
 
     private ButtonInput DrawButton(string label, float2 topLeft, float2 size,
+        ImDrawListPtr artworkDraw,
         ToggleVisual visual, bool active, float dt, bool allowInteraction,
         bool disabled = false, ImString disabledTooltip = default)
     {
@@ -156,10 +157,10 @@ internal sealed unsafe class NavballBottomControls
             var input = new ButtonInput(clicked, interactive, pressed);
             UpdateInput(visual, input, active);
             UpdateColors(visual, active, dt, disabled);
+            DrawToggle(artworkDraw, label, topLeft, size.X / 48f, visual);
             if (visible)
             {
                 ImGui.Dummy(size);
-                DrawToggle(ImGui.GetWindowDrawList(), label, topLeft, size.X / 48f, visual);
                 if (hovered && disabled && !disabledTooltip.IsEmpty)
                     ImGui.SetTooltip(disabledTooltip);
             }

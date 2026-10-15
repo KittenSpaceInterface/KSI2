@@ -129,8 +129,8 @@ internal sealed class PilotLayoutConfig
             if (layer != PilotLayerOrder.LayoutEditor && Node(LayerId(layer)).Z is null)
                 throw new InvalidDataException($"Missing draw order for {LayerId(layer)}.");
         var orders = _nodes.Values.Where(node => node.Z is not null).Select(node => node.Z!.Value).ToArray();
-        if (orders.Distinct().Count() != orders.Length || orders.Any(order => order is < 0 or >= 2000))
-            throw new InvalidDataException("Layout draw orders must be distinct and between 0 and 1999.");
+        if (orders.Any(order => order is < 0 or >= 2000))
+            throw new InvalidDataException("Layout draw orders must be between 0 and 1999.");
     }
 
     private static readonly string[] RequiredNodes =

@@ -26,10 +26,10 @@ internal sealed class PilotUiController : IDisposable
         _rightIndicators = new RightIndicatorsModule(_settings.Settings, _settings.Save,
             _settings.VerticalSpeedConfiguration);
         _modules = [_throttle, _navball, _rightIndicators, _orbitalReadout, _directionSelector];
+        // OrderBy is stable, so layers sharing a configured z value retain
+        // their module declaration order within that visual tier.
         _layers = _modules.SelectMany(module => module.Layers)
             .OrderBy(layer => PilotLayoutConfig.Current.Order(layer.Order)).ToArray();
-        if (_layers.Select(layer => PilotLayoutConfig.Current.Order(layer.Order)).Distinct().Count() != _layers.Length)
-            throw new InvalidOperationException("Pilot UI layers must have distinct orders.");
         if (_layers.Any(layer => PilotLayoutConfig.Current.Order(layer.Order) >= PilotLayoutConfig.Current.Order(PilotLayerOrder.LayoutEditor)))
             throw new InvalidOperationException("Pilot UI layers must remain below the layout editor.");
         _layoutDefinitions = _modules.SelectMany(module => module.LayoutDefinitions).ToArray();
