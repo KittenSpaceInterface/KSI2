@@ -8,6 +8,7 @@ namespace KSI2;
 internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
 {
     private const string WheelId = "direction-selector-wheel";
+    private const string ModeControlsId = "direction-selector-sas-reserved";
     private const float WheelSize = 176f;
     private const float ButtonSize = 32f;
     private const float IconSize = 24f;
@@ -36,7 +37,15 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
         "KSI2SelectorIconBorder",
         "KSI2SelectorButtonOutline",
         "KSI2SelectorButtonSelected",
-        "KSI2SelectorStateDisabled"
+        "KSI2SelectorButtonDisabled",
+        "KSI2SelectorStateDisabled",
+        "KSI2ModeControlsBackground",
+        "KSI2ModeControlsBorder",
+        "KSI2ModeControlsBracket",
+        "KSI2ModeStabilityAssist",
+        "KSI2ModeManeuver",
+        "KSI2ModeTarget",
+        "KSI2ModeAntiTarget"
     ];
 
     private enum FrameMode { Surface, Orbit, Target }
@@ -56,6 +65,17 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
         FlightComputerAttitudeTrackTarget? SurfaceTarget, float X, float Y,
         uint RestTint, uint HoverTint, bool SurfaceOnly = false, bool OrbitOnly = false,
         KsiSurfaceDirection KsiDirection = KsiSurfaceDirection.None);
+
+    private readonly record struct ModeButton(string Id, string Name,
+        FlightComputerAttitudeTrackTarget Target, float X);
+
+    private static readonly ModeButton[] ModeButtons =
+    [
+        new("KSI2ModeStabilityAssist", "Stability Assist", FlightComputerAttitudeTrackTarget.None, 16f),
+        new("KSI2ModeManeuver", "Maneuver", FlightComputerAttitudeTrackTarget.PositiveDv, 56f),
+        new("KSI2ModeTarget", "Target", FlightComputerAttitudeTrackTarget.Toward, 96f),
+        new("KSI2ModeAntiTarget", "Anti-target", FlightComputerAttitudeTrackTarget.Away, 136f)
+    ];
 
     private static readonly DirectionButton[] Buttons =
     [
@@ -83,7 +103,7 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
     [
         new(PilotLayerOrder.DirectionSelector, (layout, context) =>
             Draw(layout.Component("direction-selector"),
-                layout.Component(WheelId), context.Blur, context.Opacity,
+                layout.Component(WheelId), layout.Component(ModeControlsId), context.Blur, context.Opacity,
                 context.Mode == PilotInteractionMode.Instruments && !KSA.Program.IsModalOpen()))
     ];
 
@@ -112,6 +132,7 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
     }
 
     private void Draw(PilotComponentBounds root, PilotComponentBounds wheel,
+        PilotComponentBounds modeControls,
         PanelBackgroundBlur? blur, float opacity, bool allowInteraction)
     {
         if (!KSA.Program.DrawUI) { ResetInput(); return; }
@@ -264,6 +285,173 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
                 EnumValue = target
             });
         }
+
+        DrawModeControls(modeControls, vehicle, blur, opacity, allowInteraction);
+    }
+
+    private void DrawModeControls(PilotComponentBounds bounds, Vehicle vehicle,
+        PanelBackgroundBlur? blur, float opacity, bool allowInteraction)
+    {
+        var panelMin = NavballPixelAlignment.Snap(new float2(bounds.Position.X, bounds.Position.Y));
+        var panelMax = NavballPixelAlignment.Snap(new float2(
+            bounds.Position.X + bounds.Width * bounds.Scale,
+            bounds.Position.Y + bounds.Height * bounds.Scale));
+        var panelVisible = PilotImGui.BeginControlCanvas("##KSI2-ModeControlsBackground",
+            panelMin, panelMax - panelMin, acceptsInput: false);
+        try
+        {
+            if (panelVisible)
+            {
+                ImGui.Dummy(panelMax - panelMin);
+                var draw = ImGui.GetWindowDrawList();
+                var blurred = blur?.Queue(draw, panelMin, panelMax,
+                    _textures["KSI2ModeControlsBackground"], opacity,
+                    maskNineSlice: new PanelMaskNineSlice(14f / 48f, 7f / 184f, 7f / 56f)) == true;
+                if (!blurred)
+                    DrawModeNineSlice(draw, "KSI2ModeControlsBackground", bounds,
+                        0, 0, 184, 56, 14, 0xFD190B03u, true);
+                DrawModeNineSlice(draw, "KSI2ModeControlsBorder", bounds,
+                    2, 2, 180, 52, 14, 0xFF662B29u, false);
+                DrawModeNineSlice(draw, "KSI2ModeControlsBracket", bounds,
+                    2, 2, 180, 52, 14, 0xFFCC5752u, false);
+                var origin = new float2(bounds.Position.X, bounds.Position.Y);
+                var titleMin = NavballPixelAlignment.Snap(origin +
+                    new float2(42f, 42f) * bounds.Scale);
+                var titleMax = NavballPixelAlignment.Snap(origin +
+                    new float2(142f, 56f) * bounds.Scale);
+                var titleBlurred = blurred && blur?.Queue(draw, titleMin, titleMax,
+                    _textures["KSI2ModeControlsBackground"], opacity,
+                    rectangularMask: true) == true;
+                if (!titleBlurred)
+                    ImGui.PInvoke.ImDrawList_AddRectFilled(draw.Ptr, &titleMin,
+                        &titleMax, 0xFF190B03u, 0f, ImDrawFlags.None);
+                ReadoutLcdText.Draw(draw, "SAS.CONTROL", titleMin.X, titleMax.X,
+                    bounds.Position.Y + 45f * bounds.Scale, titleMax.Y, 11f,
+                    bounds.Scale, false, 0xFFFF6D69u, alignCenter: true,
+                    snapPosition: true);
+            }
+        }
+        finally { PilotImGui.EndControlCanvas(); }
+
+        var computer = vehicle.FlightComputer;
+        var scale = bounds.Scale;
+        foreach (var button in ModeButtons)
+        {
+            var active = button.Target == FlightComputerAttitudeTrackTarget.None
+                ? computer.AttitudeMode == FlightComputerAttitudeMode.Auto
+                    && computer.AttitudeTrackTarget == FlightComputerAttitudeTrackTarget.None
+                : computer.AttitudeMode == FlightComputerAttitudeMode.Auto
+                    && computer.AttitudeTrackTarget == button.Target;
+            var enabled = vehicle.IsControllable && (button.Target switch
+            {
+                FlightComputerAttitudeTrackTarget.None =>
+                    !vehicle.IsFlightComputerDisabled(FlightComputerAttitudeMode.Auto),
+                FlightComputerAttitudeTrackTarget.PositiveDv =>
+                    !vehicle.IsFlightComputerDisabled(button.Target),
+                FlightComputerAttitudeTrackTarget.Toward or FlightComputerAttitudeTrackTarget.Away =>
+                    vehicle.Target is not null && !vehicle.IsFlightComputerDisabled(button.Target),
+                _ => false
+            });
+            if (!DrawModeButton(button, bounds, active, enabled, allowInteraction)) continue;
+            if (active && button.Target == FlightComputerAttitudeTrackTarget.None) continue;
+
+            FlightUiSounds.Play(active ? "KSI2SasRcsDisable" : "KSI2SasRcsEnable");
+            InputEvents.FlightComputerInputBuffer.Add(new InputEvents.FlightComputerInputData
+            {
+                Vehicle = vehicle,
+                Toggle = false,
+                EnumValue = button.Target == FlightComputerAttitudeTrackTarget.None || active
+                    ? (Enum)vehicle.NavBallData.Frame : button.Target
+            });
+        }
+    }
+
+    private void DrawModeNineSlice(ImDrawListPtr draw, string id,
+        PilotComponentBounds bounds, float left, float top, float width,
+        float height, float border, uint tint, bool fillCenter)
+    {
+        var image = _textures[id].ImguiTextureRef!.Value;
+        Span<float> cuts = [0, border, 48 - border, 48];
+        Span<float> xs = [left, left + border / 2f, left + width - border / 2f, left + width];
+        Span<float> ys = [top, top + border / 2f, top + height - border / 2f, top + height];
+        for (var row = 0; row < 3; row++)
+        for (var column = 0; column < 3; column++)
+        {
+            if (!fillCenter && row == 1 && column == 1) continue;
+            var origin = new float2(bounds.Position.X, bounds.Position.Y);
+            var min = NavballPixelAlignment.Snap(origin +
+                new float2(xs[column], ys[row]) * bounds.Scale);
+            var max = NavballPixelAlignment.Snap(origin +
+                new float2(xs[column + 1], ys[row + 1]) * bounds.Scale);
+            var uvMin = new float2(cuts[column] / 48f, cuts[row] / 48f);
+            var uvMax = new float2(cuts[column + 1] / 48f, cuts[row + 1] / 48f);
+            ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, image,
+                &min, &max, &uvMin, &uvMax, tint);
+        }
+    }
+
+    private bool DrawModeButton(ModeButton button, PilotComponentBounds bounds,
+        bool active, bool enabled, bool allowInteraction)
+    {
+        if (!_visuals.TryGetValue(button.Id, out var visual))
+            _visuals.Add(button.Id, visual = new ButtonVisual());
+
+        var scale = bounds.Scale;
+        const float sizeUnits = 32f;
+        const float iconUnits = 24f;
+        var topLeft = NavballPixelAlignment.Snap(new float2(
+            bounds.Position.X + button.X * scale,
+            bounds.Position.Y + 8f * scale));
+        var buttonPixels = NavballPixelAlignment.SnapSize(sizeUnits * scale);
+        var bottomRight = topLeft + new float2(buttonPixels, buttonPixels);
+        var visible = PilotImGui.BeginControlCanvas($"##KSI2-{button.Id}",
+            topLeft, bottomRight - topLeft, acceptsInput: allowInteraction);
+        try
+        {
+            var overWindow = visible && ImGui.IsWindowHovered() && allowInteraction;
+            var interactive = overWindow && enabled;
+            var hovered = interactive && !active;
+            var pressed = interactive && ImGui.IsMouseDown(ImGuiMouseButton.Left);
+            var clicked = interactive && ImGui.IsMouseReleased(ImGuiMouseButton.Left);
+            if (hovered && !visual.Hovered)
+                FlightUiSounds.Play("KSI2SasRcsHover");
+            visual.Hovered = hovered;
+            if (!visible) return false;
+
+            ImGui.Dummy(bottomRight - topLeft);
+            var draw = ImGui.GetWindowDrawList();
+            var backingId = !enabled ? "KSI2SelectorButtonDisabled"
+                : active ? "KSI2SelectorButtonSelected"
+                : hovered ? "KSI2SelectorButtonOutline" : "KSI2SelectorIconBorder";
+            var backingTint = !enabled ? 0xFF665955u
+                : active ? overWindow && !pressed ? 0xFF52CC00u : 0xFF66FF00u
+                : hovered ? 0xFFCCB2AAu : 0xFF665955u;
+            DrawImage(draw, backingId, topLeft, bottomRight, backingTint);
+
+            var center = (topLeft + bottomRight) / 2f;
+            var iconPixels = NavballPixelAlignment.SnapSize(
+                iconUnits * scale * (pressed ? 0.9f : 1f));
+            var iconMin = NavballPixelAlignment.Snap(center -
+                new float2(iconPixels / 2f, iconPixels / 2f));
+            var iconMax = iconMin + new float2(iconPixels, iconPixels);
+            var iconTint = !enabled ? 0xFF665955u
+                : active || pressed ? 0xFD14100Fu
+                : hovered ? 0xFF998680u : 0xFFCCB2AAu;
+            var iconTexture = _textures[button.Id].ImguiTextureRef!.Value;
+            var uvMin = new float2(0f, 0f);
+            var uvMax = new float2(1f, 1f);
+            ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, iconTexture,
+                &iconMin, &iconMax, &uvMin, &uvMax, iconTint);
+            if (overWindow && !enabled)
+                ImGui.SetTooltip(button.Target switch
+                {
+                    FlightComputerAttitudeTrackTarget.PositiveDv => "No maneuver node"u8,
+                    FlightComputerAttitudeTrackTarget.Toward or FlightComputerAttitudeTrackTarget.Away => "No target selected"u8,
+                    _ => "No vehicle control module"u8
+                });
+            return clicked;
+        }
+        finally { PilotImGui.EndControlCanvas(); }
     }
 
     private bool DrawButton(DirectionButton button, PilotComponentBounds wheel,
@@ -276,11 +464,10 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
         var scale = wheel.Scale;
         var centerX = wheel.Position.X + (WheelSize / 2f + button.X) * scale;
         var centerY = wheel.Position.Y + (WheelSize / 2f - button.Y - 1f) * scale;
-        var size = ButtonSize * scale;
+        var size = NavballPixelAlignment.SnapSize(ButtonSize * scale);
         var topLeft = NavballPixelAlignment.Snap(new float2(centerX - size / 2f,
             centerY - size / 2f));
-        var bottomRight = NavballPixelAlignment.Snap(new float2(centerX + size / 2f,
-            centerY + size / 2f));
+        var bottomRight = topLeft + new float2(size, size);
         var visible = PilotImGui.BeginControlCanvas($"##KSI2-{button.Id}", topLeft,
             new float2(bottomRight.X - topLeft.X, bottomRight.Y - topLeft.Y),
             acceptsInput: allowInteraction);
@@ -309,10 +496,12 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
                 : hovered ? button.HoverTint : button.RestTint;
             DrawImage(draw, backingId, topLeft, bottomRight, backingTint);
 
-            var iconCenter = new float2(centerX, centerY);
-            var iconHalfSize = IconSize * scale * (pressed ? 0.45f : 0.5f);
-            var iconMin = NavballPixelAlignment.Snap(iconCenter - new float2(iconHalfSize, iconHalfSize));
-            var iconMax = NavballPixelAlignment.Snap(iconCenter + new float2(iconHalfSize, iconHalfSize));
+            var iconCenter = (topLeft + bottomRight) / 2f;
+            var iconSize = NavballPixelAlignment.SnapSize(
+                IconSize * scale * (pressed ? 0.9f : 1f));
+            var iconMin = NavballPixelAlignment.Snap(iconCenter -
+                new float2(iconSize / 2f, iconSize / 2f));
+            var iconMax = iconMin + new float2(iconSize, iconSize);
             var iconTint = !visuallyEnabled ? 0xFF665955u
                 : active ? 0xFF141010u
                 : hovered ? button.HoverTint : button.RestTint;
