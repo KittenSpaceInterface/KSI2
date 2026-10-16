@@ -46,6 +46,7 @@ internal sealed class PilotUiController : IDisposable
         if (ImGui.GetCurrentContext().IsNull()) return;
         _settings.Initialize();
         _settings.Tick();
+        _panelBlur?.BeginFrame();
         if (!KSA.Program.DrawUI || KSA.Program.ControlledVehicle is not { IsDisposed: false })
         {
             foreach (var module in _modules) module.CancelInteraction();

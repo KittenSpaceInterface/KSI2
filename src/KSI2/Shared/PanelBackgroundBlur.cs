@@ -8,6 +8,7 @@ using Brutal.VulkanApi.Abstractions;
 using Core;
 using KSA;
 using RenderCore;
+using System.Runtime.InteropServices;
 
 namespace KSI2;
 
@@ -36,12 +37,16 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
         public required VkDescriptorSet Set;
     }
 
-    private const int MaxPanelMasks = 5;
+    private const int MasksPerDescriptorPool = 5;
 
     private static readonly ImDrawCallback DrawCallback = OnDraw;
     private static PanelBackgroundBlur? _active;
     private readonly DescriptorSetLayoutEx _layout;
     private readonly Dictionary<TextureReference, MaskDescriptor> _masks = new();
+    private readonly List<nint> _pendingCallbackData = [];
+    private readonly List<DescriptorPoolEx> _additionalDescriptorPools = [];
+    private DescriptorPoolEx _activeDescriptorPool;
+    private int _activePoolMaskCount;
     private VkImageView _sceneView;
     private VkRenderPass _otherPass;
     private VkPipeline _otherPipeline;
@@ -57,13 +62,14 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
         VkDescriptorPoolSize poolSize = new()
         {
             Type = VkDescriptorType.CombinedImageSampler,
-            DescriptorCount = MaxPanelMasks * 2
+            DescriptorCount = MasksPerDescriptorPool * 2
         };
         DescriptorPool = device.CreateDescriptorPool(new DescriptorPoolEx.CreateInfo
         {
-            MaxSets = MaxPanelMasks,
+            MaxSets = MasksPerDescriptorPool,
             PoolSizes = new Span<VkDescriptorPoolSize>(ref poolSize)
         }, null);
+        _activeDescriptorPool = DescriptorPool;
         Span<VkDescriptorSetLayoutBinding> bindings = stackalloc VkDescriptorSetLayoutBinding[2];
         for (var i = 0; i < 2; i++)
             bindings[i] = new VkDescriptorSetLayoutBinding
@@ -125,14 +131,20 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
             }
             if (!_masks.TryGetValue(mask, out var maskDescriptor))
             {
-                if (_masks.Count >= MaxPanelMasks) throw new InvalidOperationException("Too many panel masks.");
+                if (_activePoolMaskCount >= MasksPerDescriptorPool)
+                {
+                    _activeDescriptorPool = CreateMaskDescriptorPool();
+                    _additionalDescriptorPools.Add(_activeDescriptorPool);
+                    _activePoolMaskCount = 0;
+                }
                 maskDescriptor = new MaskDescriptor
                 {
                     View = mask.ImageView,
-                    Set = Renderer.Device.AllocateDescriptorSet(DescriptorPool, _layout)
+                    Set = Renderer.Device.AllocateDescriptorSet(_activeDescriptorPool, _layout)
                 };
                 UpdateImages(_sceneView, maskDescriptor.View, maskDescriptor.Set);
                 _masks.Add(mask, maskDescriptor);
+                _activePoolMaskCount++;
             }
             else if (maskDescriptor.View.VkHandle != mask.ImageView.VkHandle)
             {
@@ -158,8 +170,12 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
                 },
                 Descriptor = maskDescriptor.Set
             };
+            var callbackData = (PanelDrawData*)NativeMemory.Alloc((nuint)sizeof(PanelDrawData));
+            if (callbackData is null) return false;
+            *callbackData = data;
+            _pendingCallbackData.Add((nint)callbackData);
             _active = this;
-            draw.AddCallback(DrawCallback, new Ptr(&data), (nuint)sizeof(PanelDrawData));
+            draw.AddCallback(DrawCallback, new Ptr(callbackData), (nuint)sizeof(PanelDrawData));
             return true;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -168,6 +184,35 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
             _failed = true;
             return false;
         }
+    }
+
+    private DescriptorPoolEx CreateMaskDescriptorPool()
+    {
+        VkDescriptorPoolSize poolSize = new()
+        {
+            Type = VkDescriptorType.CombinedImageSampler,
+            DescriptorCount = MasksPerDescriptorPool * 2
+        };
+        return Renderer.Device.CreateDescriptorPool(new DescriptorPoolEx.CreateInfo
+        {
+            MaxSets = MasksPerDescriptorPool,
+            PoolSizes = new Span<VkDescriptorPoolSize>(ref poolSize)
+        }, null);
+    }
+
+    // ImDrawList executes callbacks after the UI drawing methods return, so
+    // callback payloads must outlive Queue's stack frame.
+    internal void BeginFrame()
+    {
+        foreach (var pointer in _pendingCallbackData)
+            NativeMemory.Free((void*)pointer);
+        _pendingCallbackData.Clear();
+    }
+
+    private void ReleaseCallbackData(nint pointer)
+    {
+        if (!_pendingCallbackData.Remove(pointer)) return;
+        NativeMemory.Free((void*)pointer);
     }
 
     private void UpdateImages(VkImageView sceneView, VkImageView maskView, VkDescriptorSet descriptorSet)
@@ -203,6 +248,7 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
     {
         var current = _active;
         if (current is null || current._disposed || cmd->UserCallbackData == 0) return;
+        var callbackData = (nint)cmd->UserCallbackData;
         try
         {
             var state = (ImGuiBackendVulkanImpl.RenderState*)ImGui.GetPlatformIO().Renderer_RenderState;
@@ -221,7 +267,7 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
             var command = state->CommandBuffer;
             command.SetScissor(0, new Span<VkRect2D>(ref scissor));
             command.BindPipeline(VkPipelineBindPoint.Graphics, current.GetPipeline(state->RenderPass));
-            var data = *(PanelDrawData*)cmd->UserCallbackData;
+            var data = *(PanelDrawData*)callbackData;
             VkDescriptorSet descriptor = data.Descriptor;
             command.BindDescriptorSets(VkPipelineBindPoint.Graphics, current.PipelineLayout, 0,
                 new Span<VkDescriptorSet>(ref descriptor), default);
@@ -236,6 +282,10 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
         {
             Console.Error.WriteLine($"KSI2: panel blur callback failed: {ex.Message}");
             current._failed = true;
+        }
+        finally
+        {
+            current.ReleaseCallbackData(callbackData);
         }
     }
 
@@ -269,6 +319,10 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
         if (_disposed) return;
         _disposed = true;
         Renderer.Device.WaitIdle();
+        BeginFrame();
+        foreach (var pool in _additionalDescriptorPools)
+            Renderer.Device.DestroyDescriptorPool(pool, null);
+        _additionalDescriptorPools.Clear();
         if (!_otherPipeline.IsNull()) Renderer.Device.DestroyPipeline(_otherPipeline, null);
         base.Dispose();
         Renderer.Device.DestroyDescriptorSetLayout(_layout, null);
