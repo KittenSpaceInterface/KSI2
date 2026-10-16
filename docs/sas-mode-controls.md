@@ -34,3 +34,17 @@ current navball frame. KSA applies that input as `RateHold` and refreshes the
 flight computer. Maneuver maps to the positive Delta V attitude target,
 Target to `Toward`, and Anti-target to `Away`. Selection and motion still
 need an in-game check.
+
+## Reference popup preview
+
+Right-clicking the Stability Assist lock opens an 88 × 144 panel above it.
+The preview uses the same sliced fill, optional blur, border, and bracket as
+the SAS control. A centered `MODE` LCD caption interrupts the top frame with
+the same backing and spacing as `SAS.CONTROL` at the bottom of the SAS panel.
+The popup has two columns of three 32 × 32 button backings. Labels have 4 units
+of horizontal text inset and are centered horizontally and vertically, with
+no vertical inset. The left column reads `OVEL`, `ORBT`, `SURF`; the right
+column reads `TGT`, `BURN`, `STAR`. The selected backing follows the active
+flight-computer rate-hold frame for each label. Clicking an enabled button
+plays the SAS enable sound and queues its matching reference frame. A second
+right-click on the lock or a click outside closes the popup.
