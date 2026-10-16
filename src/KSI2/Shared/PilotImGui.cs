@@ -17,7 +17,7 @@ internal static class PilotImGui
             ImGui.Internal.BringWindowToDisplayFront(window);
     }
 
-    internal static bool BeginArtworkWindow(ImGuiViewportPtr viewport)
+    internal static bool BeginArtworkWindow(ImGuiViewportPtr viewport, string elementId)
     {
         ImGui.SetNextWindowViewport(viewport.ID);
         ImGui.SetNextWindowPos(viewport.Pos, ImGuiCond.Always);
@@ -28,7 +28,7 @@ internal static class PilotImGui
                     ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoBackground |
                     ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoInputs |
                     ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoBringToFrontOnFocus;
-        var visible = ImGui.Begin("##KSI2-PilotArtwork", flags);
+        var visible = ImGui.Begin($"##KSI2-PilotArtwork-{elementId}", flags);
         PlaceCurrentWindow();
         return visible;
     }

@@ -15,7 +15,7 @@ internal sealed class ThrottleModule : IPilotUiModule
     internal ThrottleModule(PilotUiSettings settings)
     {
         _gauge = new ThrottleGauge(settings, UiState);
-        Layers = [new(PilotLayerOrder.Throttle, Draw)];
+        Layers = [new(Id, PilotLayerOrder.Throttle, Draw)];
     }
     public void Initialize(TextureRegistry assets)
     {

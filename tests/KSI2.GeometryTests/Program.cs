@@ -540,6 +540,20 @@ if (!reloaded.Show || reloaded.Scale != 1f || reloaded.PositionSet ||
     reloaded.X != 0.01355f || reloaded.Y != 0.97f || !reloaded.MouseThrottleControl)
     throw new Exception("reset changed settings outside the existing layout fields");
 var resetLayout = new PilotUiSettings();
+if (PilotUiSettings.EditableElements.Any(id => resetLayout.ElementLayer(id)
+    != (id == "navball-cluster" ? 2 : 1)))
+    throw new Exception("default element layers changed");
+var savedLayers = PilotUiSettings.Parse("{\"elementLayouts\":{\"navball-cluster\":{\"scale\":1.2},\"throttle\":{\"layer\":4},\"atmosphere\":{\"layer\":10000}}}");
+if (savedLayers.ElementLayer("navball-cluster") != 2 || savedLayers.ElementLayer("throttle") != 4
+    || savedLayers.ElementLayer("atmosphere") != PilotUiSettings.MaxElementLayer)
+    throw new Exception("element layers did not retain defaults or clamp saved values");
+if (!PilotElementOrder.Sort(PilotUiSettings.EditableElements, id => id, resetLayout).SequenceEqual(
+    PilotUiSettings.EditableElements.Where(id => id != "navball-cluster").Append("navball-cluster")))
+    throw new Exception("default element layer order changed");
+resetLayout.ElementLayouts["direction-selector"] = new() { Layer = 2 };
+if (!PilotElementOrder.Sort(PilotUiSettings.EditableElements, id => id, resetLayout)
+    .TakeLast(2).SequenceEqual(["navball-cluster", "direction-selector"]))
+    throw new Exception("equal layer order is not stable");
 resetLayout.Editing = true;
 resetLayout.SelectedElement = "direction-selector";
 foreach (var id in PilotUiSettings.EditableElements)

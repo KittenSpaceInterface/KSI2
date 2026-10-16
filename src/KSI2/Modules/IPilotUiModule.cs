@@ -4,7 +4,7 @@ namespace KSI2;
 
 internal enum PilotInteractionMode { Instruments, LayoutEditing }
 internal readonly record struct PilotRenderContext(PilotInteractionMode Mode, PanelBackgroundBlur? Blur, float Opacity, double DeltaTime);
-// Stable layer identifiers. Draw order is configured in PilotLayoutDefaults.json.
+// Stable component identifiers. PilotLayoutDefaults.json orders components inside an element.
 internal enum PilotLayerOrder
 {
     ClusterBackground,
@@ -24,6 +24,7 @@ internal enum PilotLayerOrder
 }
 
 internal readonly record struct PilotUiLayer(
+    string ElementId,
     PilotLayerOrder Order,
     Action<PilotFrameLayout, PilotRenderContext> Draw,
     Action<PilotFrameLayout, PilotInteractionMode>? UpdateInput = null);

@@ -93,7 +93,7 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
 
     internal OrbitalReadoutModule() => Layers =
     [
-        new(PilotLayerOrder.OrbitalReadout,
+        new(Id, PilotLayerOrder.OrbitalReadout,
             (layout, context) => Draw(layout.Component(Id), context.Blur, context.Opacity,
                 context.Mode == PilotInteractionMode.Instruments && !Program.IsModalOpen()))
     ];

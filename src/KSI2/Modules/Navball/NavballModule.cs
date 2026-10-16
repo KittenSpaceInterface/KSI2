@@ -20,21 +20,21 @@ internal sealed class NavballModule : IPilotUiModule
         _sideDials = new SideDialRenderer(settings);
         Layers =
         [
-            new(PilotLayerOrder.ClusterBackground, (l,c) => _navballClusterBackground.Draw(l.Component("cluster-background"),c.Blur,c.Opacity)),
-            new(PilotLayerOrder.NavballSphere, (l,c) => _navballSpike.Draw(l.Component("navball-sphere"),_speedReadout.SelectedMode)),
-            new(PilotLayerOrder.SideDials, (l,c) => _sideDials.Draw(l.Component("side-dials"))),
-            new(PilotLayerOrder.SpeedCard,
+            new("navball-cluster", PilotLayerOrder.ClusterBackground, (l,c) => _navballClusterBackground.Draw(l.Component("cluster-background"),c.Blur,c.Opacity)),
+            new("navball-cluster", PilotLayerOrder.NavballSphere, (l,c) => _navballSpike.Draw(l.Component("navball-sphere"),_speedReadout.SelectedMode)),
+            new("navball-cluster", PilotLayerOrder.SideDials, (l,c) => _sideDials.Draw(l.Component("side-dials"))),
+            new("navball-cluster", PilotLayerOrder.SpeedCard,
                 (l,c) => _speedReadout.Draw(l.Component(SpeedCardId).Position,
                     l.Component(SpeedCardId).Scale,
                     c.Mode == PilotInteractionMode.Instruments && !KSA.Program.IsModalOpen()),
                 (l,m) => _speedReadout.ObserveMode()),
-            new(PilotLayerOrder.HeadingDial, (l,c) => _headingDial.DrawDial(l.Component("heading-dial"))),
-            new(PilotLayerOrder.HeadingReadout, (l,c) => _headingDial.DrawReadout(l.Component("heading-readout"))),
-            new(PilotLayerOrder.AltitudeCard,
+            new("navball-cluster", PilotLayerOrder.HeadingDial, (l,c) => _headingDial.DrawDial(l.Component("heading-dial"))),
+            new("navball-cluster", PilotLayerOrder.HeadingReadout, (l,c) => _headingDial.DrawReadout(l.Component("heading-readout"))),
+            new("navball-cluster", PilotLayerOrder.AltitudeCard,
                 (l,c) => _altitudeReadout.Draw(l.Component(AltitudeCardId).Position,
                     l.Component(AltitudeCardId).Scale,
                     c.Mode == PilotInteractionMode.Instruments && !KSA.Program.IsModalOpen())),
-            new(PilotLayerOrder.BottomControls,
+            new("navball-cluster", PilotLayerOrder.BottomControls,
                 (l,c) => _bottomControls.Draw(l.Component("bottom-controls"),c.DeltaTime,
                     c.Mode == PilotInteractionMode.Instruments && !KSA.Program.IsModalOpen()))
         ];

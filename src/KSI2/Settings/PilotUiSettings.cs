@@ -11,7 +11,9 @@ internal sealed class PilotUiSettings
         public float Y { get; set; }
         public float Scale { get; set; } = 1;
         public bool PositionSet { get; set; }
+        public int? Layer { get; set; }
     }
+    internal const int MaxElementLayer = 9999;
     internal static readonly string[] EditableElements = ["throttle", "navball-cluster", "atmosphere", "vertical-speed", "orbital-readout", "direction-selector"];
     private static readonly JsonSerializerOptions ReadOptions = new() { PropertyNameCaseInsensitive = true };
     public bool Show { get; set; } = true;
@@ -35,6 +37,9 @@ internal sealed class PilotUiSettings
     public float VerticalSpeedNeedleOffset { get; set; } = 2f;
     internal static string ModDirectory => Path.GetDirectoryName(typeof(PilotUiSettings).Assembly.Location) ?? AppContext.BaseDirectory;
     private static string FilePath => Path.Combine(ModDirectory, "ksi2.settings.json");
+
+    internal int ElementLayer(string id) => ElementLayouts.TryGetValue(id, out var layout)
+        && layout?.Layer is { } layer ? layer : id == "navball-cluster" ? 2 : 1;
 
     internal bool EnsureConfigurationAccess(bool modMenuInstalled)
     {
@@ -74,6 +79,8 @@ internal sealed class PilotUiSettings
                 element.X = Math.Clamp(element.X, 0, 1);
                 element.Y = Math.Clamp(element.Y, 0, 1);
                 element.Scale = Math.Clamp(element.Scale, 0.5f, 2f);
+                if (element.Layer is { } layer)
+                    element.Layer = Math.Clamp(layer, 1, MaxElementLayer);
             }
             settings.SelectedElement = "none";
             settings.X = Math.Clamp(settings.X, 0, 1);

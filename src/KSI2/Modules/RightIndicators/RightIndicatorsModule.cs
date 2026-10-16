@@ -16,9 +16,9 @@ internal sealed class RightIndicatorsModule : IPilotUiModule
         _verticalSpeedIndicator = new VerticalSpeedIndicatorRenderer(settings, save, configuration);
         Layers =
         [
-            new(PilotLayerOrder.Atmosphere, (l,c) => _atmosphericIndicator.Draw(l.Component(AtmosphereId).Position,
+            new(AtmosphereId, PilotLayerOrder.Atmosphere, (l,c) => _atmosphericIndicator.Draw(l.Component(AtmosphereId).Position,
                 l.Component(AtmosphereId).Scale, c.Blur, c.Opacity)),
-            new(PilotLayerOrder.VerticalSpeed, (l,c) => _verticalSpeedIndicator.Draw(l.Component(VerticalSpeedId).Position,
+            new(VerticalSpeedId, PilotLayerOrder.VerticalSpeed, (l,c) => _verticalSpeedIndicator.Draw(l.Component(VerticalSpeedId).Position,
                 l.Component(VerticalSpeedId).Scale, c.Blur, c.Opacity))
         ];
     }

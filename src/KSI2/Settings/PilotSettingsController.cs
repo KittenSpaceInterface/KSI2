@@ -206,7 +206,7 @@ internal sealed class PilotSettingsController : IDisposable
         PilotImGui.PlaceCurrentWindow();
         if (_confirmResetLayout)
         {
-            ImGui.TextWrapped("Reset the entire layout? This restores all six elements to their default positions and scales.");
+            ImGui.TextWrapped("Reset the entire layout? This restores all six elements to their default positions, scales, and layers.");
             if (ImGui.Button("Confirm reset layout"))
             {
                 editor.Cancel();
@@ -259,6 +259,14 @@ internal sealed class PilotSettingsController : IDisposable
             {
                 if (element is null) _settings.ElementLayouts[selectedElement] = element = new();
                 element.Scale = elementScale;
+            }
+            if (ImGui.IsItemDeactivatedAfterEdit()) Save();
+            var elementLayer = _settings.ElementLayer(selectedElement);
+            ImGui.SetNextItemWidth(160f);
+            if (ImGui.InputInt("Element layer", ref elementLayer))
+            {
+                if (element is null) _settings.ElementLayouts[selectedElement] = element = new();
+                element.Layer = Math.Clamp(elementLayer, 1, PilotUiSettings.MaxElementLayer);
             }
             if (ImGui.IsItemDeactivatedAfterEdit()) Save();
             if (ImGui.Button("Reset element"))

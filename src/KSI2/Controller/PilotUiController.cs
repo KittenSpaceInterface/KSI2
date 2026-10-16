@@ -13,7 +13,7 @@ internal sealed class PilotUiController : IDisposable
     private readonly OrbitalReadoutModule _orbitalReadout = new();
     private readonly RightIndicatorsModule _rightIndicators;
     private readonly IPilotUiModule[] _modules;
-    private readonly PilotUiLayer[] _layers;
+    private readonly PilotElementRenderer _elementRenderer;
     private readonly PilotLayoutDefinition[] _layoutDefinitions;
     private PanelBackgroundBlur? _panelBlur;
     private bool _panelBlurAttempted;
@@ -26,12 +26,11 @@ internal sealed class PilotUiController : IDisposable
         _rightIndicators = new RightIndicatorsModule(_settings.Settings, _settings.Save,
             _settings.VerticalSpeedConfiguration);
         _modules = [_throttle, _navball, _rightIndicators, _orbitalReadout, _directionSelector];
-        // OrderBy is stable, so layers sharing a configured z value retain
-        // their module declaration order within that visual tier.
-        _layers = _modules.SelectMany(module => module.Layers)
-            .OrderBy(layer => PilotLayoutConfig.Current.Order(layer.Order)).ToArray();
-        if (_layers.Any(layer => PilotLayoutConfig.Current.Order(layer.Order) >= PilotLayoutConfig.Current.Order(PilotLayerOrder.LayoutEditor)))
+        var components = _modules.SelectMany(module => module.Layers).ToArray();
+        if (components.Any(component => PilotLayoutConfig.Current.Order(component.Order)
+            >= PilotLayoutConfig.Current.Order(PilotLayerOrder.LayoutEditor)))
             throw new InvalidOperationException("Pilot UI layers must remain below the layout editor.");
+        _elementRenderer = new PilotElementRenderer(_settings.Settings, components);
         _layoutDefinitions = _modules.SelectMany(module => module.LayoutDefinitions).ToArray();
     }
 
@@ -76,16 +75,11 @@ internal sealed class PilotUiController : IDisposable
         }
         else
         {
-            // The last input window raised is the topmost interactive layer.
-            foreach (var layer in _layers) layer.UpdateInput?.Invoke(layout, mode);
+            _elementRenderer.UpdateInput(layout, mode);
         }
+        _elementRenderer.Draw(viewport, layout, context);
         if (mode == PilotInteractionMode.LayoutEditing && !modalOpen)
         {
-            if (PilotImGui.BeginArtworkWindow(viewport))
-            {
-                foreach (var layer in _layers) layer.Draw(layout, context);
-            }
-            PilotImGui.EndArtworkWindow();
             // Create the selected element's hit area after instrument canvases
             // so the editor remains the topmost input target for every element.
             _editor.BeginCanvas(ref layout);
@@ -97,16 +91,6 @@ internal sealed class PilotUiController : IDisposable
             {
                 _editor.EndCanvas();
             }
-        }
-        else
-        {
-            if (PilotImGui.BeginArtworkWindow(viewport))
-            {
-                // The layout JSON orders underlays and the control canvases.
-                foreach (var layer in _layers) layer.Draw(layout, context);
-                _editor.DrawOverlay(layout);
-            }
-            PilotImGui.EndArtworkWindow();
         }
         // Keep configuration and combo popups above the flight artwork windows.
         _settings.DrawWindow(_throttle.UiState, _editor, _throttle.CancelInteraction);

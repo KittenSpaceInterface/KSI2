@@ -119,7 +119,7 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
     public IReadOnlyList<PilotLayoutDefinition> LayoutDefinitions => [];
     public DirectionSelectorModule() => Layers =
     [
-        new(PilotLayerOrder.DirectionSelector, (layout, context) =>
+        new(Id, PilotLayerOrder.DirectionSelector, (layout, context) =>
             Draw(layout.Component("direction-selector"),
                 layout.Component(WheelId), layout.Component(ModeControlsId), context.Blur, context.Opacity,
                 context.Mode == PilotInteractionMode.Instruments && !KSA.Program.IsModalOpen()))
