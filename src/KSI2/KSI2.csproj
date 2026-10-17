@@ -25,7 +25,20 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
+    <Content Include="assets\fonts\Segment-*-SDF.png;assets\fonts\Segment-*-SDF.bin;assets\fonts\Segment-*-SDF.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
     <PackageReference Include="StarMap.API" Version="0.3.6" />
+    <PackageReference Include="Vortice.Win32.Graphics.DirectWrite" Version="3.2.3" />
+    <Content Include="$(NuGetPackageRoot)vortice.win32/3.2.3/lib/net10.0/Vortice.Win32.dll">
+      <TargetPath>Vortice.Win32.dll</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="$(NuGetPackageRoot)vortice.win32.graphics.directwrite/3.2.3/lib/net10.0/Vortice.Win32.Graphics.DirectWrite.dll">
+      <TargetPath>Vortice.Win32.Graphics.DirectWrite.dll</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <ProjectReference Include="../KSI2.FlightComputerInputPatch/KSI2.FlightComputerInputPatch.csproj" ReferenceOutputAssembly="false" />
     <Content Include="../KSI2.FlightComputerInputPatch/bin/$(Configuration)/net10.0/0Harmony.dll">
       <Link>assets/optional/0Harmony.dll</Link>

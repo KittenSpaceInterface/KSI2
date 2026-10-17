@@ -22,7 +22,7 @@ internal sealed class PilotUiController : IDisposable
     {
         _editor = new LayoutEditor(_settings.Settings, _settings.Save);
         _throttle = new ThrottleModule(_settings.Settings);
-        _navball = new NavballModule(_settings.Settings);
+        _navball = new NavballModule(_settings.Settings, _settings.FontTestScreen);
         _rightIndicators = new RightIndicatorsModule(_settings.Settings, _settings.Save,
             _settings.VerticalSpeedConfiguration);
         _modules = [_throttle, _navball, _rightIndicators, _orbitalReadout, _directionSelector];

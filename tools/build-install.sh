@@ -31,7 +31,7 @@ if [[ "${SKIP_GEOMETRY_CHECKS:-0}" != "1" ]]; then
 fi
 
 build_dir="$repository_dir/src/KSI2/bin/Release/net10.0"
-for name in KSI2.dll KSI2.deps.json mod.toml KSI2Assets.xml ksi2.layout.defaults.json; do
+for name in KSI2.dll KSI2.deps.json Vortice.Win32.dll Vortice.Win32.Graphics.DirectWrite.dll mod.toml KSI2Assets.xml ksi2.layout.defaults.json; do
     [[ -f "$build_dir/$name" ]] || { echo "Missing build output: $name" >&2; exit 1; }
 done
 [[ -d "$build_dir/assets" ]] || { echo 'Missing build output: assets/' >&2; exit 1; }
@@ -48,7 +48,7 @@ done
 rm -f -- "$build_dir/assets/optional/KSI2.HudMenuPatch.dll" "$install_dir/assets/optional/KSI2.HudMenuPatch.dll"
 
 mkdir -p "$install_dir/assets"
-for name in KSI2.dll KSI2.deps.json mod.toml KSI2Assets.xml ksi2.layout.defaults.json; do
+for name in KSI2.dll KSI2.deps.json Vortice.Win32.dll Vortice.Win32.Graphics.DirectWrite.dll mod.toml KSI2Assets.xml ksi2.layout.defaults.json; do
     cp -f -- "$build_dir/$name" "$install_dir/$name"
 done
 while IFS= read -r -d '' source_file; do

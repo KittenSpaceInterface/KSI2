@@ -12,12 +12,19 @@ internal sealed unsafe class NavballBottomControls
     [
         "KSI2BottomToggleOutline",
         "KSI2BottomObjectCycle",
-        "KSI2BottomCommNet"
+        "KSI2BottomCommNet",
+        "KSI2FontTestSdfAtlas"
     ];
 
     private readonly Dictionary<string, TextureReference> _textures = new();
     private readonly ToggleVisual _rcsVisual = new();
     private readonly ToggleVisual _sasVisual = new();
+    private readonly FontTestScreen _fontTestScreen;
+
+    internal NavballBottomControls(FontTestScreen fontTestScreen)
+    {
+        _fontTestScreen = fontTestScreen;
+    }
 
     private sealed class ToggleVisual
     {
@@ -35,9 +42,15 @@ internal sealed unsafe class NavballBottomControls
 
     private readonly record struct ButtonInput(bool Clicked, bool Hovered, bool Pressed);
 
-    internal void SetTexture(string id, TextureReference texture) => _textures[id] = texture;
+    internal void SetTexture(string id, TextureReference texture)
+    {
+        _textures[id] = texture;
+        if (id == "KSI2FontTestSdfAtlas")
+            _fontTestScreen.SetSdfAtlasPath(texture.ModPath);
+    }
 
-    internal void LoadFont(string path)
+    internal void LoadFont(string path, string fontKey = FontKey,
+        float bakeSize = 20f, bool pixelSnapH = false, float density = 2f)
     {
         if (!File.Exists(path))
         {
@@ -53,13 +66,44 @@ internal sealed unsafe class NavballBottomControls
         {
             // KSA owns the ImGui atlas and its Vulkan upload. Add the face before
             // the first frame, through the same loader used for game fonts.
-            var font = FontManager.LoadFont(path, ImGui.GetIO().Fonts, 20f,
-                pixelSnapH: false, fontDensity: 2f);
-            FontManager.Fonts[FontKey] = font;
+            var font = FontManager.LoadFont(path, ImGui.GetIO().Fonts, bakeSize,
+                pixelSnapH, density);
+            if (font.IsNull())
+            {
+                Console.Error.WriteLine($"KSI2: bottom control font load returned an empty font: {path}");
+                return;
+            }
+            FontManager.Fonts[fontKey] = font;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"KSI2: bottom control font load failed: {ex.Message}");
+        }
+    }
+
+    internal void ResolveRcsFontPathsBesideAsset(string assetId, string fileName)
+    {
+        try
+        {
+            var assetPath = ModLibrary.Get<TextureReference>(assetId).ModPath;
+            var assetDirectory = Path.GetDirectoryName(assetPath);
+            if (string.IsNullOrEmpty(assetDirectory))
+            {
+                Console.Error.WriteLine($"KSI2: could not resolve the directory for font asset anchor '{assetId}'.");
+                return;
+            }
+            var path = Path.Combine(assetDirectory, fileName);
+            var atlasPath = ModLibrary.Get<TextureReference>("KSI2FontTestSdfAtlas").ModPath;
+            var localFontDirectory = Path.GetDirectoryName(atlasPath);
+            if (string.IsNullOrEmpty(localFontDirectory))
+                throw new InvalidDataException("The registered font test atlas has no directory.");
+            var solidPath = Path.Combine(localFontDirectory, "Segment-Solid.otf");
+            var demoPath = Path.Combine(localFontDirectory, "Segment-Demo.ttf");
+            _fontTestScreen.SetFontPaths(path, solidPath, demoPath);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"KSI2: could not resolve RCS font beside asset '{assetId}': {ex.Message}");
         }
     }
 
@@ -241,10 +285,19 @@ internal sealed unsafe class NavballBottomControls
         var outlineMax = NavballPixelAlignment.Snap(bottomRight);
         DrawImage(draw, "KSI2BottomToggleOutline", outlineMin, outlineMax,
             visual.BorderColor);
+        if (label == "RCS")
+        {
+            var center = topLeft + new float2(24f * scale, 24f * scale);
+            var rcsFontSize = _fontTestScreen.RcsSize * scale
+                * (visual.Pressed ? 0.9f : 1f);
+            DrawRcsText(draw, center, rcsFontSize, visual.TextColor);
+            return;
+        }
         // KSA clears its font dictionary when display font settings change.
         // Do not retain a pointer into the old atlas after that regeneration.
-        var font = FontManager.Fonts.TryGetValue(FontKey, out var loaded)
-            ? loaded : ImGui.GetFont();
+        var fallbackFont = FontManager.Fonts.TryGetValue(FontKey, out var fallback)
+            ? fallback : ImGui.GetFont();
+        var font = fallbackFont;
         var size = 18f * scale * (visual.Pressed ? 0.9f : 1f);
         var bytes = Encoding.UTF8.GetBytes(label);
         fixed (byte* text = bytes)
@@ -281,6 +334,49 @@ internal sealed unsafe class NavballBottomControls
             ImGui.PInvoke.ImDrawList_AddText_1(draw.Ptr, font.Ptr, size,
                 &position, visual.TextColor,
                 text, text + bytes.Length, 0f, null);
+        }
+    }
+
+    internal void DrawRcsText(ImDrawListPtr draw, float2 center, float size, uint color)
+    {
+        if (_fontTestScreen.TryDrawRcs(draw, center, size, color)) return;
+        var font = ImGui.GetFont();
+        var fontSize = size;
+        const string label = "RCS";
+        var bytes = Encoding.UTF8.GetBytes(label);
+        fixed (byte* text = bytes)
+        {
+            var measured = ImGui.PInvoke.ImFont_CalcTextSizeA(font.Ptr,
+                fontSize, 1000f, -1f, text, text + bytes.Length, null);
+            var position = center - measured / 2f;
+            var baked = font.LastBaked;
+            if (!baked.IsNull())
+            {
+                var lookup = baked.IndexLookup.Span;
+                var glyphs = baked.Glyphs.Span;
+                var left = float.PositiveInfinity;
+                var top = float.PositiveInfinity;
+                var right = float.NegativeInfinity;
+                var bottom = float.NegativeInfinity;
+                var advance = 0f;
+                foreach (var character in label)
+                {
+                    if (character >= lookup.Length || lookup[character] >= glyphs.Length)
+                        continue;
+                    var glyph = glyphs[lookup[character]];
+                    left = MathF.Min(left, advance + glyph.X0);
+                    right = MathF.Max(right, advance + glyph.X1);
+                    top = MathF.Min(top, glyph.Y0);
+                    bottom = MathF.Max(bottom, glyph.Y1);
+                    advance += glyph.AdvanceX;
+                }
+                if (float.IsFinite(left) && float.IsFinite(top))
+                    position = center - new float2((left + right) / 2f,
+                        (top + bottom) / 2f);
+            }
+            position = NavballPixelAlignment.Snap(position);
+            ImGui.PInvoke.ImDrawList_AddText_1(draw.Ptr, font.Ptr, fontSize,
+                &position, color, text, text + bytes.Length, 0f, null);
         }
     }
 

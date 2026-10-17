@@ -121,6 +121,8 @@ Copy these files from the Release output:
 
 - `KSI2.dll`
 - `KSI2.deps.json`
+- `Vortice.Win32.dll`
+- `Vortice.Win32.Graphics.DirectWrite.dll`
 - `mod.toml`
 - `KSI2Assets.xml`
 - `ksi2.layout.defaults.json`

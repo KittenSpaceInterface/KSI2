@@ -1,4 +1,5 @@
 <Assets>
+  <Texture Id="KSI2FontTestSdfAtlas" Path="assets/fonts/Segment-Open-SDF.png" />
   <Shader Id="KSI2PanelBlurVert" Path="assets/shaders/panel-blur.vert" />
   <Shader Id="KSI2PanelBlurFrag" Path="assets/shaders/panel-blur.frag" />
   <GaugeCanvas Id="KSI2WarpButtons" AlwaysEnabled="true">

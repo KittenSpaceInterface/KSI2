@@ -6,17 +6,19 @@ internal sealed class NavballModule : IPilotUiModule
     private readonly NavballSpike _navballSpike = new();
     private readonly HeadingDialRenderer _headingDial = new();
     private readonly SideDialRenderer _sideDials;
-    private readonly SpeedReadoutRenderer _speedReadout = new();
+    private readonly SpeedReadoutRenderer _speedReadout;
     private readonly AltitudeReadoutRenderer _altitudeReadout = new();
-    private readonly NavballBottomControls _bottomControls = new();
+    private readonly NavballBottomControls _bottomControls;
     public string Id => "navball";
     internal const string SpeedCardId = "speed-card";
     internal const string AltitudeCardId = "altitude-card";
     internal static readonly PilotLayoutDefinition[] Definitions = [];
     public IReadOnlyList<PilotLayoutDefinition> LayoutDefinitions => Definitions;
     public IReadOnlyList<PilotUiLayer> Layers { get; }
-    public NavballModule(PilotUiSettings settings)
+    public NavballModule(PilotUiSettings settings, FontTestScreen fontTestScreen)
     {
+        _speedReadout = new SpeedReadoutRenderer(fontTestScreen);
+        _bottomControls = new NavballBottomControls(fontTestScreen);
         _sideDials = new SideDialRenderer(settings);
         Layers =
         [
@@ -77,6 +79,8 @@ internal sealed class NavballModule : IPilotUiModule
             assets.Register(id, tex => _bottomControls.SetTexture(id, tex));
         var fontsDirectory = Path.Combine(Path.GetDirectoryName(typeof(KSI2Mod).Assembly.Location)!, "assets", "fonts");
         _bottomControls.LoadFont(Path.Combine(fontsDirectory, "LCD_Solid.ttf"));
+        _bottomControls.ResolveRcsFontPathsBesideAsset(
+            "KSI2BottomToggleOutline", "Segment-Open.otf");
     }
     public void CancelInteraction()
     {

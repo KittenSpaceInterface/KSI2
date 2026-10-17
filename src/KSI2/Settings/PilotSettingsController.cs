@@ -13,8 +13,10 @@ internal sealed class PilotSettingsController : IDisposable
     private bool _modMenuInstalled;
     private bool _initialized;
     private bool _layoutWindowOpen;
+    private readonly FontTestScreen _fontTestScreen;
     private bool _confirmResetLayout;
     internal PilotUiSettings Settings => _settings;
+    internal FontTestScreen FontTestScreen => _fontTestScreen;
     internal VerticalSpeedConfigurationState VerticalSpeedConfiguration { get; } = new();
     internal void Save() => _settings.Save();
     internal bool BlurPanelBackgrounds => _blurCrashGuard.Enabled;
@@ -22,6 +24,7 @@ internal sealed class PilotSettingsController : IDisposable
     internal float BlurOpacity => _settings.BlurOpacityTicks / 400f;
     internal PilotSettingsController()
     {
+        _fontTestScreen = new FontTestScreen();
         var currentVersion = ReadKsaVersion();
         if (!string.IsNullOrEmpty(_settings.LastKsaVersion)
             && !string.Equals(_settings.LastKsaVersion, currentVersion, StringComparison.Ordinal))
@@ -94,6 +97,7 @@ internal sealed class PilotSettingsController : IDisposable
         if (!_settings.ConfigurationVisible)
         {
             CloseLayoutWindow(editor);
+            _fontTestScreen.Draw();
             return;
         }
         ImGui.SetNextWindowPos(new float2(24, 72), ImGuiCond.FirstUseEver);
@@ -114,6 +118,7 @@ internal sealed class PilotSettingsController : IDisposable
         {
             ImGui.End();
             DrawLayoutWindow(editor);
+            _fontTestScreen.Draw();
             return;
         }
         PilotImGui.PlaceCurrentWindow();
@@ -162,12 +167,15 @@ internal sealed class PilotSettingsController : IDisposable
             ImGui.EndTooltip();
         }
         ImGui.Text("Advanced");
+        if (ImGui.Button("Font Rendering Test (temporary)"))
+            _fontTestScreen.IsOpen = true;
         if (ImGui.Button("Layout Configuration")) _layoutWindowOpen = true;
         if (ImGui.Button("Vertical Speed Configuration"))
             VerticalSpeedConfiguration.IsOpen = !VerticalSpeedConfiguration.IsOpen;
         if (throttle.AssetError is not null) ImGui.TextWrapped($"Throttle artwork unavailable: {throttle.AssetError}\nCheck the installed asset package.");
         ImGui.End();
         DrawLayoutWindow(editor);
+        _fontTestScreen.Draw();
     }
 
     private void CloseLayoutWindow(LayoutEditor editor)

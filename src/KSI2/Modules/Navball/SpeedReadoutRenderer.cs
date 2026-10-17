@@ -20,7 +20,13 @@ internal sealed unsafe class SpeedReadoutRenderer
     private readonly Dictionary<string, TextureReference> _textures = new();
     private SpeedReadoutValue? _lastValue;
     private readonly SpeedModeState _modeState = new();
+    private readonly FontTestScreen _fontTestScreen;
     private bool _hovered;
+
+    internal SpeedReadoutRenderer(FontTestScreen fontTestScreen)
+    {
+        _fontTestScreen = fontTestScreen;
+    }
 
     internal SpeedReadoutMode SelectedMode => _modeState.Mode;
     internal void CancelInteraction() => _hovered = false;
@@ -129,9 +135,22 @@ internal sealed unsafe class SpeedReadoutRenderer
         // The title's black label overlays and interrupts the left frame line.
         const float velSize = 10.5f;
         const float velLineStep = 70.8f / 59f * velSize - 16f * velSize * 0.01f;
-        ReadoutLcdText.DrawVerticalTitle(draw, "VEL", x + 6.5f * scale,
-            y + 32f * scale, x + 2f * scale, x + 12f * scale,
-            velSize, velLineStep, scale, 0xFF00D6FFu);
+        var fontScale = _fontTestScreen.SpeedCardScale;
+        var titleCenter = new float2(x + 6.5f * scale, y + 32f * scale);
+        var titleHalfHeight = (0.75f * velSize + 2f * velLineStep) / 2f;
+        var stripMin = new float2(x + 2f * scale,
+            titleCenter.Y - (titleHalfHeight + 2f) * scale);
+        var stripMax = new float2(x + 12f * scale,
+            titleCenter.Y + (titleHalfHeight + 2f) * scale);
+        ImGui.PInvoke.ImDrawList_AddRectFilled(draw.Ptr, &stripMin, &stripMax,
+            0xFF000000u, 0f, ImDrawFlags.None);
+        for (var i = 0; i < 3; i++)
+        {
+            var letterCenter = new float2(titleCenter.X,
+                titleCenter.Y + (i - 1) * velLineStep * scale);
+            _fontTestScreen.TryDrawSpeedCardText(draw, "VEL"[i].ToString(),
+                letterCenter, velSize * scale * fontScale, 0xFF00D6FFu);
+        }
 
         DrawTiledImage("KSI2SpeedModeTile", x + 15f * scale, y + 8f * scale,
             48f, 8f, 14f, 8f, 0x45008099u);
@@ -144,16 +163,17 @@ internal sealed unsafe class SpeedReadoutRenderer
             SpeedReadoutMode.Target => ("TARGET", "KSI2SpeedTarget"),
             _ => ("ORBIT", "KSI2SpeedOrbit")
         };
-        ReadoutLcdText.Draw(draw, label, x + 15f * scale, x + 63f * scale,
-            y + 8f * scale, y + 16f * scale, 10f, scale, true, 0xFF00ABCCu);
+        _fontTestScreen.TryDrawSpeedCardText(draw, label,
+            new float2(x + 63f * scale, y + 12f * scale),
+            10f * scale * fontScale, 0xFF00ABCCu, alignRight: true);
         DrawImage(icon, x + 66f * scale, y + 8f * scale,
             8f * scale, 8f * scale, 0xFF00ABCCu);
 
         ReadoutNumberText.Draw(draw, displayed.Number, x + 10f * scale,
             x + 75f * scale, y + 30f * scale, scale, true, 0xFFFFDFD5u);
-        ReadoutLcdText.Draw(draw, displayed.Units, x + 26.5f * scale,
-            x + 74.5f * scale, y + 43f * scale, y + 53f * scale,
-            14f, scale, true, 0xFF00ABCCu);
+        _fontTestScreen.TryDrawSpeedCardText(draw, displayed.Units,
+            new float2(x + 74.5f * scale, y + 48f * scale),
+            14f * scale * fontScale, 0xFF00ABCCu, alignRight: true);
 
         void DrawImage(string id, float left, float top, float width, float height, uint tint)
         {
