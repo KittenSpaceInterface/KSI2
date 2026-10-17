@@ -137,7 +137,7 @@ internal sealed class PilotLayoutConfig
     [
         "throttle", "navball-cluster", "cluster-background", "navball-sphere", "side-dials",
         "speed-card", "heading-dial", "heading-readout", "atmosphere", "vertical-speed",
-        "altitude-card", "bottom-controls", "orbital-readout", "direction-selector",
+        "altitude-card", "bottom-controls", "orbital-readout", "direction-selector", "time-selector",
         "direction-selector-wheel", "direction-selector-sas-reserved"
     ];
 
@@ -159,7 +159,7 @@ internal sealed class PilotLayoutConfig
             throw new InvalidDataException($"Invalid offset or size for {id}.");
         if ((root || node.Z is not null) && (node.Size[0] <= 0 || node.Size[1] <= 0))
             throw new InvalidDataException($"Layout element {id} must have a positive size.");
-        if (root && node.Anchor is not ("viewport-bottom-left" or "viewport-top-left"))
+        if (root && node.Anchor is not ("viewport-bottom-left" or "viewport-top-left" or "viewport-bottom-center"))
             throw new InvalidDataException($"Invalid viewport anchor for {id}.");
         if (!root && node.Anchor is not null)
             throw new InvalidDataException($"Child {id} must use a parent-relative offset.");
@@ -187,6 +187,7 @@ internal sealed class PilotLayoutConfig
         PilotLayerOrder.BottomControls => "bottom-controls",
         PilotLayerOrder.OrbitalReadout => "orbital-readout",
         PilotLayerOrder.DirectionSelector => "direction-selector",
+        PilotLayerOrder.TimeSelector => "time-selector",
         _ => throw new ArgumentOutOfRangeException(nameof(layer))
     };
 

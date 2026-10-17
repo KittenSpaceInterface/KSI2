@@ -13,6 +13,12 @@
       "size": [240, 56],
       "z": 1200
     },
+    "time-selector": {
+      "anchor": "viewport-bottom-center",
+      "offset": [0, 16],
+      "size": [310, 56],
+      "z": 1200
+    },
     "direction-selector": {
       "anchor": "viewport-bottom-left",
       "offset": [460, -16],

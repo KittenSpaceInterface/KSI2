@@ -13,6 +13,33 @@ PilotLayoutDefinition[] definitions =
 PilotFrameLayout Resolve(float x, float y, float width, float height, PilotUiSettings settings) =>
     PilotFrameLayout.Resolve(x, y, width, height, settings, definitions);
 
+// KSP2's time bar starts at 59, has eleven 20-unit hit areas, and leaves two
+// units between them. The final control must end before the 310-unit frame.
+if (TimeSelectorGeometry.RateCount != 11 || TimeSelectorGeometry.RateLeft(0) != 59 ||
+    TimeSelectorGeometry.RateLeft(10) + TimeSelectorGeometry.RateWidth != 299 ||
+    TimeSelectorGeometry.RatePitch - TimeSelectorGeometry.RateWidth != 2 ||
+    TimeSelectorGeometry.RateLeft(10) + TimeSelectorGeometry.RateWidth
+        >= TimeSelectorGeometry.PanelWidth)
+    throw new Exception("time selector rate row no longer matches the prefab geometry");
+
+// KSA currently has twenty positive speeds. The eleventh selection moves to
+// slot two on the overlapping view so the first slot remains a way back.
+var laterRates = TimeSelectorGeometry.WindowStart(20, 0, 10);
+if (laterRates != 9 || TimeSelectorGeometry.VisibleCount(20, laterRates) != 11 ||
+    TimeSelectorGeometry.WindowStart(20, laterRates, 9) != 0 ||
+    TimeSelectorGeometry.WindowStart(2, 0, 1) != 0 ||
+    TimeSelectorGeometry.VisibleCount(2, 0) != 2 ||
+    !TimeSelectorGeometry.IsEndpoint(0, 2) || !TimeSelectorGeometry.IsEndpoint(1, 2) ||
+    TimeSelectorGeometry.IsEndpoint(1, 3))
+    throw new Exception("time selector rate window or endpoint geometry is incorrect");
+
+if (TimeSelectorSoundIds.SpeedTransition(0.1, 0) != TimeSelectorSoundIds.Pause ||
+    TimeSelectorSoundIds.SpeedTransition(0, 0.1) != TimeSelectorSoundIds.Unpause ||
+    TimeSelectorSoundIds.SpeedTransition(4, 1) != TimeSelectorSoundIds.WarpReturnToOne ||
+    TimeSelectorSoundIds.SpeedTransition(1, 2) != TimeSelectorSoundIds.WarpChange ||
+    TimeSelectorSoundIds.SpeedTransition(2, 2) is not null)
+    throw new Exception("time selector speed transition sounds are incorrect");
+
 // KSA helm is forward/right/down. These orbital marker vectors describe a
 // prograde-aligned ship with its top toward radial out. KSP2's source formula
 // returns identity for that pose, followed by axis rotations as the ship turns.

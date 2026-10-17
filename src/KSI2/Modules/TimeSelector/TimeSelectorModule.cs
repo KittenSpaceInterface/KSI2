@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Brutal.ImGuiApi;
 using Brutal.Numerics;
@@ -13,6 +14,40 @@ internal static class TimeSelectorGeometry
     internal const int RatePitch = 22;
     internal const int RateCount = 11;
     internal static int RateLeft(int index) => RateStart + index * RatePitch;
+    internal static int VisibleCount(int rateCount, int windowStart) =>
+        Math.Clamp(rateCount - windowStart, 0, RateCount);
+    internal static bool IsEndpoint(int index, int visibleCount) =>
+        visibleCount > 0 && (index == 0 || index == visibleCount - 1);
+
+    internal static int WindowStart(int rateCount, int previousStart, int selectedIndex)
+    {
+        if (rateCount <= RateCount) return 0;
+        var maxStart = rateCount - RateCount;
+        var start = Math.Clamp(previousStart, 0, maxStart);
+        if (selectedIndex >= start + RateCount - 1 && start < maxStart)
+            return Math.Min(selectedIndex - 1, maxStart);
+        if (selectedIndex <= start && start > 0)
+            return Math.Max(0, selectedIndex - (RateCount - 2));
+        return start;
+    }
+}
+
+internal static class TimeSelectorSoundIds
+{
+    internal const string PauseHover = "KSI2TimePauseHover";
+    internal const string ModeHover = "KSI2TimeModeHover";
+    internal const string Pause = "KSI2TimePause";
+    internal const string Unpause = "KSI2TimeUnpause";
+    internal const string WarpChange = "KSI2TimeWarpChange";
+    internal const string WarpReturnToOne = "KSI2TimeWarpReturnToOne";
+
+    internal static string? SpeedTransition(double before, double after)
+    {
+        if (Math.Abs(before - after) < 0.0001d) return null;
+        if (after == 0d) return Pause;
+        if (before == 0d) return Unpause;
+        return after == 1d ? WarpReturnToOne : WarpChange;
+    }
 }
 
 internal sealed class TimeSelectorModule : IPilotUiModule
@@ -54,14 +89,15 @@ internal sealed unsafe class TimeSelectorRenderer
     private const uint PausedOutlineHoverColor = 0xFF050E85u; // Source RGB rounds to #850E05.
     private const uint ActiveColor = 0xFF52CC00u;
     private const uint InactiveColor = 0xFF998680u;
-    private static readonly int[] Rates = [1, 2, 4, 10, 50, 100, 1_000,
-        10_000, 100_000, 1_000_000, 10_000_000];
     private readonly Dictionary<string, TextureReference> _textures = new(StringComparer.Ordinal);
     private readonly float[] _rateHighlights = new float[TimeSelectorGeometry.RateCount];
-    private bool _paused;
-    private bool _showUt = true;
-    private int _rateIndex;
-    private double _demoSeconds = (3 * 426 + 77) * 86_400d + 2 * 3_600d + 15 * 60d + 36d;
+    private readonly bool[] _rateHovered = new bool[TimeSelectorGeometry.RateCount];
+    private double _lastRunningSpeed = 1d;
+    private double _observedSpeed;
+    private bool _hasObservedSpeed;
+    private bool _pauseHovered;
+    private bool _modeHovered;
+    private int _windowStart;
     private float _animationTime;
 
     private static readonly string[] Assets =
@@ -85,7 +121,14 @@ internal sealed unsafe class TimeSelectorRenderer
             assets.Register(id, texture => _textures[id] = texture);
     }
 
-    internal void CancelInteraction() => Array.Clear(_rateHighlights);
+    internal void CancelInteraction()
+    {
+        Array.Clear(_rateHighlights);
+        Array.Clear(_rateHovered);
+        _pauseHovered = false;
+        _modeHovered = false;
+        _hasObservedSpeed = false;
+    }
 
     internal void Draw(PilotComponentBounds bounds, PanelBackgroundBlur? blur, float opacity,
         double deltaTime, bool allowInteraction)
@@ -96,20 +139,52 @@ internal sealed unsafe class TimeSelectorRenderer
         var scale = bounds.Scale;
         var dt = (float)Math.Clamp(deltaTime, 0d, 0.1d);
         _animationTime += dt;
+        var speeds = Universe.GetSimulationSpeeds();
+        var firstRunningIndex = speeds.FindIndex(speed => speed.Value > 0d);
+        var rateCount = firstRunningIndex < 0 ? 0 : speeds.Count - firstRunningIndex;
+        var simulationSpeed = Universe.GetSimulationSpeed();
+        var paused = Universe.IsPaused();
+        ObserveSpeed(simulationSpeed, !Program.IsModalOpen());
+        if (simulationSpeed > 0d && double.IsFinite(simulationSpeed))
+            _lastRunningSpeed = simulationSpeed;
+        var displayedSpeed = paused ? _lastRunningSpeed : simulationSpeed;
+        var selectedRateIndex = rateCount == 0 ? -1
+            : NearestRateIndex(speeds, firstRunningIndex,
+                displayedSpeed);
+        var windowStart = TimeSelectorGeometry.WindowStart(rateCount, _windowStart, selectedRateIndex);
+        if (windowStart != _windowStart) Array.Clear(_rateHighlights);
+        _windowStart = windowStart;
+        var visibleRateCount = TimeSelectorGeometry.VisibleCount(rateCount, windowStart);
+
         var pauseInput = Control("Pause", 4, 4, 48, 48);
-        if (pauseInput.Clicked) _paused = !_paused;
+        if (pauseInput.Hovered && !_pauseHovered)
+            FlightUiSounds.Play(TimeSelectorSoundIds.PauseHover);
+        _pauseHovered = pauseInput.Hovered;
+        if (pauseInput.Clicked)
+            QueueSpeed(new SimSpeed(paused ? _lastRunningSpeed : 0d));
         var modeInput = Control("Mode", 59, 7, 42, 16);
-        if (modeInput.Clicked) _showUt = !_showUt;
-        for (var i = 0; i < Rates.Length; i++)
+        if (modeInput.Hovered && !_modeHovered)
+            FlightUiSounds.Play(TimeSelectorSoundIds.ModeHover);
+        _modeHovered = modeInput.Hovered;
+        if (modeInput.Clicked)
+        {
+            FlightUiSounds.Play(Program.DisplayGameTime
+                ? "KSI2TimeUtToMet" : "KSI2TimeMetToUt");
+            Program.DisplayGameTime = !Program.DisplayGameTime;
+        }
+        for (var i = 0; i < visibleRateCount; i++)
         {
             var input = Control($"Rate{i}", TimeSelectorGeometry.RateLeft(i), 27,
                 TimeSelectorGeometry.RateWidth, 16);
-            if (input.Clicked) _rateIndex = i;
-            var target = input.Hovered || i == _rateIndex ? 1f : 0f;
+            if (input.Hovered && !_rateHovered[i])
+                FlightUiSounds.Play($"KSI2TimeWarpHover{i + 1:00}");
+            _rateHovered[i] = input.Hovered;
+            if (input.Clicked) QueueSpeed(speeds[firstRunningIndex + windowStart + i]);
+            var target = input.Hovered ? 1f : 0f;
             _rateHighlights[i] += (target - _rateHighlights[i]) * MathF.Min(1f, dt * 10f);
         }
-        // The clock and control state are local UI mocks; KSA's simulation is untouched.
-        if (!_paused) _demoSeconds += dt * Rates[_rateIndex];
+        for (var i = visibleRateCount; i < _rateHovered.Length; i++)
+            _rateHovered[i] = false;
         var panelMin = Snap(0, 0);
         var panelMax = Snap(310, 56);
         var blurred = _textures.TryGetValue("KSI2TimeClusterFill", out var fillMask)
@@ -117,9 +192,9 @@ internal sealed unsafe class TimeSelectorRenderer
                 maskNineSlice: new PanelMaskNineSlice(56f / 704f, 28f / 310f, 8f / 56f)) == true;
         if (!blurred) DrawImage("KSI2TimeClusterFill", 0, 0, 310, 56, PanelColor);
         DrawNineSlice("KSI2TimeClusterBorder", 24, 2, 284, 52,
-            _paused ? PausedBorderColor : BorderColor, fillCenter: false);
+            paused ? PausedBorderColor : BorderColor, fillCenter: false);
         DrawNineSlice("KSI2TimeClusterBracket", 24, 2, 284, 52,
-            _paused ? PausedBorderColor : BracketColor, fillCenter: false);
+            paused ? PausedBorderColor : BracketColor, fillCenter: false);
 
         // Cover the frame beneath the pause button, stopping at its right edge.
         // Clip the original 56-unit fill slice instead of rescaling its rounded edge.
@@ -128,30 +203,30 @@ internal sealed unsafe class TimeSelectorRenderer
         DrawImagePart("KSI2TimeClusterFill", 0, 0, 56, 56,
             new float2(0f, 0f), new float2(112f / 704f, 1f), PanelColor);
         ImGui.PInvoke.ImDrawList_PopClipRect(draw.Ptr);
-        DrawImage(_paused || pauseInput.Hovered
+        DrawImage(paused || pauseInput.Hovered
                 ? "KSI2TimeClusterButtonOutlineDot" : "KSI2TimeClusterButtonOutline",
             4, 4, 48, 48,
-            _paused ? (pauseInput.Hovered ? PausedOutlineHoverColor : PausedOutlineColor)
+            paused ? (pauseInput.Hovered ? PausedOutlineHoverColor : PausedOutlineColor)
                 : (pauseInput.Hovered ? PauseHoverColor : PauseRestColor));
         var iconSize = pauseInput.Pressed ? 16.2f : 18f;
-        DrawImage(_paused ? "KSI2TimeClusterPlay" : "KSI2TimeClusterPause",
+        DrawImage(paused ? "KSI2TimeClusterPlay" : "KSI2TimeClusterPause",
             28f - iconSize / 2f, 28f - iconSize / 2f, iconSize, iconSize,
-            _paused ? (pauseInput.Hovered ? PlayHoverColor : PlayRestColor)
+            paused ? (pauseInput.Hovered ? PlayHoverColor : PlayRestColor)
                 : (pauseInput.Hovered ? PauseHoverColor : PauseRestColor));
 
         // Registered Met/Ut IDs point to Option-1/Option-2 respectively;
         // the source prefab displays Option-1 for UT and Option-2 for MET.
-        DrawModeOption(_showUt ? "KSI2TimeClusterMet" : "KSI2TimeClusterUt",
+        DrawModeOption(Program.DisplayGameTime ? "KSI2TimeClusterMet" : "KSI2TimeClusterUt",
             modeInput.Hovered ? 0xFF00A8CCu : 0xFF007F99u);
         var modeTextRight = Snap(101, 23);
         var modeTextLeft = modeTextRight.X - NavballPixelAlignment.SnapSize(32.2045f * scale);
-        ReadoutLcdText.Draw(draw, _showUt ? "UT" : "MET",
+        ReadoutLcdText.Draw(draw, Program.DisplayGameTime ? "UT" : "MET",
             modeTextLeft, modeTextRight.X, Snap(0, 7).Y, modeTextRight.Y,
             10f, scale, false, TimeColor, alignCenter: true, snapPosition: true);
         DrawTime();
-        if (_paused)
+        if (paused)
             DrawPausedSignpost();
-        else if (_rateIndex > 0)
+        else if (Math.Abs(simulationSpeed - 1d) > 0.001d)
         {
             // The source signposts loop every 0.625 seconds while their state is active.
             var phase = _animationTime * (MathF.PI * 2f / 0.625f);
@@ -161,11 +236,12 @@ internal sealed unsafe class TimeSelectorRenderer
                 size: 14f, height: 14f);
         }
 
-        for (var i = 0; i < Rates.Length; i++)
+        for (var i = 0; i < visibleRateCount; i++)
         {
-            var selected = i == _rateIndex;
+            var selected = windowStart + i == selectedRateIndex;
+            var active = windowStart + i <= selectedRateIndex;
             var pulse = selected ? 0.9f + 0.1f * MathF.Sin(_animationTime * 5f) : 1f;
-            var tint = selected ? WithAlpha(ActiveColor, pulse) : InactiveColor;
+            var tint = active ? WithAlpha(ActiveColor, pulse) : InactiveColor;
             if (!_textures.TryGetValue("KSI2TimeClusterWarpMid", out var texture)
                 || texture.ImguiTextureRef is not { } image)
                 continue;
@@ -179,7 +255,7 @@ internal sealed unsafe class TimeSelectorRenderer
             var artMax = artMin + artSize;
             var uvMin = new float2(0f, 0f);
             var uvMax = new float2(1f, 1f);
-            var endpoint = i == 0 || i == Rates.Length - 1;
+            var endpoint = TimeSelectorGeometry.IsEndpoint(i, visibleRateCount);
             var cornerSize = NavballPixelAlignment.SnapSize(2f * scale);
             for (var part = 0; part < (endpoint ? 2 : 1); part++)
             {
@@ -223,9 +299,10 @@ internal sealed unsafe class TimeSelectorRenderer
         if (!titleBlurred)
             ImGui.PInvoke.ImDrawList_AddRectFilled(draw.Ptr, &titleMin, &titleMax,
                 PanelColor, 0f, ImDrawFlags.None);
-        ReadoutLcdText.Draw(draw, $"TIME.WARP = {Rates[_rateIndex]:N0}x",
+        ReadoutLcdText.Draw(draw,
+            $"TIME.WARP = {displayedSpeed.ToString("#,0.###", CultureInfo.InvariantCulture)}x",
             titleMin.X, titleMax.X, Snap(0, 45).Y, Snap(0, 56).Y,
-            11f, scale, false, _paused ? PausedBorderColor : TitleColor,
+            11f, scale, false, paused ? PausedBorderColor : TitleColor,
             alignCenter: true, snapPosition: true);
 
         float2 Snap(float x, float y) => NavballPixelAlignment.Snap(origin + new float2(x * scale, y * scale));
@@ -351,13 +428,15 @@ internal sealed unsafe class TimeSelectorRenderer
 
         void DrawTime()
         {
-            var total = (long)_demoSeconds;
-            if (!_showUt) total = Math.Max(0, total - (3 * 426 + 77) * 86_400L);
-            var years = total / (426 * 86_400);
-            var days = total / 86_400 % 426;
-            var hours = total / 3_600 % 24;
-            var minutes = total / 60 % 60;
-            var seconds = total % 60;
+            var now = Universe.GetElapsedTime();
+            var vehicle = Program.ControlledVehicle;
+            var gameTime = Program.DisplayGameTime || vehicle is null
+                ? now : now - vehicle.LaunchGameTime;
+            var years = (int)gameTime.Years;
+            var days = (int)gameTime.Days % 365;
+            var hours = (int)gameTime.Hours % 24;
+            var minutes = (int)gameTime.Minutes % 60;
+            var seconds = (int)gameTime.Seconds() % 60;
             (string Text, uint Color)[] parts =
             [
                 ("T+", TimeAccentColor), (years.ToString("000"), TimeColor),
@@ -414,6 +493,43 @@ internal sealed unsafe class TimeSelectorRenderer
                     tint, text, text + bytes.Length, 0f, null);
             }
         }
+    }
+
+    private static int NearestRateIndex(IReadOnlyList<SimSpeed> speeds,
+        int firstRunningIndex, double speed)
+    {
+        var nearest = 0;
+        var distance = double.PositiveInfinity;
+        for (var i = firstRunningIndex; i < speeds.Count; i++)
+        {
+            var candidateDistance = Math.Abs(speeds[i].Value - speed);
+            if (candidateDistance >= distance) continue;
+            nearest = i - firstRunningIndex;
+            distance = candidateDistance;
+        }
+        return nearest;
+    }
+
+    private void ObserveSpeed(double speed, bool allowSound)
+    {
+        if (!allowSound)
+        {
+            _hasObservedSpeed = false;
+            return;
+        }
+        if (_hasObservedSpeed && !Universe.IsAutoWarpActive)
+        {
+            var sound = TimeSelectorSoundIds.SpeedTransition(_observedSpeed, speed);
+            if (sound is not null) FlightUiSounds.Play(sound);
+        }
+        _observedSpeed = speed;
+        _hasObservedSpeed = true;
+    }
+
+    private static void QueueSpeed(SimSpeed speed)
+    {
+        Universe.AutoWarpStop(resetSimulationSpeed: false);
+        InputEvents.SimSpeedBuffer.Add(new InputEvents.SimSpeedData { Speed = speed });
     }
 
     private static uint WithAlpha(uint color, float alpha) =>

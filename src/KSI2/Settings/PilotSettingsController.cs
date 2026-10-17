@@ -310,6 +310,7 @@ internal sealed class PilotSettingsController : IDisposable
         "atmosphere" => "Atmospheric Indicator",
         "vertical-speed" => "Vertical Speed Indicator",
         "orbital-readout" => "AP/PE Readout",
+        "time-selector" => "Time Selector",
         _ => "Direction Selector"
     };
 

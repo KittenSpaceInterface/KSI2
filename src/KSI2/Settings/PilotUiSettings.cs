@@ -14,7 +14,7 @@ internal sealed class PilotUiSettings
         public int? Layer { get; set; }
     }
     internal const int MaxElementLayer = 9999;
-    internal static readonly string[] EditableElements = ["throttle", "navball-cluster", "atmosphere", "vertical-speed", "orbital-readout", "direction-selector"];
+    internal static readonly string[] EditableElements = ["throttle", "navball-cluster", "atmosphere", "vertical-speed", "orbital-readout", "direction-selector", "time-selector"];
     private static readonly JsonSerializerOptions ReadOptions = new() { PropertyNameCaseInsensitive = true };
     public bool Show { get; set; } = true;
     public float Scale { get; set; } = 1;

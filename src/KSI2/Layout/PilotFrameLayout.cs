@@ -97,6 +97,25 @@ internal readonly record struct PilotFrameLayout(
                 viewportY + Math.Clamp(orbitNode.Offset[1] * orbitScale, 0, orbitAvailableY));
         components.Add("orbital-readout", new PilotComponentBounds(orbitPosition, orbitScale,
             orbitNode.Size[0], orbitNode.Size[1]));
+        var timeNode = config.Node("time-selector");
+        var timeScale = MathF.Min(scaleViewport.X / config.DesignSize[0],
+            scaleViewport.Y / config.DesignSize[1]) * settings.Scale;
+        timeScale = MathF.Min(timeScale, MathF.Min(width / timeNode.Size[0], height / timeNode.Size[1]));
+        var timeWidth = timeNode.Size[0] * timeScale;
+        var timeHeight = timeNode.Size[1] * timeScale;
+        var timeAvailableX = MathF.Max(0, width - timeWidth);
+        var timeAvailableY = MathF.Max(0, height - timeHeight);
+        var timePosition = timeNode.Anchor switch
+        {
+            "viewport-bottom-center" => new Point(viewportX + (width - timeWidth) * 0.5f + timeNode.Offset[0] * timeScale,
+                viewportY + timeAvailableY - timeNode.Offset[1] * timeScale),
+            "viewport-bottom-left" => new Point(viewportX + Math.Clamp(timeNode.Offset[0] * timeScale, 0, timeAvailableX),
+                viewportY + Math.Clamp(timeAvailableY - timeNode.Offset[1] * timeScale, 0, timeAvailableY)),
+            _ => new Point(viewportX + Math.Clamp(timeNode.Offset[0] * timeScale, 0, timeAvailableX),
+                viewportY + Math.Clamp(timeNode.Offset[1] * timeScale, 0, timeAvailableY))
+        };
+        components.Add("time-selector", new PilotComponentBounds(timePosition, timeScale,
+            timeNode.Size[0], timeNode.Size[1]));
         var selectorNode = config.Node("direction-selector");
         var selectorWidth = selectorNode.Size[0] * scale;
         var selectorHeight = selectorNode.Size[1] * scale;

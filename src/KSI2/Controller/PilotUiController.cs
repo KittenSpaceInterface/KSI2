@@ -11,6 +11,7 @@ internal sealed class PilotUiController : IDisposable
     private readonly NavballModule _navball;
     private readonly DirectionSelectorModule _directionSelector = new();
     private readonly OrbitalReadoutModule _orbitalReadout = new();
+    private readonly TimeSelectorModule _timeSelector = new();
     private readonly RightIndicatorsModule _rightIndicators;
     private readonly IPilotUiModule[] _modules;
     private readonly PilotElementRenderer _elementRenderer;
@@ -25,7 +26,7 @@ internal sealed class PilotUiController : IDisposable
         _navball = new NavballModule(_settings.Settings);
         _rightIndicators = new RightIndicatorsModule(_settings.Settings, _settings.Save,
             _settings.VerticalSpeedConfiguration);
-        _modules = [_throttle, _navball, _rightIndicators, _orbitalReadout, _directionSelector];
+        _modules = [_throttle, _navball, _rightIndicators, _orbitalReadout, _directionSelector, _timeSelector];
         var components = _modules.SelectMany(module => module.Layers).ToArray();
         if (components.Any(component => PilotLayoutConfig.Current.Order(component.Order)
             >= PilotLayoutConfig.Current.Order(PilotLayerOrder.LayoutEditor)))

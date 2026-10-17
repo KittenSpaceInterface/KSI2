@@ -20,6 +20,7 @@ internal enum PilotLayerOrder
     BottomControls,
     OrbitalReadout,
     DirectionSelector,
+    TimeSelector,
     LayoutEditor
 }
 
