@@ -108,7 +108,11 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
     }
 
     public void CancelInteraction() { }
-    public void Dispose() { }
+    public void Dispose()
+    {
+        if (_warpCanvas is not null)
+            _warpCanvas.VisibleInContext = [GaugeVisibilityFlag.Vehicle, GaugeVisibilityFlag.EVA];
+    }
 
     private void Draw(PilotComponentBounds bounds, PanelBackgroundBlur? blur, float opacity,
         bool allowInteraction)
@@ -285,7 +289,12 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
 
     private void SyncWarpCanvas(PilotComponentBounds bounds)
     {
-        _warpCanvas ??= GaugeCanvas.AllCanvases.FirstOrDefault(canvas => canvas.Id == "KSI2WarpButtons");
+        if (_warpCanvas is null)
+        {
+            _warpCanvas = GaugeCanvas.AllCanvases.FirstOrDefault(canvas => canvas.Id == "KSI2WarpButtons");
+            if (_warpCanvas is not null)
+                _warpCanvas.VisibleInContext = [GaugeVisibilityFlag.Vehicle];
+        }
         if (_warpCanvas is not { CanvasRenderer: not null } canvas) return;
 
         canvas.Locked = true;
