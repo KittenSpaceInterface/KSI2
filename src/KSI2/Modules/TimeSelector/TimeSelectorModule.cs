@@ -126,6 +126,7 @@ internal sealed unsafe class TimeSelectorRenderer : IDisposable
 
     internal void CancelInteraction()
     {
+        _soiWarpButton.CancelInteraction();
         Array.Clear(_rateHighlights);
         Array.Clear(_rateHovered);
         _pauseHovered = false;

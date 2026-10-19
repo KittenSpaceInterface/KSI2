@@ -27,6 +27,9 @@ internal sealed unsafe class TimeSoiWarpButton : IDisposable
         "DrawWidgetText", BindingFlags.Instance | BindingFlags.NonPublic);
     private GaugeCanvas? _canvas;
     private GaugeButtonReference? _button;
+    private bool _pressed;
+
+    internal void CancelInteraction() => _pressed = false;
 
     internal void Draw(PilotComponentBounds bounds, bool allowInteraction)
     {
@@ -42,6 +45,8 @@ internal sealed unsafe class TimeSoiWarpButton : IDisposable
         canvas.Locked = true;
         var viewport = ImGui.GetMainViewport();
         if (viewport.Size.Y <= 0) return;
+        var windowHeight = KSA.Program.GetWindow().Size.Y;
+        if (windowHeight <= 0) return;
         var gaugeScale = GameSettings.GetGaugeScale();
         if (gaugeScale <= 0) return;
         var target = NavballPixelAlignment.Snap(new float2(
@@ -56,11 +61,11 @@ internal sealed unsafe class TimeSoiWarpButton : IDisposable
             MathF.Abs(currentSize.X - size.X) > 0.5f ||
             MathF.Abs(currentSize.Y - size.Y) > 0.5f)
         {
-            canvas.Offset.X = target.X / viewport.Size.Y;
-            canvas.Offset.Y = target.Y / viewport.Size.Y;
+            canvas.Offset.X = target.X / windowHeight;
+            canvas.Offset.Y = target.Y / windowHeight;
             // KSA applies its gauge scale when converting SizeUv to pixels.
-            canvas.Size.X = size.X / (viewport.Size.Y * gaugeScale);
-            canvas.Size.Y = size.Y / (viewport.Size.Y * gaugeScale);
+            canvas.Size.X = size.X / (windowHeight * gaugeScale);
+            canvas.Size.Y = size.Y / (windowHeight * gaugeScale);
             canvas.Offset.OnDataLoad(KSA.Mod.Empty);
             canvas.Size.OnDataLoad(KSA.Mod.Empty);
             canvas.CacheTransform();
@@ -70,24 +75,37 @@ internal sealed unsafe class TimeSoiWarpButton : IDisposable
 
         if (allowInteraction && _button is { } button)
         {
+            var faceMin = viewport.Pos + canvas.GetPixelsMin();
+            var faceSize = canvas.GetPixelsSize();
+            var faceMax = faceMin + faceSize;
             var visible = PilotImGui.BeginControlCanvas("##KSI2-Time-SoiWarp",
-                viewport.Pos + target, size, acceptsInput: true);
+                faceMin, faceSize, acceptsInput: true);
             try
             {
                 if (visible)
                 {
-                    if (ImGui.IsWindowHovered())
+                    var mouse = ImGui.GetMousePos();
+                    var insideFace = mouse.X >= faceMin.X && mouse.X < faceMax.X &&
+                        mouse.Y >= faceMin.Y && mouse.Y < faceMax.Y;
+                    var hovered = insideFace && ImGui.IsWindowHovered();
+                    if (hovered)
                     {
                         button.OnHovered();
                         ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
-                        if (ImGui.IsMouseDown(ImGuiMouseButton.Left)) button.OnClicked();
-                        if (ImGui.IsMouseReleased(ImGuiMouseButton.Left)) button.OnReleased();
                     }
-                    ImGui.Dummy(size);
+                    if (hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left)) _pressed = true;
+                    if (_pressed && ImGui.IsMouseDown(ImGuiMouseButton.Left)) button.OnClicked();
+                    if (ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+                    {
+                        if (_pressed && insideFace) button.OnReleased();
+                        _pressed = false;
+                    }
+                    ImGui.Dummy(faceSize);
                 }
             }
             finally { PilotImGui.EndControlCanvas(); }
         }
+        else _pressed = false;
 
         if (!allowInteraction || GaugeDrawCallback is null) return;
         var canvases = GaugeCanvas.AllCanvases;
