@@ -50,7 +50,7 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
         "KSI2ModeAntiTarget"
     ];
 
-    private enum FrameMode { Surface, Orbit, Target }
+    private enum FrameMode { Surface, Orbit, Ovel, Target }
     private enum KsiSurfaceDirection { None, KsiSurfaceNorth, KsiSurfaceSouth }
     private sealed class ButtonVisual
     {
@@ -66,7 +66,10 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
         FlightComputerAttitudeTrackTarget OrbitTarget,
         FlightComputerAttitudeTrackTarget? SurfaceTarget, float X, float Y,
         uint RestTint, uint HoverTint, bool SurfaceOnly = false, bool OrbitOnly = false,
-        KsiSurfaceDirection KsiDirection = KsiSurfaceDirection.None);
+        bool OvelOnly = false,
+        KsiSurfaceDirection KsiDirection = KsiSurfaceDirection.None,
+        FlightComputerAttitudeTrackTarget? OrbtTarget = null,
+        FlightComputerAttitudeTrackTarget? OvelTarget = null);
 
     private readonly record struct ModeButton(string Id, string Name,
         FlightComputerAttitudeTrackTarget Target, float X);
@@ -96,12 +99,12 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
 
     private static readonly DirectionButton[] Buttons =
     [
-        new("KSI2SelectorPrograde", FlightComputerAttitudeTrackTarget.Prograde, FlightComputerAttitudeTrackTarget.Forward, 46, 27, 0xFF3D9900, 0xFF52CC00),
-        new("KSI2SelectorRetrograde", FlightComputerAttitudeTrackTarget.Retrograde, FlightComputerAttitudeTrackTarget.Backward, -46, -27, 0xFF3D9900, 0xFF52CC00),
-        new("KSI2SelectorRadialOut", FlightComputerAttitudeTrackTarget.RadialOut, null, 46, -27, 0xFF8C8C2F, 0xFFBFBF40, OrbitOnly: true),
-        new("KSI2SelectorRadialIn", FlightComputerAttitudeTrackTarget.RadialIn, null, -46, 27, 0xFF8C8C2F, 0xFFBFBF40, OrbitOnly: true),
-        new("KSI2SelectorNormal", FlightComputerAttitudeTrackTarget.Normal, null, 0, 52, 0xFF8C2F8C, 0xFFBF40BF, OrbitOnly: true),
-        new("KSI2SelectorAntiNormal", FlightComputerAttitudeTrackTarget.AntiNormal, null, 0, -52, 0xFF8C2F8C, 0xFFBF40BF, OrbitOnly: true),
+        new("KSI2SelectorPrograde", FlightComputerAttitudeTrackTarget.Prograde, FlightComputerAttitudeTrackTarget.Forward, 46, 27, 0xFF3D9900, 0xFF52CC00, OrbtTarget: FlightComputerAttitudeTrackTarget.Ahead),
+        new("KSI2SelectorRetrograde", FlightComputerAttitudeTrackTarget.Retrograde, FlightComputerAttitudeTrackTarget.Backward, -46, -27, 0xFF3D9900, 0xFF52CC00, OrbtTarget: FlightComputerAttitudeTrackTarget.Behind),
+        new("KSI2SelectorRadialOut", FlightComputerAttitudeTrackTarget.RadialOut, null, 46, -27, 0xFF8C8C2F, 0xFFBFBF40, OrbitOnly: true, OvelTarget: FlightComputerAttitudeTrackTarget.Outward),
+        new("KSI2SelectorRadialIn", FlightComputerAttitudeTrackTarget.RadialIn, null, -46, 27, 0xFF8C8C2F, 0xFFBFBF40, OrbitOnly: true, OvelTarget: FlightComputerAttitudeTrackTarget.Inward),
+        new("KSI2SelectorNormal", FlightComputerAttitudeTrackTarget.Normal, null, 0, 52, 0xFF8C2F8C, 0xFFBF40BF, OvelOnly: true),
+        new("KSI2SelectorAntiNormal", FlightComputerAttitudeTrackTarget.AntiNormal, null, 0, -52, 0xFF8C2F8C, 0xFFBF40BF, OvelOnly: true),
         new("KSI2SelectorUp", FlightComputerAttitudeTrackTarget.RadialOut, FlightComputerAttitudeTrackTarget.Up, 0, 52, 0xFF00ABCC, 0xFF00D6FF, SurfaceOnly: true),
         new("KSI2SelectorDown", FlightComputerAttitudeTrackTarget.RadialIn, FlightComputerAttitudeTrackTarget.Down, 0, -52, 0xFF00ABCC, 0xFF00D6FF, SurfaceOnly: true),
         new("KSI2SelectorNorth", FlightComputerAttitudeTrackTarget.Custom, FlightComputerAttitudeTrackTarget.Custom, -46, 27, 0xFF00ABCC, 0xFF00D6FF, SurfaceOnly: true, KsiDirection: KsiSurfaceDirection.KsiSurfaceNorth),
@@ -251,8 +254,11 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
                     center.X - 32f * scale, center.Y - 37f * scale));
                 var panelMax = NavballPixelAlignment.Snap(new float2(
                     center.X + 32f * scale, center.Y + 35f * scale));
-                DrawImage(draw, panelId, panelMin, panelMax,
-                    directionsEnabled ? 0xFFFFFFFFu : 0xFF999999u);
+                var panelTint = directionsEnabled ? 0xFFFFFFFFu : 0xFF999999u;
+                if (frame == FrameMode.Orbit)
+                    DrawOrbitAxes(draw, panelId, panelMin, panelMax, panelTint);
+                else
+                    DrawImage(draw, panelId, panelMin, panelMax, panelTint);
 
                 var shipTexture = _textures["KSI2DirectionSelectorShip"];
                 _ship.Draw(draw, shipTexture, center, vehicle, scale);
@@ -264,9 +270,14 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
         {
             if (button.SurfaceOnly && frame != FrameMode.Surface) continue;
             if (button.OrbitOnly && frame == FrameMode.Surface) continue;
-            var target = frame == FrameMode.Surface
-                ? button.SurfaceTarget ?? button.OrbitTarget
-                : button.OrbitTarget;
+            if (button.OvelOnly && frame is not (FrameMode.Ovel or FrameMode.Target)) continue;
+            var target = frame switch
+            {
+                FrameMode.Surface => button.SurfaceTarget ?? button.OrbitTarget,
+                FrameMode.Orbit => button.OrbtTarget ?? button.OrbitTarget,
+                FrameMode.Ovel => button.OvelTarget ?? button.OrbitTarget,
+                _ => button.OrbitTarget
+            };
             var ksiDirection = button.KsiDirection;
             var active = ksiDirection == KsiSurfaceDirection.None
                 ? computer.AttitudeMode == FlightComputerAttitudeMode.Auto
@@ -367,7 +378,7 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
                 Vehicle = vehicle,
                 Toggle = false,
                 EnumValue = button.Target == FlightComputerAttitudeTrackTarget.None || active
-                    ? (Enum)vehicle.NavBallData.Frame : button.Target
+                    ? (Enum)GetStabilityHoldFrame(vehicle) : button.Target
             });
         }
         if (_referencePopupOpen)
@@ -653,9 +664,46 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
     private static FrameMode GetFrameMode(Vehicle vehicle) => vehicle.NavBallData.Frame switch
     {
         VehicleReferenceFrame.EnuBody => FrameMode.Surface,
+        VehicleReferenceFrame.VlfBody => FrameMode.Ovel,
+        VehicleReferenceFrame.Lvlh => FrameMode.Orbit,
         VehicleReferenceFrame.Dock when vehicle.Target is not null => FrameMode.Target,
+        VehicleReferenceFrame.EclBody or VehicleReferenceFrame.BurnBody => FrameMode.Ovel,
         _ => FrameMode.Orbit
     };
+
+    private static VehicleReferenceFrame GetStabilityHoldFrame(Vehicle vehicle) =>
+        vehicle.NavBallData.Frame is VehicleReferenceFrame.EclBody
+            or VehicleReferenceFrame.BurnBody
+                ? VehicleReferenceFrame.VlfBody
+                : vehicle.NavBallData.Frame;
+
+    private void DrawOrbitAxes(ImDrawListPtr draw, string id,
+        float2 min, float2 max, uint tint)
+    {
+        if (_textures[id].ImguiTextureRef is not { } texture) return;
+
+        // The registered axis texture has blue and green arms on the left and
+        // right, and a magenta vertical arm. Keep the original pixels by drawing
+        // its two side triangles; the top and bottom triangles are omitted.
+        var middle = (min + max) / 2f;
+        var leftTop = new float2(min.X, min.Y);
+        var leftBottom = new float2(min.X, max.Y);
+        var leftUvTop = new float2(0f, 0f);
+        var leftUvMiddle = new float2(0.5f, 0.5f);
+        var leftUvBottom = new float2(0f, 1f);
+        ImGui.PInvoke.ImDrawList_AddImageQuad(draw.Ptr, texture,
+            &leftTop, &middle, &leftBottom, &leftBottom,
+            &leftUvTop, &leftUvMiddle, &leftUvBottom, &leftUvBottom, tint);
+
+        var rightTop = new float2(max.X, min.Y);
+        var rightBottom = new float2(max.X, max.Y);
+        var rightUvTop = new float2(1f, 0f);
+        var rightUvBottom = new float2(1f, 1f);
+        var rightUvMiddle = new float2(0.5f, 0.5f);
+        ImGui.PInvoke.ImDrawList_AddImageQuad(draw.Ptr, texture,
+            &rightTop, &rightBottom, &middle, &middle,
+            &rightUvTop, &rightUvBottom, &rightUvMiddle, &rightUvMiddle, tint);
+    }
 
     private static double3 GetKsiSurfaceAttitude(KsiSurfaceDirection direction)
     {

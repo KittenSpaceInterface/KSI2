@@ -3,7 +3,7 @@ using KSA;
 
 namespace KSI2;
 
-internal enum SpeedReadoutMode { Surface, Orbit, Target }
+internal enum SpeedReadoutMode { Surface, Orbit, Ovel, Target }
 
 internal readonly record struct SpeedReadoutValue(string Number, string Units);
 
@@ -23,6 +23,8 @@ internal static class SpeedReadoutGeometry
     {
         VehicleReferenceFrame.EnuBody => SpeedReadoutMode.Surface,
         VehicleReferenceFrame.Dock when hasTarget => SpeedReadoutMode.Target,
+        VehicleReferenceFrame.VlfBody or VehicleReferenceFrame.EclBody
+            or VehicleReferenceFrame.BurnBody => SpeedReadoutMode.Ovel,
         _ => SpeedReadoutMode.Orbit
     };
 

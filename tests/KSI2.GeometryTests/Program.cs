@@ -128,8 +128,8 @@ var secondVehicle = new object();
 if (!speedState.Observe(firstVehicle, SpeedReadoutMode.Orbit, false) ||
     speedState.Mode != SpeedReadoutMode.Orbit)
     throw new Exception("initial speed mode did not follow the vehicle frame");
-if (speedState.SelectNext(false) != SpeedReadoutMode.Surface ||
-    speedState.Mode != SpeedReadoutMode.Surface)
+if (speedState.SelectNext(false) != SpeedReadoutMode.Ovel ||
+    speedState.Mode != SpeedReadoutMode.Ovel)
     throw new Exception("speed selector did not cycle without a target");
 if (speedState.Observe(firstVehicle, SpeedReadoutMode.Surface, false) ||
     speedState.Mode != SpeedReadoutMode.Surface)
@@ -138,7 +138,7 @@ if (!speedState.Observe(secondVehicle, SpeedReadoutMode.Target, true) ||
     speedState.Mode != SpeedReadoutMode.Target)
     throw new Exception("speed mode did not follow a new vehicle while editing");
 speedState.Observe(secondVehicle, SpeedReadoutMode.Target, false);
-if (speedState.Mode != SpeedReadoutMode.Orbit)
+if (speedState.Mode != SpeedReadoutMode.Ovel)
     throw new Exception("speed mode retained a lost target while editing");
 
 static void Near(float expected, float actual, string name, float epsilon = 0.001f)

@@ -14,10 +14,10 @@ internal sealed class SpeedModeState
         {
             _vehicle = vehicle;
             _frame = frame;
-            Mode = frame == SpeedReadoutMode.Target && !hasTarget ? SpeedReadoutMode.Orbit : frame;
+            Mode = frame == SpeedReadoutMode.Target && !hasTarget ? SpeedReadoutMode.Ovel : frame;
         }
         if (Mode == SpeedReadoutMode.Target && !hasTarget)
-            Mode = SpeedReadoutMode.Orbit;
+            Mode = SpeedReadoutMode.Ovel;
         return changed;
     }
 
@@ -26,7 +26,8 @@ internal sealed class SpeedModeState
         Mode = Mode switch
         {
             SpeedReadoutMode.Surface => SpeedReadoutMode.Orbit,
-            SpeedReadoutMode.Orbit when hasTarget => SpeedReadoutMode.Target,
+            SpeedReadoutMode.Orbit => SpeedReadoutMode.Ovel,
+            SpeedReadoutMode.Ovel when hasTarget => SpeedReadoutMode.Target,
             _ => SpeedReadoutMode.Surface
         };
         _frame = Mode;
