@@ -108,6 +108,13 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
     }
 
     public void CancelInteraction() { }
+    internal void SetNativeButtonsVisible(bool visible)
+    {
+        if (visible) return;
+        _warpCanvas ??= GaugeCanvas.AllCanvases.FirstOrDefault(canvas => canvas.Id == "KSI2WarpButtons");
+        if (_warpCanvas is not null)
+            _warpCanvas.VisibleInContext = [GaugeVisibilityFlag.Vehicle, GaugeVisibilityFlag.EVA];
+    }
     public void Dispose()
     {
         if (_warpCanvas is not null)
@@ -292,10 +299,10 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
         if (_warpCanvas is null)
         {
             _warpCanvas = GaugeCanvas.AllCanvases.FirstOrDefault(canvas => canvas.Id == "KSI2WarpButtons");
-            if (_warpCanvas is not null)
-                _warpCanvas.VisibleInContext = [GaugeVisibilityFlag.Vehicle];
         }
         if (_warpCanvas is not { CanvasRenderer: not null } canvas) return;
+
+        canvas.VisibleInContext = [GaugeVisibilityFlag.Vehicle];
 
         canvas.Locked = true;
         var viewport = ImGui.GetMainViewport();

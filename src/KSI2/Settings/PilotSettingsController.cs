@@ -8,6 +8,7 @@ namespace KSI2;
 internal sealed class PilotSettingsController : IDisposable
 {
     private readonly PilotUiSettings _settings = PilotUiSettings.Load();
+    private readonly PilotHudLayoutStates _hudLayouts;
     private readonly BlurCrashGuard _blurCrashGuard;
     private static PilotSettingsController? _current;
     private bool _modMenuInstalled;
@@ -16,12 +17,20 @@ internal sealed class PilotSettingsController : IDisposable
     private bool _confirmResetLayout;
     internal PilotUiSettings Settings => _settings;
     internal VerticalSpeedConfigurationState VerticalSpeedConfiguration { get; } = new();
-    internal void Save() => _settings.Save();
+    internal void Save() => _hudLayouts.Save();
+    internal bool HudVisible => _hudLayouts.HudVisible;
+    internal bool SyncKsaLayout()
+    {
+        var selected = KSA.LayoutSaves.Selected;
+        var key = selected is null ? null : $"{selected.Id}|{selected.MetaData.Created.Ticks}";
+        return _hudLayouts.Select(key, selected?.Id == "KSI2 Default");
+    }
     internal bool BlurPanelBackgrounds => _blurCrashGuard.Enabled;
     internal bool OptionsResetAfterKsaVersionChange { get; }
     internal float BlurOpacity => _settings.BlurOpacityTicks / 400f;
     internal PilotSettingsController()
     {
+        _hudLayouts = new PilotHudLayoutStates(_settings, _settings.Save);
         var currentVersion = ReadKsaVersion();
         if (!string.IsNullOrEmpty(_settings.LastKsaVersion)
             && !string.Equals(_settings.LastKsaVersion, currentVersion, StringComparison.Ordinal))

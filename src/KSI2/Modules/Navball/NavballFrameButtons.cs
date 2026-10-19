@@ -21,6 +21,14 @@ internal sealed class NavballFrameButtons : IDisposable
         "MarkEditorWindowDirty", BindingFlags.Instance | BindingFlags.NonPublic);
     private readonly GaugeCanvas?[] _canvases = new GaugeCanvas?[CanvasIds.Length];
 
+    internal void SetVisible(bool visible)
+    {
+        if (visible) return;
+        foreach (var canvas in _canvases)
+            if (canvas is not null)
+                canvas.VisibleInContext = [GaugeVisibilityFlag.Vehicle, GaugeVisibilityFlag.EVA];
+    }
+
     internal void Sync(PilotComponentBounds cluster)
     {
         var viewport = ImGui.GetMainViewport();
@@ -42,10 +50,10 @@ internal sealed class NavballFrameButtons : IDisposable
                 canvas = GaugeCanvas.AllCanvases.FirstOrDefault(item => item.Id == CanvasIds[i]);
                 if (canvas is null) continue;
                 _canvases[i] = canvas;
-                // The XML requires both Vehicle and EVA, which cannot coexist.
-                // Activate the original KSA gauge input and rendering only with KSI2 loaded.
-                canvas.VisibleInContext = [];
             }
+            // The XML requires both Vehicle and EVA, which cannot coexist.
+            // Activate the original KSA gauge input only while this element is visible.
+            canvas.VisibleInContext = [];
             if (canvas.CanvasRenderer is null) continue;
 
             canvas.Locked = true;
