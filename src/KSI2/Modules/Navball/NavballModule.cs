@@ -9,6 +9,7 @@ internal sealed class NavballModule : IPilotUiModule
     private readonly SpeedReadoutRenderer _speedReadout = new();
     private readonly AltitudeReadoutRenderer _altitudeReadout = new();
     private readonly NavballBottomControls _bottomControls = new();
+    private readonly NavballFrameButtons _frameButtons = new();
     public string Id => "navball";
     internal const string SpeedCardId = "speed-card";
     internal const string AltitudeCardId = "altitude-card";
@@ -20,7 +21,11 @@ internal sealed class NavballModule : IPilotUiModule
         _sideDials = new SideDialRenderer(settings);
         Layers =
         [
-            new("navball-cluster", PilotLayerOrder.ClusterBackground, (l,c) => _navballClusterBackground.Draw(l.Component("cluster-background"),c.Blur,c.Opacity)),
+            new("navball-cluster", PilotLayerOrder.ClusterBackground, (l,c) =>
+            {
+                _navballClusterBackground.Draw(l.Component("cluster-background"),c.Blur,c.Opacity);
+                _frameButtons.Sync(l.Component("navball-cluster"));
+            }),
             new("navball-cluster", PilotLayerOrder.NavballSphere, (l,c) => _navballSpike.Draw(l.Component("navball-sphere"),_speedReadout.SelectedMode)),
             new("navball-cluster", PilotLayerOrder.SideDials, (l,c) => _sideDials.Draw(l.Component("side-dials"))),
             new("navball-cluster", PilotLayerOrder.SpeedCard,
@@ -86,6 +91,7 @@ internal sealed class NavballModule : IPilotUiModule
     }
     public void Dispose()
     {
+        _frameButtons.Dispose();
         _navballSpike.Dispose();
     }
 }

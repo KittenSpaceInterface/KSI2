@@ -33,4 +33,243 @@
       </Button>
     </Component>
   </GaugeCanvas>
+  <!-- KSA loads assets without StarMap. Vehicle and EVA together hide these until KSI2 activates them. -->
+  <GaugeCanvas Id="KSI2NavballFrameStar" AlwaysEnabled="true">
+    <VisibleInContext>Vehicle</VisibleInContext>
+    <VisibleInContext>EVA</VisibleInContext>
+    <DisplayName Value="KSI2 Navball STAR" />
+    <AnchorUv X="0" Y="0" Locked="true" />
+    <PivotUv X="0" Y="0" Locked="true" />
+    <OffsetUv X="0.3" Y="0.9" Locked="true" />
+    <SizeUv X="0.044444" Y="0.027778" Locked="true" />
+    <Component Name="Button">
+      <AnchorUv X="0" Y="0" />
+      <PivotUv X="0" Y="0" />
+      <OffsetUv X="0" Y="0" />
+      <SizeUv X="1" Y="1" />
+      <Vertex Id="GaugeInstancedVert" />
+      <Fragment Id="GaugeButtonFace" />
+      <Button X="0" Y="0" Width="1" Height="1" Label="STAR" TextScale="0.33">
+        <TextColor Name="Black" />
+        <NavBallMode Mode="EclBody" />
+        <SoundEvent Action="Pressed" SoundId="LedButtonDown" />
+        <Tooltip Value="Inertial frame of reference fixed to the distant stars." />
+      </Button>
+    </Component>
+  </GaugeCanvas>
+  <GaugeCanvas Id="KSI2NavballFrameSurf" AlwaysEnabled="true">
+    <VisibleInContext>Vehicle</VisibleInContext>
+    <VisibleInContext>EVA</VisibleInContext>
+    <DisplayName Value="KSI2 Navball SURF" />
+    <AnchorUv X="0" Y="0" Locked="true" />
+    <PivotUv X="0" Y="0" Locked="true" />
+    <OffsetUv X="0.3" Y="0.9" Locked="true" />
+    <SizeUv X="0.044444" Y="0.027778" Locked="true" />
+    <Component Name="Button">
+      <AnchorUv X="0" Y="0" />
+      <PivotUv X="0" Y="0" />
+      <OffsetUv X="0" Y="0" />
+      <SizeUv X="1" Y="1" />
+      <Vertex Id="GaugeInstancedVert" />
+      <Fragment Id="GaugeButtonFace" />
+      <Button X="0" Y="0" Width="1" Height="1" Label="SURF" TextScale="0.33">
+        <TextColor Name="Black" />
+        <NavBallMode Mode="EnuBody" />
+        <SoundEvent Action="Pressed" SoundId="LedButtonDown" />
+        <Tooltip Value="Frame of reference fixed to the surface of the planet." />
+      </Button>
+    </Component>
+  </GaugeCanvas>
+  <GaugeCanvas Id="KSI2NavballFrameOrbt" AlwaysEnabled="true">
+    <VisibleInContext>Vehicle</VisibleInContext>
+    <VisibleInContext>EVA</VisibleInContext>
+    <DisplayName Value="KSI2 Navball ORBT" />
+    <AnchorUv X="0" Y="0" Locked="true" />
+    <PivotUv X="0" Y="0" Locked="true" />
+    <OffsetUv X="0.3" Y="0.9" Locked="true" />
+    <SizeUv X="0.044444" Y="0.027778" Locked="true" />
+    <Component Name="Button">
+      <AnchorUv X="0" Y="0" />
+      <PivotUv X="0" Y="0" />
+      <OffsetUv X="0" Y="0" />
+      <SizeUv X="1" Y="1" />
+      <Vertex Id="GaugeInstancedVert" />
+      <Fragment Id="GaugeButtonFace" />
+      <Button X="0" Y="0" Width="1" Height="1" Label="ORBT" TextScale="0.33">
+        <TextColor Name="Black" />
+        <NavBallMode Mode="Lvlh" />
+        <SoundEvent Action="Pressed" SoundId="LedButtonDown" />
+        <Tooltip Value="Frame of reference fixed to the orbital horizon." />
+      </Button>
+    </Component>
+  </GaugeCanvas>
+  <GaugeCanvas Id="KSI2NavballFrameOvel" AlwaysEnabled="true">
+    <VisibleInContext>Vehicle</VisibleInContext>
+    <VisibleInContext>EVA</VisibleInContext>
+    <DisplayName Value="KSI2 Navball OVEL" />
+    <AnchorUv X="0" Y="0" Locked="true" />
+    <PivotUv X="0" Y="0" Locked="true" />
+    <OffsetUv X="0.3" Y="0.9" Locked="true" />
+    <SizeUv X="0.044444" Y="0.027778" Locked="true" />
+    <Component Name="Button">
+      <AnchorUv X="0" Y="0" />
+      <PivotUv X="0" Y="0" />
+      <OffsetUv X="0" Y="0" />
+      <SizeUv X="1" Y="1" />
+      <Vertex Id="GaugeInstancedVert" />
+      <Fragment Id="GaugeButtonFace" />
+      <Button X="0" Y="0" Width="1" Height="1" Label="OVEL" TextScale="0.33">
+        <TextColor Name="Black" />
+        <NavBallMode Mode="VlfBody" />
+        <SoundEvent Action="Pressed" SoundId="LedButtonDown" />
+        <Tooltip Value="Frame of reference fixed to the orbital velocity of your vehicle." />
+      </Button>
+    </Component>
+  </GaugeCanvas>
+  <GaugeCanvas Id="KSI2NavballFrameTgt" AlwaysEnabled="true">
+    <VisibleInContext>Vehicle</VisibleInContext>
+    <VisibleInContext>EVA</VisibleInContext>
+    <DisplayName Value="KSI2 Navball TGT" />
+    <AnchorUv X="0" Y="0" Locked="true" />
+    <PivotUv X="0" Y="0" Locked="true" />
+    <OffsetUv X="0.3" Y="0.9" Locked="true" />
+    <SizeUv X="0.044444" Y="0.027778" Locked="true" />
+    <Component Name="Button">
+      <AnchorUv X="0" Y="0" />
+      <PivotUv X="0" Y="0" />
+      <OffsetUv X="0" Y="0" />
+      <SizeUv X="1" Y="1" />
+      <Vertex Id="GaugeInstancedVert" />
+      <Fragment Id="GaugeButtonFace" />
+      <Button X="0" Y="0" Width="1" Height="1" Label="TGT" TextScale="0.33">
+        <TextColor Name="Black" />
+        <NavBallMode Mode="Dock" />
+        <SoundEvent Action="Pressed" SoundId="LedButtonDown" />
+        <Tooltip Value="Frame of reference fixed to the current target direction." />
+      </Button>
+    </Component>
+  </GaugeCanvas>
+  <GaugeCanvas Id="KSI2NavballFrameBurn" AlwaysEnabled="true">
+    <VisibleInContext>Vehicle</VisibleInContext>
+    <VisibleInContext>EVA</VisibleInContext>
+    <DisplayName Value="KSI2 Navball BURN" />
+    <AnchorUv X="0" Y="0" Locked="true" />
+    <PivotUv X="0" Y="0" Locked="true" />
+    <OffsetUv X="0.3" Y="0.9" Locked="true" />
+    <SizeUv X="0.044444" Y="0.027778" Locked="true" />
+    <Component Name="Button">
+      <AnchorUv X="0" Y="0" />
+      <PivotUv X="0" Y="0" />
+      <OffsetUv X="0" Y="0" />
+      <SizeUv X="1" Y="1" />
+      <Vertex Id="GaugeInstancedVert" />
+      <Fragment Id="GaugeButtonFace" />
+      <Button X="0" Y="0" Width="1" Height="1" Label="BURN" TextScale="0.33">
+        <TextColor Name="Black" />
+        <NavBallMode Mode="BurnBody" />
+        <SoundEvent Action="Pressed" SoundId="LedButtonDown" />
+        <Tooltip Value="Frame of reference fixed to the next planned burn direction." />
+      </Button>
+    </Component>
+  </GaugeCanvas>
+  <!-- KSA's PitchYawRoll canvas, with its lower speed row removed. -->
+  <GaugeCanvas Id="KSI2AttitudeIndicators" AlwaysEnabled="true">
+    <VisibleInContext>Vehicle</VisibleInContext>
+    <VisibleInContext>EVA</VisibleInContext>
+    <DisplayName Value="KSI2 Attitude Indicators" />
+    <OffsetUv X="0.017778" Y="0.017778" />
+    <AnchorUv X="0" Y="0.01" />
+    <PivotUv X="0" Y="0" />
+    <SizeUv X="0.16" Y="0.0533335" Locked="true" />
+    <Component Name="Back">
+      <AnchorUv X="0.5" Y="0.5" />
+      <PivotUv X="0.5" Y="0.5" />
+      <SizeUv X="1" Y="1" Locked="true" />
+      <Vertex Id="GaugeInstancedVert" />
+      <Fragment Id="GaugeColor" />
+      <Box X="0" Y="0" Z="1" W="0.96">
+        <Color R="0.07" G="0.07" B="0.07" />
+        <Rounding Value="0.25" />
+      </Box>
+    </Component>
+    <Component Name="Labels">
+      <AnchorUv X="0.5" Y="0.5" />
+      <PivotUv X="0.5" Y="0.5" />
+      <SizeUv X="1" Y="1" Locked="true" />
+      <Vertex Id="GaugeInstancedVert" />
+      <Fragment Id="GaugeLabel" />
+      <Label X="0.0" Y="0.0" Z="0.33" W="0.4" Label="PITCH" TextScale="0.5" />
+      <Label X="0.33" Y="0.0" Z="0.66" W="0.4" Label="YAW" TextScale="0.5" />
+      <Label X="0.66" Y="0.0" Z="1" W="0.4" Label="ROLL" TextScale="0.5" />
+    </Component>
+    <Component Name="Pitch">
+      <AnchorUv X="0.166" Y="0.65" />
+      <PivotUv X="0.5" Y="0.5" />
+      <SizeUv X="0.27" Y="0.5" Locked="true" />
+      <Vertex Id="GaugeInstancedVert" />
+      <Fragment Id="GaugeDigit" />
+      <Tooltip Value="Pitch" />
+      <Digit X="0.0" Y="0.0" Z="0.33" W="1" TextScale="0.68">
+        <TextColor Name="White" />
+        <BackColor Name="DarkGrey" />
+        <Value Bind="Pitch" Index="0" />
+      </Digit>
+      <Digit X="0.333" Y="0.0" Z="0.66" W="1" TextScale="0.68">
+        <TextColor Name="White" />
+        <BackColor Name="DarkGrey" />
+        <Value Bind="Pitch" Index="1" />
+      </Digit>
+      <Digit X="0.666" Y="0.0" Z="1" W="1" TextScale="0.68">
+        <TextColor Name="White" />
+        <BackColor Name="DarkGrey" />
+        <Value Bind="Pitch" Index="2" />
+      </Digit>
+    </Component>
+    <Component Name="Yaw">
+      <AnchorUv X="0.495" Y="0.65" />
+      <PivotUv X="0.5" Y="0.5" />
+      <SizeUv X="0.27" Y="0.5" Locked="true" />
+      <Vertex Id="GaugeInstancedVert" />
+      <Fragment Id="GaugeDigit" />
+      <Tooltip Value="Yaw" />
+      <Digit X="0.0" Y="0.0" Z="0.33" W="1" TextScale="0.68">
+        <TextColor Name="White" />
+        <BackColor Name="DarkGrey" />
+        <Value Bind="Yaw" Index="0" />
+      </Digit>
+      <Digit X="0.333" Y="0.0" Z="0.66" W="1" TextScale="0.68">
+        <TextColor Name="White" />
+        <BackColor Name="DarkGrey" />
+        <Value Bind="Yaw" Index="1" />
+      </Digit>
+      <Digit X="0.666" Y="0.0" Z="1" W="1" TextScale="0.68">
+        <TextColor Name="White" />
+        <BackColor Name="DarkGrey" />
+        <Value Bind="Yaw" Index="2" />
+      </Digit>
+    </Component>
+    <Component Name="Roll">
+      <AnchorUv X="0.834" Y="0.65" />
+      <PivotUv X="0.5" Y="0.5" />
+      <SizeUv X="0.27" Y="0.5" Locked="true" />
+      <Vertex Id="GaugeInstancedVert" />
+      <Fragment Id="GaugeDigit" />
+      <Tooltip Value="Roll" />
+      <Digit X="0.0" Y="0.0" Z="0.33" W="1" TextScale="0.68">
+        <TextColor Name="White" />
+        <BackColor Name="DarkGrey" />
+        <Value Bind="Roll" Index="0" />
+      </Digit>
+      <Digit X="0.333" Y="0.0" Z="0.66" W="1" TextScale="0.68">
+        <TextColor Name="White" />
+        <BackColor Name="DarkGrey" />
+        <Value Bind="Roll" Index="1" />
+      </Digit>
+      <Digit X="0.666" Y="0.0" Z="1" W="1" TextScale="0.68">
+        <TextColor Name="White" />
+        <BackColor Name="DarkGrey" />
+        <Value Bind="Roll" Index="2" />
+      </Digit>
+    </Component>
+  </GaugeCanvas>
 </Assets>

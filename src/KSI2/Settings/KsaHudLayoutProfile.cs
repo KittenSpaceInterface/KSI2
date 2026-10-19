@@ -1,4 +1,5 @@
 using System.Reflection;
+using Brutal.Numerics;
 using KSA;
 
 namespace KSI2;
@@ -6,12 +7,16 @@ namespace KSI2;
 internal static class KsaHudLayoutProfile
 {
     private const string ProfileName = "KSI2 Default";
-    private const int ProfileRevision = 10;
+    private const int ProfileRevision = 14;
+    private const float EngineRightPixels = 13f;
+    private const float EngineUpPixels = 55f;
     private const float RightMarginUv = 0.017778f;
     private const float PortraitTopOffsetUv = -0.04f;
     private const float PortraitTopOffsetPixels = 75f;
     private static readonly MethodInfo? MarkEditorWindowDirty = typeof(GaugeCanvas).GetMethod(
         "MarkEditorWindowDirty", BindingFlags.Instance | BindingFlags.NonPublic);
+    private static readonly FieldInfo? CanvasDefaults = typeof(GaugeCanvas).GetField(
+        "_defaults", BindingFlags.Instance | BindingFlags.NonPublic);
     private static readonly FieldInfo? LastAutoSizedTileCount = typeof(CrewPortraitPanel).GetField(
         "_lastAutoSizedTileCount", BindingFlags.Static | BindingFlags.NonPublic);
     private static readonly MethodInfo? ResizeCanvasToOccupantCount = typeof(CrewPortraitPanel).GetMethod(
@@ -22,6 +27,12 @@ internal static class KsaHudLayoutProfile
     private static float _lastPortraitWidth;
     private static float _lastPortraitHeight;
     private static bool _portraitAutoSizeFailed;
+    private static LayoutSave? _lastEngineLayout;
+    private static object? _lastEngineOffsetReference;
+    private static int _lastEngineWindowHeight;
+    private static double _lastEngineAppliedX;
+    private static double _lastEngineAppliedY;
+    private static bool _engineUsesDefaultOffset;
     private static string ProfileRevisionPath => Path.Combine(PilotUiSettings.ModDirectory,
         "ksi2.hud-layout-profile-revision");
 
@@ -30,12 +41,20 @@ internal static class KsaHudLayoutProfile
         var profileDirectory = Path.Combine(LayoutSaves.SaveFolderPath, ProfileName);
         if (Directory.Exists(profileDirectory))
         {
-            // Migrate the profile once so existing installs get the portrait
-            // placement while later user edits remain untouched.
+            // Migrate once so existing installs get the KSI2 HUD defaults;
+            // later user edits remain untouched.
             var existing = LayoutSave.FromDirectory(profileDirectory);
-            if (existing is not null && GetProfileRevision() < ProfileRevision
-                && TryUpdateProfile(existing))
+            var previousRevision = GetProfileRevision();
+            if (existing is not null && previousRevision < ProfileRevision
+                && TryUpdateProfile(existing, previousRevision))
+            {
+                if (LayoutSave.FromDirectory(profileDirectory) is { } migrated)
+                {
+                    LayoutSaves.SetDefault(migrated);
+                    migrated.Apply();
+                }
                 WriteProfileRevision();
+            }
             return;
         }
 
@@ -56,6 +75,16 @@ internal static class KsaHudLayoutProfile
         }
         navballLayout.Enabled = false;
         telemetry.Enabled = false;
+        if (!PositionEngineControl(layout))
+        {
+            Console.Error.WriteLine("KSI2: could not position KSA's engine control in the HUD layout.");
+            return;
+        }
+        if (!ConfigureAttitudeLayout(layout))
+        {
+            Console.Error.WriteLine("KSI2: could not create the HUD layout because its attitude canvases were not found.");
+            return;
+        }
         if (!PositionPortraitAtRightMargin(layout))
         {
             Console.Error.WriteLine("KSI2: could not create the HUD layout because KSA's portrait canvas was not found.");
@@ -72,7 +101,7 @@ internal static class KsaHudLayoutProfile
 
             var metadata = new HudLayoutMetaData(ProfileName, stagingDirectory)
             {
-                IsDefault = false,
+                IsDefault = true,
                 HudKey = InputAction.None.ToString()
             };
             metadata.Write();
@@ -85,12 +114,15 @@ internal static class KsaHudLayoutProfile
             }
 
             Directory.Move(stagingDirectory, profileDirectory);
-            if (LayoutSave.FromDirectory(profileDirectory) is null)
+            var registered = LayoutSave.FromDirectory(profileDirectory);
+            if (registered is null)
                 Console.Error.WriteLine("KSI2: KSA did not register the generated 'KSI2 Default' HUD layout.");
             else
             {
+                LayoutSaves.SetDefault(registered);
+                registered.Apply();
                 WriteProfileRevision();
-                Console.WriteLine("KSI2: added the 'KSI2 Default' KSA HUD layout (navball and telemetry hidden, portrait at the right margin).");
+                Console.WriteLine("KSI2: added the 'KSI2 Default' KSA HUD layout (engine control offset from its built-in position, navball and telemetry hidden, portrait at the right margin).");
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
@@ -177,7 +209,61 @@ internal static class KsaHudLayoutProfile
         MarkEditorWindowDirty?.Invoke(portrait, null);
     }
 
-    private static bool TryUpdateProfile(LayoutSave save)
+    internal static void UpdateEnginePosition()
+    {
+        var selected = LayoutSaves.Selected;
+        if (selected?.Id != ProfileName)
+        {
+            _lastEngineLayout = selected;
+            _lastEngineOffsetReference = null;
+            return;
+        }
+
+        var engine = GaugeCanvas.AllCanvases.FirstOrDefault(canvas => canvas.Id == "EngineControl");
+        var windowHeight = KSA.Program.GetWindow().Size.Y;
+        if (engine is null || windowHeight <= 0 || !TryGetEngineDefaults(engine, out var offset, out _))
+            return;
+
+        if (!ReferenceEquals(selected, _lastEngineLayout)
+            || !ReferenceEquals(engine.Offset, _lastEngineOffsetReference))
+        {
+            _lastEngineLayout = selected;
+            _lastEngineOffsetReference = engine.Offset;
+            _lastEngineWindowHeight = 0;
+            var deltaX = engine.Offset.X - offset.X;
+            var deltaY = engine.Offset.Y - offset.Y;
+            _engineUsesDefaultOffset = deltaX > 0.00001
+                && Math.Abs(deltaY + EngineUpPixels * deltaX / EngineRightPixels) < 0.0001;
+            _lastEngineAppliedX = engine.Offset.X;
+            _lastEngineAppliedY = engine.Offset.Y;
+        }
+        if (!_engineUsesDefaultOffset || _lastEngineWindowHeight == windowHeight) return;
+        // Stop automatic positioning after the user moves the canvas in KSA's editor.
+        if (_lastEngineWindowHeight != 0
+            && (Math.Abs(engine.Offset.X - _lastEngineAppliedX) > 0.00001
+                || Math.Abs(engine.Offset.Y - _lastEngineAppliedY) > 0.00001))
+        {
+            _engineUsesDefaultOffset = false;
+            return;
+        }
+
+        var targetX = offset.X + EngineRightPixels / windowHeight;
+        var targetY = offset.Y - EngineUpPixels / windowHeight;
+        _lastEngineWindowHeight = windowHeight;
+        _lastEngineAppliedX = targetX;
+        _lastEngineAppliedY = targetY;
+        if (Math.Abs(engine.Offset.X - targetX) < 0.00001
+            && Math.Abs(engine.Offset.Y - targetY) < 0.00001) return;
+
+        engine.Offset.X = targetX;
+        engine.Offset.Y = targetY;
+        engine.Offset.OnDataLoad(KSA.Mod.Empty);
+        engine.CacheTransform();
+        engine.Update(engine.GetPixelsMin(), engine.GetPixelsSize(), resetWindow: true);
+        MarkEditorWindowDirty?.Invoke(engine, null);
+    }
+
+    private static bool TryUpdateProfile(LayoutSave save, int previousRevision)
     {
         var navball = save.LayoutData.Canvases.FirstOrDefault(canvas => canvas.Id == "Navball");
         var portrait = save.LayoutData.Canvases.FirstOrDefault(canvas => canvas.Id == "CrewPortraits");
@@ -187,6 +273,8 @@ internal static class KsaHudLayoutProfile
 
         navball.Enabled = false;
         telemetry.Enabled = false;
+        if (previousRevision < 13 && !ConfigureAttitudeLayout(save.LayoutData)) return false;
+        if (!PositionEngineControl(save.LayoutData)) return false;
         var stagingDirectory = Path.Combine(save.Directory.Parent!.FullName,
             $".{ProfileName}.{Guid.NewGuid():N}.tmp");
         try
@@ -196,7 +284,7 @@ internal static class KsaHudLayoutProfile
             File.Move(Path.Combine(stagingDirectory, "layout.xml"),
                 Path.Combine(save.Directory.FullName, "layout.xml"), overwrite: true);
             LayoutSave.FromDirectory(save.Directory.FullName);
-            Console.WriteLine("KSI2: updated the 'KSI2 Default' KSA HUD layout (navball and telemetry hidden, portrait at the right margin).");
+            Console.WriteLine("KSI2: updated the 'KSI2 Default' KSA HUD layout (engine control offset from its built-in position, navball and telemetry hidden, portrait at the right margin).");
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
@@ -216,6 +304,69 @@ internal static class KsaHudLayoutProfile
                 }
             }
         }
+    }
+
+    private static bool ConfigureAttitudeLayout(SerializedLayout layout)
+    {
+        var original = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "PitchYawRoll");
+        var sequence = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "Sequence");
+        var replacement = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "KSI2AttitudeIndicators");
+        if (original is null || sequence is null) return false;
+
+        if (replacement is null)
+        {
+            var replacementCanvas = GaugeCanvas.AllCanvases.FirstOrDefault(
+                canvas => canvas.Id == "KSI2AttitudeIndicators");
+            if (replacementCanvas is null) return false;
+            replacement = replacementCanvas.ExportLayout();
+            replacement.Offset.X = original.Offset.X;
+            replacement.Offset.Y = original.Offset.Y;
+            replacement.Size.X = original.Size.X;
+            replacement.Size.Y = original.Size.Y * 0.5;
+            layout.Canvases.Add(replacement);
+        }
+
+        original.Enabled = false;
+        replacement.Enabled = true;
+        sequence.Offset.Y -= original.Size.Y * 0.5;
+        return true;
+    }
+
+    private static bool PositionEngineControl(SerializedLayout layout)
+    {
+        var engine = GaugeCanvas.AllCanvases.FirstOrDefault(canvas => canvas.Id == "EngineControl");
+        var windowHeight = KSA.Program.GetWindow().Size.Y;
+        if (engine is null || windowHeight <= 0 || !TryGetEngineDefaults(engine, out var offset, out var size))
+            return false;
+
+        var saved = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "EngineControl");
+        if (saved is null)
+        {
+            saved = engine.ExportLayout();
+            layout.Canvases.Add(saved);
+        }
+        saved.Offset.X = offset.X + EngineRightPixels / windowHeight;
+        saved.Offset.Y = offset.Y - EngineUpPixels / windowHeight;
+        saved.Size.X = size.X;
+        saved.Size.Y = size.Y;
+        saved.Enabled = true;
+        return true;
+    }
+
+    private static bool TryGetEngineDefaults(GaugeCanvas engine, out float2 offset, out float2 size)
+    {
+        offset = default;
+        size = default;
+        var defaults = CanvasDefaults?.GetValue(engine);
+        if (defaults is null) return false;
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+        var type = defaults.GetType();
+        if (type.GetField("OffsetUv", flags)?.GetValue(defaults) is not float2 authoredOffset
+            || type.GetField("SizeUv", flags)?.GetValue(defaults) is not float2 authoredSize)
+            return false;
+        offset = authoredOffset;
+        size = authoredSize;
+        return true;
     }
 
     private static bool PositionPortraitAtRightMargin(SerializedLayout layout)
