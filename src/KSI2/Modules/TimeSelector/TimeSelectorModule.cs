@@ -67,10 +67,10 @@ internal sealed class TimeSelectorModule : IPilotUiModule
 
     public void Initialize(TextureRegistry assets) => _renderer.Initialize(assets);
     public void CancelInteraction() => _renderer.CancelInteraction();
-    public void Dispose() { }
+    public void Dispose() => _renderer.Dispose();
 }
 
-internal sealed unsafe class TimeSelectorRenderer
+internal sealed unsafe class TimeSelectorRenderer : IDisposable
 {
     // ImGui packs colors as ABGR. Keep the normal frame with the adjacent KSI2 panels.
     private const uint PanelColor = NavballClusterLayout.BackgroundColor;
@@ -90,6 +90,7 @@ internal sealed unsafe class TimeSelectorRenderer
     private const uint ActiveColor = 0xFF52CC00u;
     private const uint InactiveColor = 0xFF998680u;
     private readonly Dictionary<string, TextureReference> _textures = new(StringComparer.Ordinal);
+    private readonly TimeSoiWarpButton _soiWarpButton = new();
     private readonly float[] _rateHighlights = new float[TimeSelectorGeometry.RateCount];
     private readonly bool[] _rateHovered = new bool[TimeSelectorGeometry.RateCount];
     private double _lastRunningSpeed = 1d;
@@ -120,6 +121,8 @@ internal sealed unsafe class TimeSelectorRenderer
         foreach (var id in Assets)
             assets.Register(id, texture => _textures[id] = texture);
     }
+
+    public void Dispose() => _soiWarpButton.Dispose();
 
     internal void CancelInteraction()
     {
@@ -224,6 +227,7 @@ internal sealed unsafe class TimeSelectorRenderer
             modeTextLeft, modeTextRight.X, Snap(0, 7).Y, modeTextRight.Y,
             10f, scale, false, TimeColor, alignCenter: true, snapPosition: true);
         DrawTime();
+        _soiWarpButton.Draw(bounds, allowInteraction);
         if (paused)
             DrawPausedSignpost();
         else if (Math.Abs(simulationSpeed - 1d) > 0.001d)
