@@ -43,6 +43,9 @@ internal static class PilotImGui
     {
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, float2.Zero);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
+        // Small HUD controls must keep their requested size instead of ImGui's
+        // default minimum window size, which overlaps neighboring controls.
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowMinSize, float2.Zero);
         ImGui.SetNextWindowViewport(ImGui.GetMainViewport().ID);
         ImGui.SetNextWindowPos(position, ImGuiCond.Always);
         ImGui.SetNextWindowSize(size, ImGuiCond.Always);
@@ -60,6 +63,6 @@ internal static class PilotImGui
     internal static void EndControlCanvas()
     {
         ImGui.End();
-        ImGui.PopStyleVar(2);
+        ImGui.PopStyleVar(3);
     }
 }

@@ -307,10 +307,15 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
         canvas.Locked = true;
         var viewport = ImGui.GetMainViewport();
         if (viewport.Size.Y <= 0) return;
+        var windowHeight = KSA.Program.GetWindow().Size.Y;
+        if (windowHeight <= 0) return;
+        var gaugeScale = GameSettings.GetGaugeScale();
+        if (gaugeScale <= 0) return;
         var target = NavballPixelAlignment.Snap(new float2(
             bounds.Position.X + 207f * bounds.Scale - viewport.Pos.X,
             bounds.Position.Y + 7f * bounds.Scale - viewport.Pos.Y));
-        var size = new float2(28f * bounds.Scale, 33f * bounds.Scale);
+        var size = new float2(NavballPixelAlignment.SnapSize(28f * bounds.Scale),
+            NavballPixelAlignment.SnapSize(33f * bounds.Scale));
         var current = canvas.GetPixelsMin();
         var currentSize = canvas.GetPixelsSize();
         if (MathF.Abs(current.X - target.X) > 0.5f ||
@@ -318,13 +323,14 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
             MathF.Abs(currentSize.X - size.X) > 0.5f ||
             MathF.Abs(currentSize.Y - size.Y) > 0.5f)
         {
-            canvas.Offset.X = target.X / viewport.Size.Y;
-            canvas.Offset.Y = target.Y / viewport.Size.Y;
-            canvas.Size.X = size.X / viewport.Size.Y;
-            canvas.Size.Y = size.Y / viewport.Size.Y;
+            canvas.Offset.X = target.X / windowHeight;
+            canvas.Offset.Y = target.Y / windowHeight;
+            canvas.Size.X = size.X / (windowHeight * gaugeScale);
+            canvas.Size.Y = size.Y / (windowHeight * gaugeScale);
             canvas.Offset.OnDataLoad(KSA.Mod.Empty);
             canvas.Size.OnDataLoad(KSA.Mod.Empty);
             canvas.CacheTransform();
+            canvas.Update(canvas.GetPixelsMin(), canvas.GetPixelsSize(), resetWindow: true);
             MarkEditorWindowDirty?.Invoke(canvas, null);
         }
 
