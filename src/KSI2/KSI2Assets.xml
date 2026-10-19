@@ -272,4 +272,546 @@
       </Digit>
     </Component>
   </GaugeCanvas>
+  <!-- KSA's EngineControl canvas, with its original components and controls. -->
+  <GaugeCanvas Id="KSI2EngineControl">
+        <VisibleInContext>Engines</VisibleInContext>
+        <VisibleInContext>Vehicle</VisibleInContext>
+        <VisibleInContext>EVA</VisibleInContext>
+        <AnchorUv X="0.5" Y="1" Locked="true" />
+        <PivotUv X="0.5" Y="1" Locked="true" />
+        <OffsetUv X="0.002382" Y="-0.017778" />
+        <SizeUv X="0.273636" Y="0.105422" Locked="true" />
+        <Component Name="Back">
+            <AnchorUv X="0" Y="0" />
+            <PivotUv X="0" Y="0" />
+            <OffsetUv X="0" Y="0" />
+            <SizeUv X="1" Y="1" />
+            <Fragment Id="GaugeColor">
+                <IncludePaths />
+                <TempIncludePaths />
+            </Fragment>
+            <Vertex Id="GaugeInstancedVert">
+                <IncludePaths />
+                <TempIncludePaths />
+            </Vertex>
+            <Box X="0" Y="0" Width="1" Height="1">
+                <Color Name="AlmostBlack" />
+                <Rounding Value="0.25" />
+            </Box>
+        </Component>
+        <Component Name="Screws">
+            <AnchorUv X="0" Y="0" />
+            <PivotUv X="0" Y="0" />
+            <OffsetUv X="0" Y="0" />
+            <SizeUv X="1" Y="1" />
+            <Fragment Id="GaugeScrew">
+                <IncludePaths />
+                <TempIncludePaths />
+            </Fragment>
+            <Vertex Id="GaugeInstancedVert">
+                <IncludePaths />
+                <TempIncludePaths />
+            </Vertex>
+            <Rect X="0.016216" Y="0.03" Width="0.056757" Height="0.111" />
+            <Rect X="0.932432" Y="0.86" Width="0.056757" Height="0.111" />
+            <Rect X="0.016216" Y="0.86" Width="0.056757" Height="0.111" />
+            <Rect X="0.932432" Y="0.03" Width="0.056757" Height="0.111" />
+        </Component>
+        <Component Name="Labels">
+            <AnchorUv X="0" Y="0" />
+            <PivotUv X="0" Y="0" />
+            <OffsetUv X="0" Y="0" />
+            <SizeUv X="1" Y="1" />
+            <Fragment Id="GaugeLabel" Path="Shaders/GaugeLabel.frag">
+                <Label X="0" Y="0" Z="0" W="0" TextScale="1">
+                    <TextColor R="1" G="1" B="1" />
+                    <BackColor R="0.07" G="0.07" B="0.07" A="0" />
+                    <DisabledColor R="0.1" G="0.1" B="0.1" />
+                </Label>
+            </Fragment>
+            <Vertex Id="GaugeInstancedVert" Path="Shaders/GaugeInstanced.vert">
+                <IncludePaths />
+                <TempIncludePaths />
+            </Vertex>
+            <Label X="0.078108" Y="0.063" Width="0.186216" Height="0.132" TextScale="0.9" Label="ENGINE">
+                <TextColor Name="White" />
+                <BackColor Name="AlmostBlack" A="0" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+            </Label>
+            <Label X="0.340541" Y="0.102" Width="0.222838" Height="0.104" TextScale="0.9" Label="THROTTLE">
+                <TextColor Name="White" />
+                <BackColor Name="AlmostBlack" A="0" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+            </Label>
+            <Label X="0.692703" Y="0.102" Width="0.165811" Height="0.104" TextScale="0.9" Label="DELTAV">
+                <TextColor Name="White" />
+                <BackColor Name="AlmostBlack" A="0" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+            </Label>
+            <Label X="0.40473" Y="0.535" Width="0.093649" Height="0.104" TextScale="0.9" Label="TWR">
+                <TextColor Name="White" />
+                <BackColor Name="AlmostBlack" A="0" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+            </Label>
+            <Label X="0.633649" Y="0.535" Width="0.283919" Height="0.104" TextScale="0.9" Label="PROPELLANT">
+                <TextColor Name="White" />
+                <BackColor Name="AlmostBlack" A="0" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+            </Label>
+            <Label X="0.788378" Y="0.35" Width="0.040676" Height="0.124" TextScale="1" Label=".">
+                <TextColor Name="White" />
+                <BackColor Name="AlmostBlack" A="0" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+            </Label>
+            <Label X="0.453514" Y="0.77" Width="0.040676" Height="0.124" TextScale="1" Label=".">
+                <TextColor Name="White" />
+                <BackColor Name="AlmostBlack" A="0" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+            </Label>
+        </Component>
+        <Component Name="Buttons">
+            <AnchorUv X="0" Y="0" />
+            <PivotUv X="0" Y="0" />
+            <OffsetUv X="0.022951" Y="0.233" />
+            <SizeUv X="0.291568" Y="0.667" />
+            <Fragment Id="GaugeButtonFace" Path="Shaders/GaugeButtonFace.frag">
+                <Button X="0" Y="0" Z="0" W="0" TextScale="1">
+                    <TextColor R="1" G="1" B="1" />
+                    <BackColor R="0.07" G="0.07" B="0.07" A="0" />
+                    <DisabledColor R="0.1" G="0.1" B="0.1" />
+                    <IdleColor R="0.175" G="0.18" B="0.19" />
+                    <ActiveColor R="0.13" G="0.92" B="0.27" />
+                    <Unbound />
+                </Button>
+            </Fragment>
+            <Vertex Id="GaugeInstancedVert" Path="Shaders/GaugeInstanced.vert">
+                <IncludePaths />
+                <TempIncludePaths />
+            </Vertex>
+            <Button X="0" Y="0" Width="1" Height="0.4994" TextScale="0.33" Label="IGNITE">
+                <Tooltip Value="Ignites the engines." />
+                <TextColor Name="Black" />
+                <BackColor Name="AlmostBlack" A="0" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <IdleColor R="0.175" G="0.18" B="0.19" />
+                <ActiveColor Name="Green" />
+                <SoundEvent SoundId="LedButtonDown" Action="Pressed" />
+                <FlightComputer Action="VehicleEngine" Value="MainIgnite" Toggle="false" />
+            </Button>
+            <Button X="0" Y="0.5" Width="1" Height="0.4994" TextScale="0.33" Label="SHUTDN">
+                <Tooltip Value="Shuts down the engines." />
+                <TextColor Name="Black" />
+                <BackColor Name="AlmostBlack" A="0" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <IdleColor R="0.175" G="0.18" B="0.19" />
+                <ActiveColor Name="Red" />
+                <SoundEvent SoundId="LedButtonDown" Action="Pressed" />
+                <FlightComputer Action="VehicleEngine" Value="MainShutdown" Toggle="false" />
+            </Button>
+        </Component>
+        <Component Name="ThrottleDigits">
+            <AnchorUv X="0" Y="0" />
+            <PivotUv X="0" Y="0" />
+            <OffsetUv X="0.371081" Y="0.243" />
+            <SizeUv X="0.15473" Y="0.218" Locked="true" />
+            <Tooltip Value="Current engine throttle setting in percent." />
+            <Fragment Id="GaugeDigit">
+                <IncludePaths />
+                <TempIncludePaths />
+            </Fragment>
+            <Vertex Id="GaugeInstancedVert">
+                <IncludePaths />
+                <TempIncludePaths />
+            </Vertex>
+            <Digit X="0" Y="0" Width="0.33" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="Throttle" Index="0" />
+            </Digit>
+            <Digit X="0.33" Y="0" Width="0.33" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="Throttle" Index="1" />
+            </Digit>
+            <Digit X="0.66" Y="0" Width="0.33" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="Throttle" Index="2" />
+            </Digit>
+        </Component>
+        <Component Name="ThrustWeightRatioDigits">
+            <AnchorUv X="0" Y="0" />
+            <PivotUv X="0" Y="0" />
+            <OffsetUv X="0.360946" Y="0.673" />
+            <SizeUv X="0.175" Y="0.218" Locked="true" />
+            <Tooltip Value="Thrust-to-weight ratio on the surface of the currently-orbited body." />
+            <Fragment Id="GaugeDigit">
+                <IncludePaths />
+                <TempIncludePaths />
+            </Fragment>
+            <Vertex Id="GaugeInstancedVert">
+                <IncludePaths />
+                <TempIncludePaths />
+            </Vertex>
+            <Digit X="0" Y="0" Width="0.29" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="ThrustWeightRatio" Index="0" />
+            </Digit>
+            <Digit X="0.29" Y="0" Width="0.29" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="ThrustWeightRatio" Index="1" />
+            </Digit>
+            <Digit X="0.71" Y="0" Width="0.29" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="ThrustWeightRatio" Index="2" />
+            </Digit>
+        </Component>
+        <Component Name="DeltaVDigits">
+            <AnchorUv X="0" Y="0" />
+            <PivotUv X="0" Y="0" />
+            <OffsetUv X="0.598108" Y="0.243" />
+            <SizeUv X="0.356216" Y="0.218" Locked="true" />
+            <Fragment Id="GaugeDigit">
+                <IncludePaths />
+                <TempIncludePaths />
+            </Fragment>
+            <Vertex Id="GaugeInstancedVert">
+                <IncludePaths />
+                <TempIncludePaths />
+            </Vertex>
+            <Digit X="0" Y="0" Width="0.14" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="DeltaV" Index="0" />
+            </Digit>
+            <Digit X="0.14" Y="0" Width="0.14" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="DeltaV" Index="1" />
+            </Digit>
+            <Digit X="0.28" Y="0" Width="0.14" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="DeltaV" Index="2" />
+            </Digit>
+            <Digit X="0.42" Y="0" Width="0.14" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="DeltaV" Index="3" />
+            </Digit>
+            <Digit X="0.62" Y="0" Width="0.14" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="DeltaV" Index="4" />
+            </Digit>
+            <Digit X="0.76" Y="0" Width="0.24" Height="1" TextScale="0.68">
+                <TextColor Name="DarkGrey" />
+                <BackColor Name="White" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <DistanceUnit Bind="DeltaV" Index="5" />
+            </Digit>
+        </Component>
+        <Component Name="PropellantDigits">
+            <AnchorUv X="0" Y="0" />
+            <PivotUv X="0" Y="0" />
+            <OffsetUv X="0.608378" Y="0.673" />
+            <SizeUv X="0.335811" Y="0.218" Locked="true" />
+            <Tooltip Value="Propellant Mass" />
+            <Fragment Id="GaugeDigit">
+            </Fragment>
+            <Vertex Id="GaugeInstancedVert">
+            </Vertex>
+            <Digit X="0" Y="0" Width="0.15" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="PropellantMass" Index="0" />
+            </Digit>
+            <Digit X="0.15" Y="0" Width="0.15" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="PropellantMass" Index="1" />
+            </Digit>
+            <Digit X="0.3" Y="0" Width="0.15" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="PropellantMass" Index="2" />
+            </Digit>
+            <Digit X="0.45" Y="0" Width="0.15" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="PropellantMass" Index="3" />
+            </Digit>
+            <Digit X="0.6" Y="0" Width="0.15" Height="1" TextScale="0.68">
+                <TextColor Name="White" />
+                <BackColor Name="DarkGrey" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Value Bind="PropellantMass" Index="4" />
+            </Digit>
+            <Digit X="0.75" Y="0" Width="0.25" Height="1" TextScale="0.68">
+                <TextColor Name="DarkGrey" />
+                <BackColor Name="White" A="1" />
+                <DisabledColor R="0.1" G="0.1" B="0.1" />
+                <BorderColor Name="Black" A="1" />
+                <Unit Bind="PropellantMass" Index="5" Type="G" />
+            </Digit>
+        </Component>
+        <DisplayName Value="KSI2 Engine Control" />
+    </GaugeCanvas>
+  <!-- KSA's AutopilotSettings canvas, with its original components and controls. -->
+  <GaugeCanvas Id="KSI2AutopilotSettings">
+		<VisibleInContext>Vehicle</VisibleInContext>
+        <VisibleInContext>EVA</VisibleInContext>
+		<DisplayName Value="KSI2 Autopilot Settings" />
+		<SizeUv X="0.719467" Y="0.222222" Locked="true" />
+        <AnchorUv X="1" Y="1" />
+        <PivotUv X="1" Y="1" />
+        <OffsetUv X="-0.017778" Y="-0.017778" />
+		<Component Name="Back">
+			<AnchorUv X="0" Y="0" />
+			<PivotUv X="0" Y="0" />
+			<OffsetUv X="0" Y="0" />
+			<SizeUv X="1.0" Y="1.0" />
+			<Vertex Id="GaugeInstancedVert" />
+			<Fragment Id="GaugeColor" />
+			<Box X="0" Y="0" Z="1" W="1">
+				<Color R="0.07" G="0.07" B="0.07" />
+				<Rounding Value="0.125" />
+			</Box>
+		</Component>
+		<Component Name="Screws">
+			<AnchorUv X="0" Y="0" />
+			<PivotUv X="0" Y="0" />
+			<OffsetUv X="0" Y="0" />
+			<SizeUv X="1.0" Y="1.0" />
+			<Vertex Id="GaugeInstancedVert" />
+			<Fragment Id="GaugeScrew" />
+			<Rect X="0.011" Y="0.030" Width="0.020" Height="0.052" />
+			<Rect X="0.970" Y="0.915" Width="0.020" Height="0.052" />
+			<Rect X="0.011" Y="0.915" Width="0.020" Height="0.052" />
+			<Rect X="0.970" Y="0.030" Width="0.020" Height="0.052" />
+		</Component>
+		<Component Name="Labels">
+			<AnchorUv X="0" Y="0" />
+			<PivotUv X="0" Y="0" />
+			<OffsetUv X="0" Y="0" />
+			<SizeUv X="1.0" Y="1.0" />
+			<Vertex Id="GaugeInstancedVert" />
+			<Fragment Id="GaugeLabel" />
+			<!-- COLUMN 0 -->
+			<Label X="0.064" Y="0.014" Width="0.1182" Height="0.16" Label="ACTIVATE" TextScale="0.34" />
+			<Label X="0.064" Y="0.32" Width="0.1182" Height="0.16" Label="SURF" TextScale="0.34" />
+
+			<!-- COLUMN 1 -->
+			<Label X="0.240" Y="0.014" Width="0.265" Height="0.16" Label="MANUAL THRUST" TextScale="0.34" />
+			<Label X="0.313" Y="0.32" Width="0.1182" Height="0.16" Label="ORBT" TextScale="0.34" />
+
+			<!-- COLUMN 2 (0.12 * 3) == 0.36 -->
+			<Label X="0.619" Y="0.014" Width="0.1182" Height="0.16" Label="PROFILE" TextScale="0.34" />
+			<Label X="0.619" Y="0.32" Width="0.1182" Height="0.16" Label="OVEL" TextScale="0.34" />
+
+			<!-- COLUMN 3 -->
+			<Label X="0.870" Y="0.014" Width="0.1182" Height="0.16" Label="ROLL" TextScale="0.34" />
+		</Component>
+		<Component Name="Buttons">
+			<Vertex Id="GaugeInstancedVert" />
+			<Fragment Id="GaugeButtonFace" />
+			<AnchorUv X="0" Y="0" />
+			<PivotUv X="0" Y="0" />
+			<OffsetUv X="0" Y="0" />
+			<SizeUv X="1.0" Y="1.0" />
+
+			<!-- COLUMN 0 -->
+			<Button X="0.006" Y="0.16" Width="0.1180" Height="0.16" Label="MANUAL" TextScale="0.34">
+				<TextColor Name="Black" />
+				<ActiveColor Name="Yellow" />
+				<FlightComputer Action="FlightComputerAttitudeMode" Value="Manual" />
+				<Tooltip Value="Disable autopilot control" />
+			</Button>
+			<Button X="0.121" Y="0.16" Width="0.1180" Height="0.16" Label="RATE" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="VehicleReferenceFrame" Value="EclBody" />
+				<Tooltip Value="Hold rotation rate in the STAR frame of reference. NOTE: RCS alone cannot perfectly cancel all rotation." />
+			</Button>
+
+			<!-- SURF -->
+			<Button X="0.006" Y="0.48" Width="0.1180" Height="0.16" Label="FWD" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeTrackTarget" Value="Forward" />
+				<Tooltip Value="Surface Forward. Nose points toward surface-relative velocity. Up points away from the surface." />
+			</Button>
+			<Button X="0.121" Y="0.48" Width="0.1180" Height="0.16" Label="UP" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeTrackTarget" Value="Up" />
+				<Tooltip Value="Surface Upward. Nose points away from the surface. Up points towards surface-relative velocity." />
+			</Button>
+			<Button X="0.006" Y="0.64" Width="0.1180" Height="0.16" Label="BACK" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeTrackTarget" Value="Backward" />
+				<Tooltip Value="Surface Backward. Nose points away from surface-relative velocity. Up points towards the surface." />
+			</Button>
+			<Button X="0.121" Y="0.64" Width="0.1180" Height="0.16" Label="DOWN" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeTrackTarget" Value="Down" />
+				<Tooltip Value="Surface Downward. Nose points towards the surface. Up points away from the surface-relative velocity." />
+
+			</Button>
+			<Button X="0.064" Y="0.8" Width="0.1180" Height="0.16" Label="RATE" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="VehicleReferenceFrame" Value="EnuBody" />
+				<Tooltip Value="Hold rotation rate in the SURF frame of reference. NOTE: RCS alone cannot perfectly cancel all rotation." />
+			</Button>
+
+			<!-- COLUMN 1 -->
+			<Button X="0.255" Y="0.16" Width="0.1180" Height="0.16" Label="DIRECT" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerManualThrustMode" Value="Direct" />
+				<Tooltip Value="Use maximum continuous RCS thrust for manual control." />
+			</Button>
+			<Button X="0.370" Y="0.16" Width="0.1180" Height="0.16" Label="PULSE" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerManualThrustMode" Value="Pulse" />
+				<Tooltip Value="Use fine-grained pulses of RCS thrust for manual control." />
+			</Button>
+
+			<!-- ORBT -->
+			<!-- ROW 0 -->
+			<Button X="0.255" Y="0.48" Width="0.1180" Height="0.16" Label="AHEAD" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeTrackTarget" Value="Ahead" />
+				<Tooltip Value="Orbital Horizon Ahead. Nose points towards approaching orbital horizon. Up points away from the surface." />
+			</Button>
+			<Button X="0.370" Y="0.48" Width="0.1180" Height="0.16" Label="RAD OUT" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeTrackTarget" Value="RadialOut" />
+				<Tooltip Value="Radial Outward. Nose points away from the surface. Up points towards receding orbital horizon." />
+			</Button>
+			<!-- ROW 1 -->
+			<Button X="0.255" Y="0.64" Width="0.1180" Height="0.16" Label="BEHIND" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeTrackTarget" Value="Behind" />
+				<Tooltip Value="Orbital Horizon Behind. Nose points towards receding orbital horizon. Up points away from the surface." />
+			</Button>
+			<Button X="0.370" Y="0.64" Width="0.1180" Height="0.16" Label="RAD IN" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeTrackTarget" Value="RadialIn" />
+				<Tooltip Value="Radial Inward. Nose towards the surface. Up points towards approaching orbital horizon." />
+			</Button>
+			<!-- ROW 2 -->
+			<Button X="0.313" Y="0.8" Width="0.1180" Height="0.16" Label="RATE" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="VehicleReferenceFrame" Value="Lvlh" />
+				<Tooltip Value="Hold rotation rate in the ORBT frame of reference. NOTE: RCS alone cannot perfectly cancel all rotation." />
+			</Button>
+
+			<!-- COLUMN 2 -->
+			<!-- ROW 0 -->
+			<Button X="0.504" Y="0.16" Width="0.1180" Height="0.16" Label="STRICT" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeProfile" Value="Strict" />
+				<Tooltip Value="Strict Attitude Control Profile. High speed, accuracy, and propellant burn." />
+			</Button>
+			<Button X="0.619" Y="0.16" Width="0.1180" Height="0.16" Label="BALNCE" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeProfile" Value="Balanced" />
+				<Tooltip Value="Balanced Attitude Control Profile. Medium speed, accuracy, and propellant burn." />
+			</Button>
+			<Button X="0.734" Y="0.16" Width="0.1180" Height="0.16" Label="RELAX" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeProfile" Value="Relaxed" />
+				<Tooltip Value="Relaxed Attitude Control Profile. Low speed, accuracy, and propellant burn." />
+			</Button>
+			<!-- ROW 1 -->
+			<Button X="0.504" Y="0.48" Width="0.1180" Height="0.16" Label="PROGDE" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeTrackTarget" Value="Prograde" />
+				<Tooltip Value="Prograde. Nose points towards orbital velocity. Up points outside orbit." />
+			</Button>
+			<Button X="0.619" Y="0.48" Width="0.1180" Height="0.16" Label="NORMAL" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeTrackTarget" Value="Normal" />
+				<Tooltip Value="Orbit Normal. Nose points towards angular momentum vector. Up points outside orbit." />
+			</Button>
+			<Button X="0.734" Y="0.48" Width="0.1180" Height="0.16" Label="OUT" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeTrackTarget" Value="Outward" />
+				<Tooltip Value="Velocity Outward. Nose points towards outside orbit. Up points away from orbital velocity." />
+			</Button>
+			<!-- ROW 2 -->
+			<Button X="0.504" Y="0.64" Width="0.1180" Height="0.16" Label="RETRO" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeTrackTarget" Value="Retrograde" />
+				<Tooltip Value="Retrograde. Nose points away from orbital velocity. Up points outside orbit." />
+			</Button>
+			<Button X="0.619" Y="0.64" Width="0.1180" Height="0.16" Label="ANTINML" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeTrackTarget" Value="AntiNormal" />
+				<Tooltip Value="Orbit Anti-Normal. Nose points away from angular momentum vector. Up points outside orbit." />
+			</Button>
+			<Button X="0.734" Y="0.64" Width="0.1180" Height="0.16" Label="IN" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerAttitudeTrackTarget" Value="Inward" />
+				<Tooltip Value="Velocity Inward. Nose points towards inside orbit. Up points towards from orbital velocity." />
+			</Button>
+			<!-- ROW 3 -->
+			<Button X="0.619" Y="0.8" Width="0.1180" Height="0.16" Label="RATE" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="VehicleReferenceFrame" Value="VlfBody" />
+				<Tooltip Value="Hold rotation rate in the OVEL frame of reference. NOTE: RCS alone cannot perfectly cancel all rotation." />
+			</Button>
+
+			<!-- COLUMN 3 -->
+			<Button X="0.868" Y="0.16" Width="0.1180" Height="0.16" Label="ANY" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerRollMode" Value="Decoupled" />
+				<Tooltip Value="Null out roll rate only." />
+			</Button>
+			<!-- ROW 1 -->
+			<Button X="0.868" Y="0.32" Width="0.1180" Height="0.16" Label="NORM" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerRollMode" Value="Up" />
+				<Tooltip Value="Point the up vector according to the selected target." />
+			</Button>
+			<!-- ROW 2 -->
+			<Button X="0.868" Y="0.48" Width="0.1180" Height="0.16" Label="INVERT" TextScale="0.34">
+				<TextColor Name="Black" />
+				<FlightComputer Action="FlightComputerRollMode" Value="Down" />
+				<Tooltip Value="Point the up vector opposite of the selected target." />
+			</Button>
+		</Component>
+	</GaugeCanvas>
 </Assets>
