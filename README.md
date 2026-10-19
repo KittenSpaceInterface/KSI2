@@ -60,10 +60,11 @@ code, shaders, optional libraries, and LCD font.
 The throttle gauge follows the controlled vehicle's manual throttle. Drag its
 handle to change throttle through KSA's input actions at KSA's normal rate.
 The **Experimental** setting **Mouse throttle control** enables direct control;
-it is off by default. The settings window lets you adjust the interface scale
-and position.
-**Edit layout** lets you drag the interface as a group. Settings are saved
-beside the mod.
+it is off by default. **Layout Configuration** lets you move, scale, and hide
+individual KSI2 elements or drag them as a group. KSI2 hides its flight HUD
+when KSA's built-in Default layout is selected. Each saved KSA HUD layout keeps
+its own KSI2 element state; a newly saved layout inherits the KSI2 state then
+on screen. These settings are saved beside the mod.
 
 **Improved altitude dial** is off by default. When enabled, the right dial
 uses 1 km between marks below 1 Mm (for example, `003`, `004`, `005` around

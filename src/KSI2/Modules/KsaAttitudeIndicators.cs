@@ -3,18 +3,21 @@ using KSA;
 namespace KSI2;
 
 // KSA owns each canvas position and enabled state through its saved HUD layout.
-// Only expose the shortened canvas while the KSI2 profile is selected.
+// A layout copied from KSI2 Default keeps the shortened canvas active too.
 internal sealed class KsaAttitudeIndicators : IDisposable
 {
     private const string ReplacementId = "KSI2AttitudeIndicators";
     private GaugeCanvas? _replacement;
+    private GaugeCanvas? _original;
 
     internal void Sync()
     {
         _replacement ??= GaugeCanvas.AllCanvases.FirstOrDefault(canvas => canvas.Id == ReplacementId);
-        if (_replacement is null) return;
+        _original ??= GaugeCanvas.AllCanvases.FirstOrDefault(canvas => canvas.Id == "PitchYawRoll");
+        if (_replacement is null || _original is null) return;
 
-        _replacement.VisibleInContext = LayoutSaves.Selected?.Id == "KSI2 Default"
+        _replacement.VisibleInContext = LayoutSaves.Selected is not null
+            && !_original.Enabled && _replacement.Enabled
             ? []
             : [GaugeVisibilityFlag.Vehicle, GaugeVisibilityFlag.EVA];
     }

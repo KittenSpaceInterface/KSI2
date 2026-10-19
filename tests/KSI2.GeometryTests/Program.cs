@@ -13,6 +13,33 @@ PilotLayoutDefinition[] definitions =
 PilotFrameLayout Resolve(float x, float y, float width, float height, PilotUiSettings settings) =>
     PilotFrameLayout.Resolve(x, y, width, height, settings, definitions);
 
+var layoutSettings = new PilotUiSettings();
+var layoutStates = new PilotHudLayoutStates(layoutSettings, () => true);
+layoutStates.Select("KSI2 Default|1", isKsi2Default: true);
+layoutSettings.ElementLayouts["atmosphere"] = new() { Visible = false, X = 0.25f, PositionSet = true };
+layoutStates.Save();
+layoutStates.Select(null);
+if (layoutStates.HudVisible) throw new Exception("KSA default did not hide the KSI2 HUD");
+layoutStates.Select("Copy|2");
+if (PilotUiSettings.EditableElements.Any(layoutSettings.ElementVisible))
+    throw new Exception("a layout saved from KSA default did not inherit hidden KSI2 elements");
+layoutStates.Select("KSI2 Default|1", isKsi2Default: true);
+if (!layoutStates.HudVisible || layoutSettings.ElementVisible("atmosphere")
+    || !layoutSettings.ElementVisible("throttle")
+    || layoutSettings.ElementLayouts["atmosphere"].X != 0.25f)
+    throw new Exception("KSI2 Default did not restore its saved element state");
+layoutStates.Select("Copy from KSI2|3");
+if (layoutSettings.ElementVisible("atmosphere") || !layoutSettings.ElementVisible("throttle"))
+    throw new Exception("a new layout did not inherit the active KSI2 state");
+layoutSettings.ElementLayouts["atmosphere"].Visible = true;
+layoutStates.Save();
+layoutStates.Select("KSI2 Default|1", isKsi2Default: true);
+if (layoutSettings.ElementVisible("atmosphere"))
+    throw new Exception("editing a copied layout changed KSI2 Default");
+var persistedLayoutStates = PilotUiSettings.Parse(JsonSerializer.Serialize(layoutSettings));
+if (!persistedLayoutStates.HudLayoutStates.ContainsKey("Copy from KSI2|3"))
+    throw new Exception("KSI2 layout states did not survive settings serialization");
+
 var visibilitySettings = PilotUiSettings.Parse("{\"elementLayouts\":{\"atmosphere\":{\"visible\":false}}}");
 if (visibilitySettings.ElementVisible("atmosphere") || !visibilitySettings.ElementVisible("throttle"))
     throw new Exception("element visibility did not restore with the saved layout");

@@ -46,7 +46,22 @@ internal sealed class PilotUiController : IDisposable
         if (ImGui.GetCurrentContext().IsNull()) return;
         _settings.Initialize();
         _settings.Tick();
+        if (_settings.SyncKsaLayout())
+        {
+            foreach (var module in _modules) module.CancelInteraction();
+            _editor.Cancel();
+        }
+        _navball.SetNativeButtonsVisible(_settings.HudVisible
+            && _settings.Settings.ElementVisible("navball-cluster"));
+        _orbitalReadout.SetNativeButtonsVisible(_settings.HudVisible
+            && _settings.Settings.ElementVisible("orbital-readout"));
         _panelBlur?.BeginFrame();
+        if (!_settings.HudVisible)
+        {
+            foreach (var module in _modules) module.CancelInteraction();
+            _editor.Cancel();
+            return;
+        }
         if (!KSA.Program.DrawUI || KSA.Program.ControlledVehicle is not { IsDisposed: false })
         {
             foreach (var module in _modules) module.CancelInteraction();

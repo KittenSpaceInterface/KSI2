@@ -89,6 +89,7 @@ internal sealed class NavballModule : IPilotUiModule
         _altitudeReadout.CancelInteraction();
         _bottomControls.ResetInput();
     }
+    internal void SetNativeButtonsVisible(bool visible) => _frameButtons.SetVisible(visible);
     public void Dispose()
     {
         _frameButtons.Dispose();
