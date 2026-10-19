@@ -7,8 +7,10 @@ namespace KSI2;
 internal static class KsaHudLayoutProfile
 {
     private const string ProfileName = "KSI2 Default";
-    private const int ProfileRevision = 19;
+    private const int ProfileRevision = 23;
     private const double EngineWidthAfterRcsRemoval = 0.74;
+    private const double AutopilotHeightAfterGroupRemoval = 0.08;
+    private const double TargetAutopilotGapPixels = 8;
     private const float EngineRightPixels = 13f;
     private const float EngineUpPixels = 55f;
     private const float RightMarginUv = 0.017778f;
@@ -88,6 +90,12 @@ internal static class KsaHudLayoutProfile
             Console.Error.WriteLine("KSI2: could not create the HUD layout because its engine or autopilot canvases were not found.");
             return;
         }
+        var windowSize = KSA.Program.GetWindow().Size;
+        if (!ArrangeEngineTargetAndBurn(layout, windowSize.X, windowSize.Y))
+        {
+            Console.Error.WriteLine("KSI2: could not position the copied engine, Target, and Burn panels.");
+            return;
+        }
         if (!ConfigureAttitudeLayout(layout))
         {
             Console.Error.WriteLine("KSI2: could not create the HUD layout because its attitude canvases were not found.");
@@ -130,7 +138,7 @@ internal static class KsaHudLayoutProfile
                 LayoutSaves.SetDefault(registered);
                 registered.Apply();
                 WriteProfileRevision();
-                Console.WriteLine("KSI2: added the 'KSI2 Default' KSA HUD layout (engine and autopilot originals replaced by aligned copies).");
+                Console.WriteLine("KSI2: added the 'KSI2 Default' KSA HUD layout (engine and autopilot originals replaced by copies).");
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
@@ -285,6 +293,12 @@ internal static class KsaHudLayoutProfile
         gameTime.Enabled = false;
         if (previousRevision < 13 && !ConfigureAttitudeLayout(save.LayoutData)) return false;
         if (!ConfigureNativeGaugeCopies(save.LayoutData, alignCopies: previousRevision < 18)) return false;
+        var autopilotCopy = save.LayoutData.Canvases.FirstOrDefault(
+            canvas => canvas.Id == "KSI2AutopilotSettings");
+        if (autopilotCopy is null) return false;
+        autopilotCopy.Size.Y = AutopilotHeightAfterGroupRemoval;
+        if (previousRevision < 21 && !PositionTargetAndBurnAboveAutopilot(save.LayoutData,
+            KSA.Program.GetWindow().Size.Y)) return false;
         if (previousRevision >= 18 && previousRevision < 19)
         {
             var engineCopy = save.LayoutData.Canvases.FirstOrDefault(canvas => canvas.Id == "KSI2EngineControl");
@@ -292,6 +306,18 @@ internal static class KsaHudLayoutProfile
             var previousWidth = engineCopy.Size.X;
             engineCopy.Size.X = previousWidth * EngineWidthAfterRcsRemoval;
             engineCopy.Offset.X += (previousWidth - engineCopy.Size.X) * 0.5;
+        }
+        if (previousRevision < 22)
+        {
+            var windowSize = KSA.Program.GetWindow().Size;
+            if (!PositionEngineCopyBesideTarget(save.LayoutData, windowSize.X, windowSize.Y))
+                return false;
+        }
+        if (previousRevision < 23)
+        {
+            var windowSize = KSA.Program.GetWindow().Size;
+            if (!ArrangeEngineTargetAndBurn(save.LayoutData, windowSize.X, windowSize.Y))
+                return false;
         }
         var stagingDirectory = Path.Combine(save.Directory.Parent!.FullName,
             $".{ProfileName}.{Guid.NewGuid():N}.tmp");
@@ -356,6 +382,76 @@ internal static class KsaHudLayoutProfile
             && ConfigureNativeGaugeCopy(layout, "AutopilotSettings", "KSI2AutopilotSettings", alignCopies);
     }
 
+    private static bool PositionTargetAndBurnAboveAutopilot(SerializedLayout layout, int screenHeight)
+    {
+        var target = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "RendezvousControl");
+        var burn = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "BurnControl");
+        var autopilot = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "KSI2AutopilotSettings");
+        if (target is null || burn is null || autopilot is null || screenHeight <= 0)
+            return false;
+
+        // These canvases are bottom anchored. Their bottom edge is therefore
+        // the screen bottom plus Offset.Y; match Target to the autopilot top.
+        var targetOffsetY = autopilot.Offset.Y - autopilot.Size.Y
+            - TargetAutopilotGapPixels / screenHeight;
+        var movement = targetOffsetY - target.Offset.Y;
+        target.Offset.Y = targetOffsetY;
+        burn.Offset.Y += movement;
+        return true;
+    }
+
+    private static bool ArrangeEngineTargetAndBurn(SerializedLayout layout,
+        int screenWidth, int screenHeight)
+    {
+        var engine = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "KSI2EngineControl");
+        var burn = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "BurnControl");
+        var target = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "RendezvousControl");
+        var autopilot = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "KSI2AutopilotSettings");
+        if (engine is null || burn is null || target is null || autopilot is null
+            || screenWidth <= 0 || screenHeight <= 0 || engine.Size.X <= 0 || engine.Size.Y <= 0)
+            return false;
+
+        var engineAspectRatio = engine.Size.X / engine.Size.Y;
+        engine.Size.X = burn.Size.X;
+        engine.Size.Y = engine.Size.X / engineAspectRatio;
+
+        var gapUv = TargetAutopilotGapPixels / screenHeight;
+        var screenWidthUv = (double)screenWidth / screenHeight;
+
+        // Engine Control and Burn Control share the standard right margin.
+        // The Engine Control canvas is center anchored horizontally.
+        engine.Offset.X = screenWidthUv * 0.5 - RightMarginUv - engine.Size.X * 0.5;
+        engine.Offset.Y = autopilot.Offset.Y - autopilot.Size.Y - gapUv;
+        burn.Offset.X = -RightMarginUv;
+        burn.Offset.Y = engine.Offset.Y - engine.Size.Y - gapUv;
+
+        // Rendezvous Control sits beside Engine Control and remains 8 px
+        // above the autopilot panel.
+        target.Offset.X = -RightMarginUv - engine.Size.X - gapUv;
+        target.Offset.Y = autopilot.Offset.Y - autopilot.Size.Y - gapUv;
+        return true;
+    }
+
+    private static bool PositionEngineCopyBesideTarget(SerializedLayout layout,
+        int screenWidth, int screenHeight)
+    {
+        var engine = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "KSI2EngineControl");
+        var target = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "RendezvousControl");
+        var autopilot = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "KSI2AutopilotSettings");
+        if (engine is null || target is null || autopilot is null
+            || screenWidth <= 0 || screenHeight <= 0)
+            return false;
+
+        // The engine copy is centered horizontally and bottom anchored. Target
+        // and Autopilot are right and bottom anchored, respectively.
+        var screenWidthUv = (double)screenWidth / screenHeight;
+        engine.Offset.X = screenWidthUv * 0.5 + target.Offset.X - target.Size.X
+            - TargetAutopilotGapPixels / screenHeight - engine.Size.X * 0.5;
+        engine.Offset.Y = autopilot.Offset.Y - autopilot.Size.Y
+            - TargetAutopilotGapPixels / screenHeight;
+        return true;
+    }
+
     private static bool ConfigureNativeGaugeCopy(SerializedLayout layout, string originalId,
         string replacementId, bool alignCopy)
     {
@@ -374,7 +470,8 @@ internal static class KsaHudLayoutProfile
         {
             replacement.Size.X = original.Size.X * (originalId == "EngineControl"
                 ? EngineWidthAfterRcsRemoval : 1);
-            replacement.Size.Y = original.Size.Y;
+            replacement.Size.Y = originalId == "AutopilotSettings"
+                ? AutopilotHeightAfterGroupRemoval : original.Size.Y;
             replacement.Offset.X = original.Offset.X + (original.Size.X - replacement.Size.X) * 0.5;
             replacement.Offset.Y = original.Offset.Y;
         }
