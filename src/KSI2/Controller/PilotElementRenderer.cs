@@ -66,12 +66,14 @@ internal sealed class PilotElementRenderer
 
     internal void UpdateInput(PilotFrameLayout layout, PilotInteractionMode mode)
     {
-        foreach (var element in InDrawOrder()) element.UpdateInput(layout, mode);
+        foreach (var element in InDrawOrder())
+            if (_settings.ElementVisible(element.Id)) element.UpdateInput(layout, mode);
     }
 
     internal void Draw(ImGuiViewportPtr viewport, PilotFrameLayout layout, PilotRenderContext context)
     {
         // OrderBy is stable. EditableElements defines the tie order for equal layers.
-        foreach (var element in InDrawOrder()) element.Draw(viewport, layout, context);
+        foreach (var element in InDrawOrder())
+            if (_settings.ElementVisible(element.Id)) element.Draw(viewport, layout, context);
     }
 }

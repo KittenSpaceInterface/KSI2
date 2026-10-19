@@ -13,6 +13,13 @@ PilotLayoutDefinition[] definitions =
 PilotFrameLayout Resolve(float x, float y, float width, float height, PilotUiSettings settings) =>
     PilotFrameLayout.Resolve(x, y, width, height, settings, definitions);
 
+var visibilitySettings = PilotUiSettings.Parse("{\"elementLayouts\":{\"atmosphere\":{\"visible\":false}}}");
+if (visibilitySettings.ElementVisible("atmosphere") || !visibilitySettings.ElementVisible("throttle"))
+    throw new Exception("element visibility did not restore with the saved layout");
+visibilitySettings.Reset();
+if (!visibilitySettings.ElementVisible("atmosphere"))
+    throw new Exception("reset did not show hidden elements again");
+
 // KSP2's time bar starts at 59, has eleven 20-unit hit areas, and leaves two
 // units between them. The final control must end before the 310-unit frame.
 if (TimeSelectorGeometry.RateCount != 11 || TimeSelectorGeometry.RateLeft(0) != 59 ||
