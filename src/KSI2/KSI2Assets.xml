@@ -33,6 +33,31 @@
       </Button>
     </Component>
   </GaugeCanvas>
+  <!-- Hidden until KSI2 places it over the time control. -->
+  <GaugeCanvas Id="KSI2SoiWarpButton" AlwaysEnabled="true">
+    <VisibleInContext>Vehicle</VisibleInContext>
+    <VisibleInContext>EVA</VisibleInContext>
+    <DisplayName Value="KSI2 SOI Warp Button" />
+    <AnchorUv X="0" Y="0" Locked="true" />
+    <PivotUv X="0" Y="0" Locked="true" />
+    <OffsetUv X="0.3" Y="0.9" Locked="true" />
+    <SizeUv X="0.027778" Y="0.016667" Locked="true" />
+    <Component Name="Button">
+      <AnchorUv X="0" Y="0" />
+      <PivotUv X="0" Y="0" />
+      <OffsetUv X="0" Y="0" />
+      <SizeUv X="1" Y="1" />
+      <Fragment Id="GaugeButtonFace" />
+      <Vertex Id="GaugeInstancedVert" />
+      <Button X="0" Y="0" Width="1" Height="1" TextScale="0.32" Label="WARP">
+        <TextColor Name="Black" />
+        <ActiveColor Name="Green" />
+        <Tooltip Value="Warp to the next SOI change." />
+        <WarpTo Event="NextPatchEvent" />
+        <SoundEvent SoundId="LedButtonDown" Action="Pressed" />
+      </Button>
+    </Component>
+  </GaugeCanvas>
   <!-- KSA loads assets without StarMap. Vehicle and EVA together hide these until KSI2 activates them. -->
   <GaugeCanvas Id="KSI2NavballFrameStar" AlwaysEnabled="true">
     <VisibleInContext>Vehicle</VisibleInContext>
