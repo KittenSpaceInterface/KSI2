@@ -48,12 +48,7 @@ internal sealed unsafe class SpeedReadoutRenderer
         var vehicle = KSA.Program.ControlledVehicle;
         if (vehicle is null || vehicle.IsDisposed) return;
         var frame = vehicle.NavBallData.Frame;
-        var frameMode = frame switch
-        {
-            VehicleReferenceFrame.EnuBody => SpeedReadoutMode.Surface,
-            VehicleReferenceFrame.Dock => SpeedReadoutMode.Target,
-            _ => SpeedReadoutMode.Orbit
-        };
+        var frameMode = SpeedReadoutGeometry.Mode(frame, vehicle.Target is not null);
         if (_modeState.Observe(vehicle, frameMode, vehicle.Target is not null))
             _lastValue = null;
     }
@@ -89,6 +84,7 @@ internal sealed unsafe class SpeedReadoutRenderer
                 vehicle.SetNavBallFrame(selected switch
                 {
                     SpeedReadoutMode.Surface => VehicleReferenceFrame.EnuBody,
+                    SpeedReadoutMode.Ovel => VehicleReferenceFrame.VlfBody,
                     SpeedReadoutMode.Target => VehicleReferenceFrame.Dock,
                     _ => VehicleReferenceFrame.Lvlh
                 });
@@ -141,6 +137,7 @@ internal sealed unsafe class SpeedReadoutRenderer
         var (label, icon) = mode switch
         {
             SpeedReadoutMode.Surface => ("SURFACE", "KSI2SpeedSurface"),
+            SpeedReadoutMode.Ovel => ("OVEL", "KSI2SpeedOrbit"),
             SpeedReadoutMode.Target => ("TARGET", "KSI2SpeedTarget"),
             _ => ("ORBIT", "KSI2SpeedOrbit")
         };

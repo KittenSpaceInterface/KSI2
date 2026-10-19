@@ -62,6 +62,7 @@ internal sealed unsafe class NavballSpike
         var texture = mode switch
         {
             SpeedReadoutMode.Orbit => _orbitTexture ?? _surfaceTexture,
+            SpeedReadoutMode.Ovel => _orbitTexture ?? _surfaceTexture,
             SpeedReadoutMode.Target => _targetModeTexture ?? _surfaceTexture,
             _ => _surfaceTexture
         };
