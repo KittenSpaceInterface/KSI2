@@ -7,7 +7,7 @@ namespace KSI2;
 internal static class KsaHudLayoutProfile
 {
     private const string ProfileName = "KSI2 Default";
-    private const int ProfileRevision = 14;
+    private const int ProfileRevision = 15;
     private const float EngineRightPixels = 13f;
     private const float EngineUpPixels = 55f;
     private const float RightMarginUv = 0.017778f;
@@ -68,13 +68,15 @@ internal static class KsaHudLayoutProfile
         var layout = SerializedLayout.CaptureCurrent();
         var navballLayout = layout.Canvases.FirstOrDefault(canvas => canvas.Id == navball.Id);
         var telemetry = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "Telemetry");
-        if (navballLayout is null || telemetry is null)
+        var gameTime = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "GameTime");
+        if (navballLayout is null || telemetry is null || gameTime is null)
         {
-            Console.Error.WriteLine("KSI2: could not create the HUD layout because KSA did not export its Navball or Telemetry canvas.");
+            Console.Error.WriteLine("KSI2: could not create the HUD layout because KSA did not export its Navball, Telemetry, or Game Time canvas.");
             return;
         }
         navballLayout.Enabled = false;
         telemetry.Enabled = false;
+        gameTime.Enabled = false;
         if (!PositionEngineControl(layout))
         {
             Console.Error.WriteLine("KSI2: could not position KSA's engine control in the HUD layout.");
@@ -268,11 +270,13 @@ internal static class KsaHudLayoutProfile
         var navball = save.LayoutData.Canvases.FirstOrDefault(canvas => canvas.Id == "Navball");
         var portrait = save.LayoutData.Canvases.FirstOrDefault(canvas => canvas.Id == "CrewPortraits");
         var telemetry = save.LayoutData.Canvases.FirstOrDefault(canvas => canvas.Id == "Telemetry");
-        if (navball is null || portrait is null || telemetry is null
+        var gameTime = save.LayoutData.Canvases.FirstOrDefault(canvas => canvas.Id == "GameTime");
+        if (navball is null || portrait is null || telemetry is null || gameTime is null
             || !PositionPortraitAtRightMargin(save.LayoutData)) return false;
 
         navball.Enabled = false;
         telemetry.Enabled = false;
+        gameTime.Enabled = false;
         if (previousRevision < 13 && !ConfigureAttitudeLayout(save.LayoutData)) return false;
         if (!PositionEngineControl(save.LayoutData)) return false;
         var stagingDirectory = Path.Combine(save.Directory.Parent!.FullName,
@@ -284,7 +288,7 @@ internal static class KsaHudLayoutProfile
             File.Move(Path.Combine(stagingDirectory, "layout.xml"),
                 Path.Combine(save.Directory.FullName, "layout.xml"), overwrite: true);
             LayoutSave.FromDirectory(save.Directory.FullName);
-            Console.WriteLine("KSI2: updated the 'KSI2 Default' KSA HUD layout (engine control offset from its built-in position, navball and telemetry hidden, portrait at the right margin).");
+            Console.WriteLine("KSI2: updated the 'KSI2 Default' KSA HUD layout (Game Time, navball, and telemetry hidden; engine control and portrait positioned).");
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
