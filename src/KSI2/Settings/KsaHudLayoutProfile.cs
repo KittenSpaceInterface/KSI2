@@ -7,7 +7,8 @@ namespace KSI2;
 internal static class KsaHudLayoutProfile
 {
     private const string ProfileName = "KSI2 Default";
-    private const int ProfileRevision = 15;
+    private const int ProfileRevision = 19;
+    private const double EngineWidthAfterRcsRemoval = 0.74;
     private const float EngineRightPixels = 13f;
     private const float EngineUpPixels = 55f;
     private const float RightMarginUv = 0.017778f;
@@ -82,6 +83,11 @@ internal static class KsaHudLayoutProfile
             Console.Error.WriteLine("KSI2: could not position KSA's engine control in the HUD layout.");
             return;
         }
+        if (!ConfigureNativeGaugeCopies(layout, alignCopies: true))
+        {
+            Console.Error.WriteLine("KSI2: could not create the HUD layout because its engine or autopilot canvases were not found.");
+            return;
+        }
         if (!ConfigureAttitudeLayout(layout))
         {
             Console.Error.WriteLine("KSI2: could not create the HUD layout because its attitude canvases were not found.");
@@ -124,7 +130,7 @@ internal static class KsaHudLayoutProfile
                 LayoutSaves.SetDefault(registered);
                 registered.Apply();
                 WriteProfileRevision();
-                Console.WriteLine("KSI2: added the 'KSI2 Default' KSA HUD layout (engine control offset from its built-in position, navball and telemetry hidden, portrait at the right margin).");
+                Console.WriteLine("KSI2: added the 'KSI2 Default' KSA HUD layout (engine and autopilot originals replaced by aligned copies).");
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
@@ -278,7 +284,15 @@ internal static class KsaHudLayoutProfile
         telemetry.Enabled = false;
         gameTime.Enabled = false;
         if (previousRevision < 13 && !ConfigureAttitudeLayout(save.LayoutData)) return false;
-        if (!PositionEngineControl(save.LayoutData)) return false;
+        if (!ConfigureNativeGaugeCopies(save.LayoutData, alignCopies: previousRevision < 18)) return false;
+        if (previousRevision >= 18 && previousRevision < 19)
+        {
+            var engineCopy = save.LayoutData.Canvases.FirstOrDefault(canvas => canvas.Id == "KSI2EngineControl");
+            if (engineCopy is null) return false;
+            var previousWidth = engineCopy.Size.X;
+            engineCopy.Size.X = previousWidth * EngineWidthAfterRcsRemoval;
+            engineCopy.Offset.X += (previousWidth - engineCopy.Size.X) * 0.5;
+        }
         var stagingDirectory = Path.Combine(save.Directory.Parent!.FullName,
             $".{ProfileName}.{Guid.NewGuid():N}.tmp");
         try
@@ -288,7 +302,7 @@ internal static class KsaHudLayoutProfile
             File.Move(Path.Combine(stagingDirectory, "layout.xml"),
                 Path.Combine(save.Directory.FullName, "layout.xml"), overwrite: true);
             LayoutSave.FromDirectory(save.Directory.FullName);
-            Console.WriteLine("KSI2: updated the 'KSI2 Default' KSA HUD layout (Game Time, navball, and telemetry hidden; engine control and portrait positioned).");
+            Console.WriteLine("KSI2: updated the 'KSI2 Default' KSA HUD layout (RCS removed from the engine copy with its right edge preserved).");
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
@@ -333,6 +347,39 @@ internal static class KsaHudLayoutProfile
         original.Enabled = false;
         replacement.Enabled = true;
         sequence.Offset.Y -= original.Size.Y * 0.5;
+        return true;
+    }
+
+    private static bool ConfigureNativeGaugeCopies(SerializedLayout layout, bool alignCopies)
+    {
+        return ConfigureNativeGaugeCopy(layout, "EngineControl", "KSI2EngineControl", alignCopies)
+            && ConfigureNativeGaugeCopy(layout, "AutopilotSettings", "KSI2AutopilotSettings", alignCopies);
+    }
+
+    private static bool ConfigureNativeGaugeCopy(SerializedLayout layout, string originalId,
+        string replacementId, bool alignCopy)
+    {
+        var original = layout.Canvases.FirstOrDefault(canvas => canvas.Id == originalId);
+        var replacement = layout.Canvases.FirstOrDefault(canvas => canvas.Id == replacementId);
+        if (original is null) return false;
+        if (replacement is null)
+        {
+            var replacementCanvas = GaugeCanvas.AllCanvases.FirstOrDefault(canvas => canvas.Id == replacementId);
+            if (replacementCanvas is null) return false;
+            replacement = replacementCanvas.ExportLayout();
+            layout.Canvases.Add(replacement);
+        }
+
+        if (alignCopy)
+        {
+            replacement.Size.X = original.Size.X * (originalId == "EngineControl"
+                ? EngineWidthAfterRcsRemoval : 1);
+            replacement.Size.Y = original.Size.Y;
+            replacement.Offset.X = original.Offset.X + (original.Size.X - replacement.Size.X) * 0.5;
+            replacement.Offset.Y = original.Offset.Y;
+        }
+        original.Enabled = false;
+        replacement.Enabled = true;
         return true;
     }
 

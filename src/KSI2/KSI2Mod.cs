@@ -6,7 +6,7 @@ namespace KSI2;
 public sealed class KSI2Mod
 {
     private readonly PilotUiController _ui = new();
-    private readonly KsaAttitudeIndicators _attitude = new();
+    private readonly KsaGaugeCopyVisibility _gaugeCopies = new();
 
     [StarMapBeforeMain]
     public void OnBeforeMain() => Console.WriteLine("KSI2 loaded.");
@@ -23,8 +23,7 @@ public sealed class KSI2Mod
             _hudLayoutProfileInstalled = true;
         }
         KsaHudLayoutProfile.UpdatePortraitPosition();
-        KsaHudLayoutProfile.UpdateEnginePosition();
-        _attitude.Sync();
+        _gaugeCopies.Sync();
         _ui.Draw(dt);
     }
 
@@ -33,7 +32,7 @@ public sealed class KSI2Mod
     [StarMapUnload]
     public void Unload()
     {
-        _attitude.Dispose();
+        _gaugeCopies.Dispose();
         _ui.Dispose();
     }
 }
