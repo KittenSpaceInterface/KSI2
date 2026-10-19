@@ -113,7 +113,7 @@ internal sealed class PilotSettingsController : IDisposable
         if (!windowExpanded)
         {
             ImGui.End();
-            DrawLayoutWindow(editor);
+            DrawLayoutWindow(editor, cancelThrottle);
             return;
         }
         PilotImGui.PlaceCurrentWindow();
@@ -167,7 +167,7 @@ internal sealed class PilotSettingsController : IDisposable
             VerticalSpeedConfiguration.IsOpen = !VerticalSpeedConfiguration.IsOpen;
         if (throttle.AssetError is not null) ImGui.TextWrapped($"Throttle artwork unavailable: {throttle.AssetError}\nCheck the installed asset package.");
         ImGui.End();
-        DrawLayoutWindow(editor);
+        DrawLayoutWindow(editor, cancelThrottle);
     }
 
     private void CloseLayoutWindow(LayoutEditor editor)
@@ -182,13 +182,13 @@ internal sealed class PilotSettingsController : IDisposable
         Save();
     }
 
-    private void DrawLayoutWindow(LayoutEditor editor)
+    private void DrawLayoutWindow(LayoutEditor editor, Action cancelThrottle)
     {
         if (!_layoutWindowOpen) return;
         var viewport = ImGui.GetMainViewport();
         ImGui.SetNextWindowPos(new float2(viewport.Pos.X + MathF.Max(24, viewport.Size.X * 0.5f - 180),
             viewport.Pos.Y + 72), ImGuiCond.FirstUseEver);
-        ImGui.SetNextWindowSize(new float2(400, 330), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new float2(400, 360), ImGuiCond.Always);
         var open = _layoutWindowOpen;
         var expanded = ImGui.Begin("KSI2 Layout", ref open,
             ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoSavedSettings);
@@ -206,7 +206,7 @@ internal sealed class PilotSettingsController : IDisposable
         PilotImGui.PlaceCurrentWindow();
         if (_confirmResetLayout)
         {
-            ImGui.TextWrapped("Reset the entire layout? This restores all six elements to their default positions, scales, and layers.");
+            ImGui.TextWrapped("Reset the entire layout? This restores all seven elements to their default positions, scales, layers, and visibility.");
             if (ImGui.Button("Confirm reset layout"))
             {
                 editor.Cancel();
@@ -254,6 +254,15 @@ internal sealed class PilotSettingsController : IDisposable
         if (selectedElement != "none")
         {
             var element = _settings.ElementLayouts.TryGetValue(selectedElement, out var stored) ? stored : null;
+            var visible = element?.Visible ?? true;
+            if (ImGui.Checkbox("Show element", ref visible))
+            {
+                if (element is null) _settings.ElementLayouts[selectedElement] = element = new();
+                element.Visible = visible;
+                if (!visible && selectedElement == "throttle") cancelThrottle();
+                editor.Cancel();
+                Save();
+            }
             var elementScale = element?.Scale ?? 1f;
             if (ImGui.SliderFloat("Element scale", ref elementScale, 0.5f, 2f, "%.2fx"))
             {
@@ -277,7 +286,7 @@ internal sealed class PilotSettingsController : IDisposable
             }
         }
         else ImGui.TextWrapped("Choose an element to enable dragging and individual scale.");
-        ImGui.SetCursorPos(new float2(28f, 288f));
+        ImGui.SetCursorPos(new float2(28f, 318f));
         if (_settings.MoveAllElements)
         {
             ImGui.PushStyleColor(ImGuiCol.Button, new byte4(255, 255, 255, 255));

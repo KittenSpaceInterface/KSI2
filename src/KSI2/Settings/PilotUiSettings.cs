@@ -12,6 +12,7 @@ internal sealed class PilotUiSettings
         public float Scale { get; set; } = 1;
         public bool PositionSet { get; set; }
         public int? Layer { get; set; }
+        public bool Visible { get; set; } = true;
     }
     internal const int MaxElementLayer = 9999;
     internal static readonly string[] EditableElements = ["throttle", "navball-cluster", "atmosphere", "vertical-speed", "orbital-readout", "direction-selector", "time-selector"];
@@ -40,6 +41,9 @@ internal sealed class PilotUiSettings
 
     internal int ElementLayer(string id) => ElementLayouts.TryGetValue(id, out var layout)
         && layout?.Layer is { } layer ? layer : id == "navball-cluster" ? 2 : 1;
+
+    internal bool ElementVisible(string id) => !ElementLayouts.TryGetValue(id, out var layout)
+        || layout?.Visible != false;
 
     internal bool EnsureConfigurationAccess(bool modMenuInstalled)
     {
