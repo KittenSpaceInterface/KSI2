@@ -184,39 +184,81 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
 
     private void DrawConfigurationWindow()
     {
-        ImGui.SetNextWindowPos(new float2(24f, 170f), ImGuiCond.FirstUseEver);
-        if (!ImGui.Begin("KSI2 Vertical Speed Configuration", ref _configuration.IsOpen,
-            ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings))
+        var viewport = ImGui.GetMainViewport();
+        ImGui.SetNextWindowPos(viewport.Pos + new float2(24f, 170f), ImGuiCond.FirstUseEver);
+        var open = _configuration.IsOpen;
+        var initialSize = new float2(590f, 590f) * ImGuiHelper.InterfaceScale;
+        var expanded = ConsoleStyle.BeginWindow("ksi2-vertical-speed", "KSI2 VERTICAL SPEED", "KSI2-HUD",
+            ref open, initialSize);
+        if (expanded && open) PilotImGui.RegisterSettingsWindow();
+        if (!expanded)
         {
-            ImGui.End();
+            _configuration.IsOpen = open;
             return;
         }
+        try
+        {
+            _configuration.IsOpen = open;
+            if (!open) return;
+            ConsoleStyle.BeginBody();
+            ConsoleStyle.PushWidgetStyle();
+            try { DrawConfigurationBody(); }
+            finally
+            {
+                ConsoleStyle.PopWidgetStyle();
+                ConsoleStyle.EndBody();
+            }
+            ConsoleStyle.BeginFooter();
+            try
+            {
+                if (ConsoleWidgets.Button("CLOSE")) _configuration.IsOpen = false;
+            }
+            finally { ConsoleStyle.EndFooter(); }
+        }
+        finally { ConsoleStyle.EndWindow(); }
+    }
 
+    private void DrawConfigurationBody()
+    {
+        ConsoleWidgets.RegionHeader("PREVIEW");
         ImGui.Text("Preview and calibrate the vertical speed indicator.");
-        ImGui.Checkbox("Use test speed", ref _useTestSpeed);
+        ConsoleWidgets.BeginRow("USE TEST SPEED");
+        ConsoleWidgets.Checkbox("ksi2-use-test-speed", ref _useTestSpeed, pending: false);
+        ConsoleWidgets.EndRow();
+        ImGui.Text("Test speed (m/s)");
+        var scale = ImGuiHelper.InterfaceScale;
+        var numericWidth = 105f * scale;
+        var sliderWidth = MathF.Max(140f * scale,
+            ConsoleStyle.ContentAvailWidth() - numericWidth - ImGui.GetStyle().ItemSpacing.X);
         var sliderSpeed = Math.Clamp(_testSpeed, TestMinimumSpeed, TestMaximumSpeed);
-        ImGui.SetNextItemWidth(330f);
-        if (ImGui.SliderFloat("Vertical speed (m/s)", ref sliderSpeed,
+        ImGui.SetNextItemWidth(sliderWidth);
+        if (ImGui.SliderFloat("##ksi2-test-speed-slider", ref sliderSpeed,
             TestMinimumSpeed, TestMaximumSpeed, "%+.0f m/s")) _testSpeed = sliderSpeed;
         ImGui.SameLine();
-        ImGui.SetNextItemWidth(105f);
+        ImGui.SetNextItemWidth(numericWidth);
         var typedTestSpeed = _testSpeed;
         if (ImGui.InputFloat("##vertical-speed-test-value", ref typedTestSpeed, 0f, 0f, "%.1f",
             ImGuiInputTextFlags.EnterReturnsTrue) && float.IsFinite(typedTestSpeed))
             _testSpeed = Math.Clamp(typedTestSpeed, -10000f, 10000f);
-        ImGui.Checkbox("Show red number guides", ref _showNumberGuides);
+        ConsoleWidgets.BeginRow("SHOW RED NUMBER GUIDES");
+        ConsoleWidgets.Checkbox("ksi2-number-guides", ref _showNumberGuides, pending: false);
+        ConsoleWidgets.EndRow();
+
+        ConsoleWidgets.Rule();
+        ConsoleWidgets.RegionHeader("MARK CALIBRATION");
         for (var i = MarkLabels.Length - 1; i >= 0; i--)
         {
             var minimum = i == 0 ? MarkSliderMinimums[i]
                 : MathF.Max(MarkSliderMinimums[i], _settings.VerticalSpeedMarkSpeeds[i - 1] + 0.1f);
             var maximum = i == MarkLabels.Length - 1 ? MarkSliderMaximums[i]
                 : MathF.Min(MarkSliderMaximums[i], _settings.VerticalSpeedMarkSpeeds[i + 1] - 0.1f);
-            ImGui.SetNextItemWidth(330f);
-            ImGui.SliderFloat($"{MarkLabels[i]} mark calibration", ref _settings.VerticalSpeedMarkSpeeds[i],
+            ImGui.Text($"{MarkLabels[i]} mark");
+            ImGui.SetNextItemWidth(sliderWidth);
+            ImGui.SliderFloat($"##ksi2-mark-slider-{i}", ref _settings.VerticalSpeedMarkSpeeds[i],
                 minimum, maximum, "%+.1f");
             if (ImGui.IsItemDeactivatedAfterEdit()) _save();
             ImGui.SameLine();
-            ImGui.SetNextItemWidth(105f);
+            ImGui.SetNextItemWidth(numericWidth);
             var typedSpeed = _settings.VerticalSpeedMarkSpeeds[i];
             if (ImGui.InputFloat($"##mark-speed-{i}", ref typedSpeed, 0f, 0f, "%.1f",
                 ImGuiInputTextFlags.EnterReturnsTrue) && float.IsFinite(typedSpeed))
@@ -225,13 +267,16 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
                 _save();
             }
         }
+        ConsoleWidgets.Rule();
+        ConsoleWidgets.RegionHeader("NEEDLE");
+        ConsoleWidgets.BeginRow("NEEDLE OFFSET (ROTATED)");
         var needleOffset = _settings.VerticalSpeedNeedleOffset;
-        if (ImGui.SliderFloat("Needle offset (rotated)", ref needleOffset,
+        ImGui.SetNextItemWidth(ConsoleWidgets.RowControlWidth);
+        if (ImGui.SliderFloat("##ksi2-needle-offset", ref needleOffset,
             -6f, 6f, "%+.2f px")) _settings.VerticalSpeedNeedleOffset = needleOffset;
         if (ImGui.IsItemDeactivatedAfterEdit()) _save();
+        ConsoleWidgets.EndRow();
         ImGui.Text("Type a calibration value and press Enter to save.");
-        if (ImGui.Button("Close")) _configuration.IsOpen = false;
-        ImGui.End();
     }
 
     private float SampleMask(float x, float y)

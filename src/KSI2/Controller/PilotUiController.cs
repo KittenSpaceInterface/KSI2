@@ -44,6 +44,7 @@ internal sealed class PilotUiController : IDisposable
     internal void Draw(double dt)
     {
         if (ImGui.GetCurrentContext().IsNull()) return;
+        PilotImGui.BeginFrame();
         _settings.Initialize();
         _settings.Tick();
         if (_settings.SyncKsaLayout())
@@ -108,8 +109,8 @@ internal sealed class PilotUiController : IDisposable
                 _editor.EndCanvas();
             }
         }
-        // Keep configuration and combo popups above the flight artwork windows.
         _settings.DrawWindow(_throttle.UiState, _editor, _throttle.CancelInteraction);
+        PilotImGui.PlaceHudBehindSettings();
     }
 
     private PanelBackgroundBlur? GetPanelBlur()

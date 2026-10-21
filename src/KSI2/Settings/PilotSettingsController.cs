@@ -2,6 +2,7 @@ using Brutal.ImGuiApi;
 using Brutal.Numerics;
 using System.Diagnostics;
 using System.Reflection;
+using KSA;
 
 namespace KSI2;
 
@@ -105,52 +106,75 @@ internal sealed class PilotSettingsController : IDisposable
             CloseLayoutWindow(editor);
             return;
         }
-        ImGui.SetNextWindowPos(new float2(24, 72), ImGuiCond.FirstUseEver);
-        var windowFlags = ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings;
-        bool windowExpanded;
-        if (_modMenuInstalled)
+        var viewport = ImGui.GetMainViewport();
+        ImGui.SetNextWindowPos(viewport.Pos + new float2(24f, 72f), ImGuiCond.FirstUseEver);
+        var initialSize = new float2(470f, 390f) * ImGuiHelper.InterfaceScale;
+        var configurationVisible = _settings.ConfigurationVisible;
+        var windowExpanded = _modMenuInstalled
+            ? ConsoleStyle.BeginWindow("ksi2-configuration", "KSI2 CONFIGURATION", "KSI2-HUD",
+                ref configurationVisible, initialSize)
+            : ConsoleStyle.BeginWindow("ksi2-configuration", "KSI2 CONFIGURATION", "KSI2-HUD",
+                initialSize);
+        if (configurationVisible != _settings.ConfigurationVisible)
+            SetConfigurationVisible(configurationVisible);
+        if (windowExpanded && configurationVisible) PilotImGui.RegisterSettingsWindow();
+        if (windowExpanded)
         {
-            var configurationVisible = _settings.ConfigurationVisible;
-            windowExpanded = ImGui.Begin("KSI2", ref configurationVisible, windowFlags);
-            if (configurationVisible != _settings.ConfigurationVisible)
-                SetConfigurationVisible(configurationVisible);
+            try
+            {
+                if (configurationVisible)
+                {
+                    ConsoleStyle.BeginBody();
+                    ConsoleStyle.PushWidgetStyle();
+                    try { DrawConfigurationBody(throttle, cancelThrottle); }
+                    finally
+                    {
+                        ConsoleStyle.PopWidgetStyle();
+                        ConsoleStyle.EndBody();
+                    }
+                }
+            }
+            finally { ConsoleStyle.EndWindow(); }
         }
-        else
-        {
-            windowExpanded = ImGui.Begin("KSI2", windowFlags);
-        }
-        if (!windowExpanded)
-        {
-            ImGui.End();
-            DrawLayoutWindow(editor, cancelThrottle);
-            return;
-        }
-        PilotImGui.PlaceCurrentWindow();
-        ImGui.Text("Experimental");
-        if (ImGui.IsItemHovered())
-        {
-            ImGui.BeginTooltip();
-            ImGui.Text("Some experimental configurations are persisted only after they have been active for five seconds.");
-            ImGui.EndTooltip();
-        }
+        DrawLayoutWindow(editor, cancelThrottle);
+    }
+
+    private void DrawConfigurationBody(ThrottleUiState throttle, Action cancelThrottle)
+    {
+        ConsoleWidgets.RegionHeader("EXPERIMENTAL");
+        ImGui.TextWrapped("Panel blur is checked for five seconds after it is enabled.");
         if (OptionsResetAfterKsaVersionChange)
             ImGui.TextWrapped("Experimental options were disabled because the KSA version changed. Re-enable them to test this version.");
         var blurPanelBackgrounds = BlurPanelBackgrounds;
-        if (ImGui.Checkbox("Blur panel backgrounds", ref blurPanelBackgrounds))
+        ConsoleWidgets.BeginRow("BLUR PANEL BACKGROUNDS");
+        var blurChanged = ConsoleWidgets.Checkbox("ksi2-blur-panels", ref blurPanelBackgrounds,
+            pending: false);
+        ConsoleWidgets.EndRow();
+        if (blurChanged)
             _blurCrashGuard.SetEnabled(blurPanelBackgrounds);
         if (BlurPanelBackgrounds)
         {
-            ImGui.Text($"Blur opacity: {_settings.BlurOpacityTicks / 4f:0.00}%");
-            var blurOpacityTicks = _settings.BlurOpacityTicks;
-            if (ImGui.SliderInt("##KSI2BlurOpacity", ref blurOpacityTicks, 0, 400, ""))
-                _settings.BlurOpacityTicks = blurOpacityTicks;
+            ConsoleWidgets.BeginRow("BLUR OPACITY");
+            var opacityPercent = _settings.BlurOpacityTicks / 4f;
+            ImGui.SetNextItemWidth(ConsoleWidgets.RowControlWidth);
+            if (ImGui.SliderFloat("##KSI2BlurOpacity", ref opacityPercent, 0f, 100f,
+                "%.1f%%"))
+                _settings.BlurOpacityTicks = Math.Clamp((int)MathF.Round(opacityPercent * 4f), 0, 400);
             if (ImGui.IsItemDeactivatedAfterEdit()) Save();
+            ConsoleWidgets.EndRow();
         }
         if (_blurCrashGuard.RecoveredAfterCrash)
             ImGui.TextWrapped("Panel blur was disabled because its five-second activation check did not complete.");
         if (_blurCrashGuard.Error is { } blurError) ImGui.TextWrapped(blurError);
+
+        ConsoleWidgets.Rule();
+        ConsoleWidgets.RegionHeader("FLIGHT CONTROLS");
         var mouseThrottle = _settings.MouseThrottleControl;
-        if (ImGui.Checkbox("Mouse throttle control", ref mouseThrottle))
+        ConsoleWidgets.BeginRow("MOUSE THROTTLE CONTROL");
+        var mouseThrottleChanged = ConsoleWidgets.Checkbox("ksi2-mouse-throttle", ref mouseThrottle,
+            pending: false);
+        ConsoleWidgets.EndRow();
+        if (mouseThrottleChanged)
         {
             _settings.MouseThrottleControl = mouseThrottle;
             if (!mouseThrottle) cancelThrottle();
@@ -159,24 +183,24 @@ internal sealed class PilotSettingsController : IDisposable
         if (throttle.MouseUnavailableReason is { } reason)
             ImGui.TextWrapped($"Mouse throttle control unavailable until restart: {reason}");
         var improvedAltitudeDial = _settings.ImprovedAltitudeDial;
-        if (ImGui.Checkbox("Improved altitude dial", ref improvedAltitudeDial))
+        ConsoleWidgets.BeginRow("IMPROVED ALTITUDE DIAL");
+        var altitudeChanged = ConsoleWidgets.Checkbox("ksi2-altitude-dial", ref improvedAltitudeDial,
+            pending: false);
+        if (ConsoleWidgets.RowHovered)
+            ConsoleWidgets.Tooltip("Altitude marks widen as distance grows so nearby values stay distinct.");
+        ConsoleWidgets.EndRow();
+        if (altitudeChanged)
         {
             _settings.ImprovedAltitudeDial = improvedAltitudeDial;
             Save();
         }
-        if (ImGui.IsItemHovered())
-        {
-            ImGui.BeginTooltip();
-            ImGui.Text("Altitude marks widen as distance grows so nearby values stay distinct.");
-            ImGui.EndTooltip();
-        }
-        ImGui.Text("Advanced");
-        if (ImGui.Button("Layout Configuration")) _layoutWindowOpen = true;
-        if (ImGui.Button("Vertical Speed Configuration"))
+
+        ConsoleWidgets.Rule();
+        ConsoleWidgets.RegionHeader("ADVANCED");
+        if (ConsoleWidgets.Button("LAYOUT CONFIGURATION")) _layoutWindowOpen = true;
+        if (ConsoleWidgets.Button("VERTICAL SPEED CONFIGURATION"))
             VerticalSpeedConfiguration.IsOpen = !VerticalSpeedConfiguration.IsOpen;
         if (throttle.AssetError is not null) ImGui.TextWrapped($"Throttle artwork unavailable: {throttle.AssetError}\nCheck the installed asset package.");
-        ImGui.End();
-        DrawLayoutWindow(editor, cancelThrottle);
     }
 
     private void CloseLayoutWindow(LayoutEditor editor)
@@ -195,51 +219,61 @@ internal sealed class PilotSettingsController : IDisposable
     {
         if (!_layoutWindowOpen) return;
         var viewport = ImGui.GetMainViewport();
-        ImGui.SetNextWindowPos(new float2(viewport.Pos.X + MathF.Max(24, viewport.Size.X * 0.5f - 180),
-            viewport.Pos.Y + 72), ImGuiCond.FirstUseEver);
-        ImGui.SetNextWindowSize(new float2(400, 360), ImGuiCond.Always);
+        var initialSize = new float2(520f, 460f) * ImGuiHelper.InterfaceScale;
+        ImGui.SetNextWindowPos(new float2(viewport.Pos.X + MathF.Max(24f,
+            (viewport.Size.X - initialSize.X) * 0.5f), viewport.Pos.Y + 72f),
+            ImGuiCond.FirstUseEver);
         var open = _layoutWindowOpen;
-        var expanded = ImGui.Begin("KSI2 Layout", ref open,
-            ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoSavedSettings);
-        if (!open)
-        {
-            ImGui.End();
-            CloseLayoutWindow(editor);
-            return;
-        }
+        var expanded = ConsoleStyle.BeginWindow("ksi2-layout", "KSI2 LAYOUT", "KSI2-HUD", ref open,
+            initialSize, ImGuiWindowFlags.NoResize);
+        if (expanded && open) PilotImGui.RegisterSettingsWindow();
         if (!expanded)
         {
-            ImGui.End();
+            if (!open) CloseLayoutWindow(editor);
             return;
         }
-        PilotImGui.PlaceCurrentWindow();
+        try
+        {
+            if (!open)
+            {
+                CloseLayoutWindow(editor);
+                return;
+            }
+            ConsoleStyle.BeginBody();
+            ConsoleStyle.PushWidgetStyle();
+            try { DrawLayoutBody(editor, cancelThrottle); }
+            finally
+            {
+                ConsoleStyle.PopWidgetStyle();
+                ConsoleStyle.EndBody();
+            }
+            ConsoleStyle.BeginFooter();
+            try { DrawLayoutFooter(editor); }
+            finally { ConsoleStyle.EndFooter(); }
+        }
+        finally { ConsoleStyle.EndWindow(); }
+    }
+
+    private void DrawLayoutBody(LayoutEditor editor, Action cancelThrottle)
+    {
         if (_confirmResetLayout)
         {
             ImGui.TextWrapped("Reset the entire layout? This restores all seven elements to their default positions, scales, layers, and visibility.");
-            if (ImGui.Button("Confirm reset layout"))
-            {
-                editor.Cancel();
-                _settings.Reset();
-                _confirmResetLayout = false;
-                Save();
-            }
-            ImGui.SameLine();
-            if (ImGui.Button("Cancel")) _confirmResetLayout = false;
-            ImGui.End();
             return;
         }
-        ImGui.Text("Overall scale");
+
+        ConsoleWidgets.RegionHeader("LAYOUT");
+        ConsoleWidgets.BeginRow("OVERALL SCALE");
         var scale = _settings.Scale;
+        ImGui.SetNextItemWidth(ConsoleWidgets.RowControlWidth);
         if (ImGui.SliderFloat("##KSI2OverallScale", ref scale, 0.5f, 2f, "%.2fx")) _settings.Scale = scale;
         if (ImGui.IsItemDeactivatedAfterEdit()) Save();
+        ConsoleWidgets.EndRow();
 
-        ImGui.Text("Element");
-        ImGui.SetNextItemWidth(-1f);
-        if (ImGui.BeginCombo("##KSI2LayoutElement", ElementLabel(_settings.SelectedElement)))
+        ConsoleWidgets.BeginRow("ELEMENT");
+        if (ConsoleWidgets.BeginComboControl("ksi2-layout-element",
+            ElementLabel(_settings.SelectedElement), pending: false))
         {
-            // KSI2 raises its windows above the flight HUD each frame. Raise
-            // the combo popup as well so its choices stay above those windows.
-            PilotImGui.PlaceCurrentWindow();
             if (ImGui.Selectable("No Element Selected", _settings.SelectedElement == "none"))
             {
                 editor.Cancel();
@@ -257,14 +291,19 @@ internal sealed class PilotSettingsController : IDisposable
                     _settings.Editing = true;
                 }
             }
-            ImGui.EndCombo();
+            ConsoleWidgets.EndComboControl();
         }
+        ConsoleWidgets.EndRow();
         var selectedElement = _settings.SelectedElement;
         if (selectedElement != "none")
         {
             var element = _settings.ElementLayouts.TryGetValue(selectedElement, out var stored) ? stored : null;
             var visible = element?.Visible ?? true;
-            if (ImGui.Checkbox("Show element", ref visible))
+            ConsoleWidgets.BeginRow("SHOW ELEMENT");
+            var visibilityChanged = ConsoleWidgets.Checkbox("ksi2-layout-visible", ref visible,
+                pending: false);
+            ConsoleWidgets.EndRow();
+            if (visibilityChanged)
             {
                 if (element is null) _settings.ElementLayouts[selectedElement] = element = new();
                 element.Visible = visible;
@@ -273,21 +312,26 @@ internal sealed class PilotSettingsController : IDisposable
                 Save();
             }
             var elementScale = element?.Scale ?? 1f;
-            if (ImGui.SliderFloat("Element scale", ref elementScale, 0.5f, 2f, "%.2fx"))
+            ConsoleWidgets.BeginRow("ELEMENT SCALE");
+            ImGui.SetNextItemWidth(ConsoleWidgets.RowControlWidth);
+            if (ImGui.SliderFloat("##KSI2ElementScale", ref elementScale, 0.5f, 2f, "%.2fx"))
             {
                 if (element is null) _settings.ElementLayouts[selectedElement] = element = new();
                 element.Scale = elementScale;
             }
             if (ImGui.IsItemDeactivatedAfterEdit()) Save();
+            ConsoleWidgets.EndRow();
             var elementLayer = _settings.ElementLayer(selectedElement);
-            ImGui.SetNextItemWidth(160f);
-            if (ImGui.InputInt("Element layer", ref elementLayer))
+            ConsoleWidgets.BeginRow("ELEMENT LAYER");
+            ImGui.SetNextItemWidth(ConsoleWidgets.RowControlWidth);
+            if (ImGui.InputInt("##KSI2ElementLayer", ref elementLayer))
             {
                 if (element is null) _settings.ElementLayouts[selectedElement] = element = new();
                 element.Layer = Math.Clamp(elementLayer, 1, PilotUiSettings.MaxElementLayer);
             }
             if (ImGui.IsItemDeactivatedAfterEdit()) Save();
-            if (ImGui.Button("Reset element"))
+            ConsoleWidgets.EndRow();
+            if (ConsoleWidgets.Button("RESET ELEMENT"))
             {
                 editor.Cancel();
                 _settings.ElementLayouts.Remove(selectedElement);
@@ -295,29 +339,42 @@ internal sealed class PilotSettingsController : IDisposable
             }
         }
         else ImGui.TextWrapped("Choose an element to enable dragging and individual scale.");
-        ImGui.SetCursorPos(new float2(28f, 318f));
-        if (_settings.MoveAllElements)
+    }
+
+    private void DrawLayoutFooter(LayoutEditor editor)
+    {
+        if (_confirmResetLayout)
         {
-            ImGui.PushStyleColor(ImGuiCol.Button, new byte4(255, 255, 255, 255));
-            ImGui.PushStyleColor(ImGuiCol.Text, new byte4(0, 0, 0, 255));
+            if (ConsoleWidgets.DangerButton("CONFIRM RESET"))
+            {
+                editor.Cancel();
+                _settings.Reset();
+                _confirmResetLayout = false;
+                Save();
+            }
+            ImGui.SameLine();
+            if (ConsoleWidgets.Button("CANCEL")) _confirmResetLayout = false;
+            return;
         }
-        if (ImGui.Button("Move all elements"))
+
+        var moveAllClicked = _settings.MoveAllElements
+            ? ConsoleWidgets.PositiveButton("MOVE ALL ELEMENTS")
+            : ConsoleWidgets.Button("MOVE ALL ELEMENTS");
+        if (moveAllClicked)
         {
             editor.Cancel();
             _settings.MoveAllElements = !_settings.MoveAllElements;
             _settings.SelectedElement = "none";
             _settings.Editing = _settings.MoveAllElements;
         }
-        if (_settings.MoveAllElements) ImGui.PopStyleColor(2);
         ImGui.SameLine();
-        if (ImGui.Button("Reset layout"))
+        if (ConsoleWidgets.DangerButton("RESET LAYOUT"))
         {
             editor.Cancel();
             _confirmResetLayout = true;
         }
         ImGui.SameLine();
-        if (ImGui.Button("Done")) CloseLayoutWindow(editor);
-        ImGui.End();
+        if (ConsoleWidgets.PrimaryButton("DONE")) CloseLayoutWindow(editor);
     }
 
     private static string ElementLabel(string id) => id switch
