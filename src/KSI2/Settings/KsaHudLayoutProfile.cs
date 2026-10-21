@@ -7,7 +7,7 @@ namespace KSI2;
 internal static class KsaHudLayoutProfile
 {
     private const string ProfileName = "KSI2 Default";
-    private const int ProfileRevision = 23;
+    private const int ProfileRevision = 24;
     private const double EngineWidthAfterRcsRemoval = 0.74;
     private const double AutopilotHeightAfterGroupRemoval = 0.08;
     private const double TargetAutopilotGapPixels = 8;
@@ -16,6 +16,7 @@ internal static class KsaHudLayoutProfile
     private const float RightMarginUv = 0.017778f;
     private const float PortraitTopOffsetUv = -0.04f;
     private const float PortraitTopOffsetPixels = 75f;
+    private const float RadiationPortraitGapPixels = 8f;
     private static readonly MethodInfo? MarkEditorWindowDirty = typeof(GaugeCanvas).GetMethod(
         "MarkEditorWindowDirty", BindingFlags.Instance | BindingFlags.NonPublic);
     private static readonly FieldInfo? CanvasDefaults = typeof(GaugeCanvas).GetField(
@@ -106,6 +107,7 @@ internal static class KsaHudLayoutProfile
             Console.Error.WriteLine("KSI2: could not create the HUD layout because KSA's portrait canvas was not found.");
             return;
         }
+        PositionRadiationBelowPortrait(layout, windowSize.Y);
 
         var parentDirectory = LayoutSaves.SaveFolderPath;
         var stagingDirectory = Path.Combine(parentDirectory, $".{ProfileName}.{Guid.NewGuid():N}.tmp");
@@ -207,22 +209,45 @@ internal static class KsaHudLayoutProfile
 
         // KSA keeps an edited canvas dirty until the profile is reapplied. Let
         // the user move it freely, but still respond to resolution changes.
-        if (!changed && LayoutSaves.IsCurrentModified()) return;
+        if (!changed && LayoutSaves.IsCurrentModified())
+        {
+            UpdateRadiationPosition(portrait);
+            return;
+        }
 
         var portraitMin = portrait.GetPixelsMin();
         var targetRight = windowSize.X - RightMarginUv * windowSize.Y;
         var horizontalAdjustment = targetRight - (portraitMin.X + portraitSize.X);
         var verticalAdjustment = PortraitTopOffsetUv * windowSize.Y
             + PortraitTopOffsetPixels - portraitMin.Y;
-        if (MathF.Abs(horizontalAdjustment) < 0.5f && MathF.Abs(verticalAdjustment) < 0.5f)
-            return;
+        if (MathF.Abs(horizontalAdjustment) >= 0.5f || MathF.Abs(verticalAdjustment) >= 0.5f)
+        {
+            portrait.Offset.X += horizontalAdjustment / windowSize.Y;
+            portrait.Offset.Y += verticalAdjustment / windowSize.Y;
+            portrait.Offset.OnDataLoad(KSA.Mod.Empty);
+            portrait.CacheTransform();
+            portrait.Update(portrait.GetPixelsMin(), portrait.GetPixelsSize(), resetWindow: true);
+            MarkEditorWindowDirty?.Invoke(portrait, null);
+        }
+        UpdateRadiationPosition(portrait);
+    }
 
-        portrait.Offset.X += horizontalAdjustment / windowSize.Y;
-        portrait.Offset.Y += verticalAdjustment / windowSize.Y;
-        portrait.Offset.OnDataLoad(KSA.Mod.Empty);
-        portrait.CacheTransform();
-        portrait.Update(portrait.GetPixelsMin(), portrait.GetPixelsSize(), resetWindow: true);
-        MarkEditorWindowDirty?.Invoke(portrait, null);
+    private static void UpdateRadiationPosition(GaugeCanvas portrait)
+    {
+        var radiation = GaugeCanvas.AllCanvases.FirstOrDefault(canvas => canvas.Id == "Radiation");
+        var windowHeight = KSA.Program.GetWindow().Size.Y;
+        if (radiation is null || windowHeight <= 0) return;
+
+        var portraitBottom = portrait.GetPixelsMin().Y + portrait.GetPixelsSize().Y;
+        var verticalAdjustment = portraitBottom + RadiationPortraitGapPixels
+            - radiation.GetPixelsMin().Y;
+        if (MathF.Abs(verticalAdjustment) < 0.5f) return;
+
+        radiation.Offset.Y += verticalAdjustment / windowHeight;
+        radiation.Offset.OnDataLoad(KSA.Mod.Empty);
+        radiation.CacheTransform();
+        radiation.Update(radiation.GetPixelsMin(), radiation.GetPixelsSize(), resetWindow: true);
+        MarkEditorWindowDirty?.Invoke(radiation, null);
     }
 
     internal static void UpdateEnginePosition()
@@ -319,6 +344,8 @@ internal static class KsaHudLayoutProfile
             if (!ArrangeEngineTargetAndBurn(save.LayoutData, windowSize.X, windowSize.Y))
                 return false;
         }
+        if (previousRevision < 24)
+            PositionRadiationBelowPortrait(save.LayoutData, KSA.Program.GetWindow().Size.Y);
         var stagingDirectory = Path.Combine(save.Directory.Parent!.FullName,
             $".{ProfileName}.{Guid.NewGuid():N}.tmp");
         try
@@ -536,6 +563,25 @@ internal static class KsaHudLayoutProfile
         portrait.Offset.X = portraitLeft - portraitAnchor.X * aspect + portraitPivot.X * sizeX;
         portrait.Offset.Y = topOffset - portraitAnchor.Y + portraitPivot.Y * sizeY;
         return true;
+    }
+
+    private static void PositionRadiationBelowPortrait(SerializedLayout layout, int screenHeight)
+    {
+        var portrait = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "CrewPortraits");
+        var radiation = layout.Canvases.FirstOrDefault(canvas => canvas.Id == "Radiation");
+        var portraitCanvas = GaugeCanvas.AllCanvases.FirstOrDefault(canvas => canvas.Id == "CrewPortraits");
+        var radiationCanvas = GaugeCanvas.AllCanvases.FirstOrDefault(canvas => canvas.Id == "Radiation");
+        if (portrait is null || radiation is null || portraitCanvas is null
+            || radiationCanvas is null || screenHeight <= 0) return;
+
+        var portraitAnchor = portraitCanvas.Anchor.ToUv();
+        var portraitPivot = portraitCanvas.Pivot.ToUv();
+        var radiationAnchor = radiationCanvas.Anchor.ToUv();
+        var radiationPivot = radiationCanvas.Pivot.ToUv();
+        var portraitBottom = portraitAnchor.Y + portrait.Offset.Y
+            + (1 - portraitPivot.Y) * portrait.Size.Y;
+        radiation.Offset.Y = portraitBottom + RadiationPortraitGapPixels / screenHeight
+            - radiationAnchor.Y + radiationPivot.Y * radiation.Size.Y;
     }
 
     private static int GetProfileRevision()
