@@ -81,6 +81,18 @@ saved KSA layout inherits the KSI2 arrangement currently on screen.
 Settings are saved beside the mod. For manual layout overrides, see the
 [layout JSON guide](docs/pilot-layout-json.md).
 
+### Switch back to KSA's HUD
+
+On first launch, KSI2 creates **KSI2 Default** in KSA's HUD layouts and selects
+it as the startup default. KSA loads that layout again on later launches.
+
+To use KSA's original HUD, choose **HUD > Default**. To keep it on future
+launches, leave **Default** selected and choose **HUD > Set Current as Default**.
+You do not need to remove KSI2. If a later KSI2 update migrates its HUD layout,
+it may select **KSI2 Default** again; repeat these steps if that happens.
+
+![KSA HUD menu showing Default and KSI2 Default layout options](docs/images/hud-layout-menu.png)
+
 <details>
 <summary>Instrument behavior and advanced configuration</summary>
 
