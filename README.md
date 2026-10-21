@@ -1,70 +1,92 @@
 # KSI2
 
-KSI2 is a KSP2-inspired interface mod for Kitten Space Agency, loaded through StarMap.
+[![Latest release](https://img.shields.io/github/v/release/KittenSpaceInterface/KSI2?style=flat)](https://github.com/KittenSpaceInterface/KSI2/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)](LICENSE)
 
-The project is in early development.
+KSI2 brings a KSP2-inspired flight interface to **Kitten Space Agency**, loaded
+through [StarMap](https://github.com/StarMapLoader/StarMap). Follow your flight
+with familiar instruments and arrange the HUD to suit your screen.
 
-## Releases
+**Early development:** the current focus is the pilot interface. More of the
+interface is still being built.
 
-`v0.0.1` is the baseline for automated releases. Earlier commits have no
-historical release versions or changelog entries. Release Please reads
-Conventional Commit messages on `main` since the previous release and uses
-their descriptions to draft changelog entries. `feat:` proposes a minor
-version, `fix:` proposes a patch version, and a breaking change before `1.0.0`
-proposes a minor version. `docs:` and `chore:` commits alone do not propose a
-release.
+![KSI2 flight HUD in Kitten Space Agency](docs/images/flight-hud.png)
 
-Release Please opens or updates one release pull request when eligible commits
-reach `main`; more commits update that same proposal. Merging the release pull
-request updates `version.txt` and `CHANGELOG.md` and creates the version tag
-and GitHub Release. A mixed batch of features and fixes uses the minor version.
-Reaching `1.0.0` requires an intentional release decision after the pilot
-interface is complete. GitHub Releases created by this workflow do not include
-mod binaries; build and install locally as below.
+## Features
 
-The workflow uses `GITHUB_TOKEN`. Repository and organization Actions settings
-must allow GitHub Actions to create pull requests for the release PR to open.
+- **Flight instruments:** navball, heading, speed, altitude, throttle,
+  atmospheric indicator, vertical speed, and apoapsis/periapsis readouts.
+- **Flight controls:** switch speed reference modes, toggle RCS and SAS, and
+  select supported SAS modes through KSA's flight controls.
+- **Adjustable layout:** move, scale, and hide individual elements, or drag
+  the HUD as a group. Each saved KSA HUD layout keeps its own KSI2 arrangement.
+- **Optional settings:** mouse throttle control, an improved altitude dial,
+  and experimental panel background blur.
 
-The current viewport and navball placement calculations are documented in
-[docs/screen-layout.md](docs/screen-layout.md).
-Deferred experimental controls and panel blur are recorded in
-[docs/future-ui-plan.md](docs/future-ui-plan.md).
+![Close-up of KSI2 flight instruments](docs/images/hud-detail.png)
 
-## Requirements
+## Installation
 
-- Kitten Space Agency
-- StarMap
-- .NET 10 SDK
+KSI2 requires **Kitten Space Agency** and
+[**StarMap**](https://github.com/StarMapLoader/StarMap).
+**ModMenu is optional** and provides access to KSI2's configuration window.
 
-## Build
+GitHub releases currently contain version history without packaged mod
+binaries. [Build from source](#building-from-source) first, then install the
+Release output:
 
-`Directory.Build.props` defaults `KsaReferencePath` to an `Import` directory one level above this repository. In this workspace that resolves to `D:\ksi-project\Import`; if it is absent, the build reports that KSA reference assemblies were not found. Point `KsaReferencePath` at the local KSA installation directory containing `KSA.dll` and the `Brutal.*.dll` assemblies; avoid copying these proprietary game assemblies into the repository.
+1. Install StarMap following its setup instructions.
+2. Create the `KSI2` folder in KSA's user mod directory:
 
-```shell
-dotnet restore KSI2.sln
-dotnet build KSI2.sln --configuration Release --no-restore
-```
+   ```text
+   Documents/My Games/Kitten Space Agency/mods/KSI2/
+   ```
 
-When the assemblies are elsewhere, pass their directory as an MSBuild property:
+3. Copy the following from `src/KSI2/bin/Release/net10.0/` into that folder:
 
-```powershell
-dotnet restore KSI2.sln -p:KsaReferencePath="C:\path\to\Kitten Space Agency"
-dotnet build KSI2.sln --configuration Release --no-restore -p:KsaReferencePath="C:\path\to\Kitten Space Agency"
-```
+   ```text
+   KSI2/
+   ├── KSI2.dll
+   ├── KSI2.deps.json
+   ├── mod.toml
+   ├── KSI2Assets.xml
+   ├── ksi2.layout.defaults.json
+   └── assets/                    (the complete folder)
+   ```
 
-Build output is written to `src/KSI2/bin/Release/net10.0`. It contains KSI2's
-code, shaders, optional libraries, and LCD font.
+4. Enable KSI2 in your user `manifest.toml` and launch KSA through StarMap.
 
-## Throttle gauge
+When updating, preserve `ksi2.settings.json` and any personal
+`ksi2.layout.json` beside the mod DLL.
 
-The throttle gauge follows the controlled vehicle's manual throttle. Drag its
-handle to change throttle through KSA's input actions at KSA's normal rate.
-The **Experimental** setting **Mouse throttle control** enables direct control;
-it is off by default. **Layout Configuration** lets you move, scale, and hide
-individual KSI2 elements or drag them as a group. KSI2 hides its flight HUD
-when KSA's built-in Default layout is selected. Each saved KSA HUD layout keeps
-its own KSI2 element state; a newly saved layout inherits the KSI2 state then
-on screen. These settings are saved beside the mod.
+## Configuration
+
+With ModMenu installed, open **Mods > KSI2 > Configuration**. Without ModMenu,
+KSI2 opens its settings window automatically at startup. Closing the window
+leaves the flight instruments visible.
+
+Use **Layout Configuration** to move, scale, and hide HUD elements. KSI2 hides
+its flight HUD when KSA's built-in **Default** layout is selected. A newly
+saved KSA layout inherits the KSI2 arrangement currently on screen.
+
+![KSI2 configuration, layout, and vertical speed calibration windows](docs/images/configuration.png)
+
+| Setting | What it does |
+| --- | --- |
+| Mouse throttle control | Enables dragging the throttle handle through KSA's input actions. Experimental; off by default. |
+| Improved altitude dial | Adjusts the dial's mark spacing for large distances. Off by default. |
+| Blur panel backgrounds | Adds blur to the four flight panel backings, with adjustable opacity. Experimental. |
+| Vertical Speed Configuration | Opens the calibration window under **Advanced**. Starts closed. |
+
+Settings are saved beside the mod. For manual layout overrides, see the
+[layout JSON guide](docs/pilot-layout-json.md).
+
+<details>
+<summary>Instrument behavior and advanced configuration</summary>
+
+The throttle gauge follows the controlled vehicle's manual throttle. With
+mouse throttle control enabled, dragging its handle changes throttle at KSA's
+normal rate.
 
 **Improved altitude dial** is off by default. When enabled, the right dial
 uses 1 km between marks below 1 Mm (for example, `003`, `004`, `005` around
@@ -94,39 +116,86 @@ during that period, blur is turned off on the next launch. The same check runs
 when KSI2 starts with blur enabled. A KSA version change also turns off blur
 so it can be rechecked against the new version.
 
-When ModMenu is installed, **Mods > KSI2 > Configuration** toggles the settings
-window. Its title-bar close button also hides the window. Without ModMenu, KSI2
-opens the settings window by default, including when it was hidden in a previous
-session. The flight instruments remain visible independently.
+</details>
 
-Under **Advanced**, **Vertical Speed Configuration** toggles the calibration
-window. The window also has a Close button and starts closed when KSI2 loads.
+## Building from source
 
-## Geometry checks
+Building requires the **.NET 10 SDK** and the local KSA assemblies.
+`Directory.Build.props` looks for assemblies in an `Import` directory one
+level above the repository by default. To use your installed game, point
+`KsaReferencePath` at the directory containing `KSA.dll` and `Brutal.*.dll`:
 
-Run the focused handle, fill, telemetry, and settings checks with:
+```powershell
+dotnet restore KSI2.sln -p:KsaReferencePath="C:\path\to\Kitten Space Agency"
+dotnet build KSI2.sln --configuration Release --no-restore -p:KsaReferencePath="C:\path\to\Kitten Space Agency"
+```
+
+If the default `Import` directory is already configured, omit the
+`-p:KsaReferencePath=...` argument. Do not commit game assemblies.
+
+The output is written to `src/KSI2/bin/Release/net10.0/`, including shaders,
+optional libraries, and the LCD font. Use the complete `assets/` folder when
+installing.
+
+### Build and install helper
+
+On Windows with Git Bash, `tools/build-install.sh` restores, builds Release,
+runs the geometry checks, and installs the mod while preserving existing
+settings. Set the paths for your machine before running it from the repository
+root:
+
+```bash
+KSA_REFERENCE_PATH='C:/path/to/Kitten Space Agency' \
+KSI2_MOD_DIR='C:/Users/your-name/Documents/My Games/Kitten Space Agency/mods/KSI2' \
+bash tools/build-install.sh
+```
+
+### Geometry checks
+
+Run the focused geometry, telemetry, and settings checks with:
 
 ```powershell
 dotnet run --project tests/KSI2.GeometryTests --configuration Release
 ```
 
-## Install
+### Technical documentation
 
-Create `KSI2` under KSA's user mod directory:
+- [Pilot UI architecture](docs/pilot-ui-architecture.md)
+- [Screen layout and navball placement](docs/screen-layout.md)
+- [Layout JSON configuration](docs/pilot-layout-json.md)
+- [Deferred UI work and experiments](docs/future-ui-plan.md)
 
-```text
-Documents/My Games/Kitten Space Agency/mods/KSI2/
-```
+### Releases
 
-Copy these files from the Release output:
+See [GitHub Releases](https://github.com/KittenSpaceInterface/KSI2/releases)
+for version history.
 
-- `KSI2.dll`
-- `KSI2.deps.json`
-- `mod.toml`
-- `KSI2Assets.xml`
-- `ksi2.layout.defaults.json`
-- `assets/` (the complete folder)
+<details>
+<summary>Release workflow for contributors</summary>
+
+`v0.0.1` is the baseline for automated releases. Earlier commits have no
+historical release versions or changelog entries. Release Please reads
+Conventional Commit messages on `main` since the previous release and uses
+their descriptions to draft changelog entries. `feat:` proposes a minor
+version, `fix:` proposes a patch version, and a breaking change before `1.0.0`
+proposes a minor version. `docs:` and `chore:` commits alone do not propose a
+release.
+
+Release Please opens or updates one release pull request when eligible commits
+reach `main`; more commits update that same proposal. Merging the release pull
+request updates `version.txt` and `CHANGELOG.md` and creates the version tag
+and GitHub Release. A mixed batch of features and fixes uses the minor version.
+Reaching `1.0.0` requires an intentional release decision after the pilot
+interface is complete. GitHub Releases created by this workflow do not include
+mod binaries; follow the build and installation instructions above.
+
+The workflow uses `GITHUB_TOKEN`. Repository and organization Actions settings
+must allow GitHub Actions to create pull requests for the release PR to open.
+
+</details>
 
 ## License
 
-KSI2 is available under the MIT License. It is an independent community project and is not affiliated with or endorsed by the developers or publishers of Kerbal Space Program 2 or Kitten Space Agency.
+KSI2 is available under the [MIT License](LICENSE). It is an independent
+community project and is not affiliated with or endorsed by the developers or
+publishers of Kerbal Space Program 2 or Kitten Space Agency.
