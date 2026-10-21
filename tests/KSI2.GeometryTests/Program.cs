@@ -131,9 +131,15 @@ if (!speedState.Observe(firstVehicle, SpeedReadoutMode.Orbit, false) ||
 if (speedState.SelectNext(false) != SpeedReadoutMode.Ovel ||
     speedState.Mode != SpeedReadoutMode.Ovel)
     throw new Exception("speed selector did not cycle without a target");
-if (speedState.Observe(firstVehicle, SpeedReadoutMode.Surface, false) ||
+if (speedState.Observe(firstVehicle, SpeedReadoutMode.Orbit, false) ||
+    speedState.Mode != SpeedReadoutMode.Ovel)
+    throw new Exception("speed mode changed before the selected frame was applied");
+if (!speedState.Observe(firstVehicle, SpeedReadoutMode.Ovel, false) ||
+    speedState.Mode != SpeedReadoutMode.Ovel)
+    throw new Exception("speed mode did not observe the selected frame");
+if (!speedState.Observe(firstVehicle, SpeedReadoutMode.Surface, false) ||
     speedState.Mode != SpeedReadoutMode.Surface)
-    throw new Exception("speed mode changed while observing the same frame");
+    throw new Exception("speed mode did not follow an external frame change");
 if (!speedState.Observe(secondVehicle, SpeedReadoutMode.Target, true) ||
     speedState.Mode != SpeedReadoutMode.Target)
     throw new Exception("speed mode did not follow a new vehicle while editing");

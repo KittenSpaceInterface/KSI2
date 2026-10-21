@@ -30,7 +30,6 @@ internal sealed class SpeedModeState
             SpeedReadoutMode.Ovel when hasTarget => SpeedReadoutMode.Target,
             _ => SpeedReadoutMode.Surface
         };
-        _frame = Mode;
-        return _frame;
+        return Mode;
     }
 }
