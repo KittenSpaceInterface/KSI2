@@ -262,9 +262,14 @@ foreach (var metres in new[] { 996_000_000d, 996_000_000_000d, 1e22, 1e300 })
         || Enumerable.Range(0, 7).Any(index => tape.Label(index, false).Length > 4))
         throw new Exception($"altitude tape overflowed at {metres} m");
 }
-if (new PilotUiSettings().ImprovedAltitudeDial
-    || !PilotUiSettings.Parse("{\"ImprovedAltitudeDial\":true}").ImprovedAltitudeDial)
-    throw new Exception("improved altitude dial option should default off and survive settings parse");
+if (!new PilotUiSettings().ImprovedAltitudeDial
+    || !PilotUiSettings.Parse("{}").ImprovedAltitudeDial
+    || PilotUiSettings.Parse("{\"ImprovedAltitudeDial\":false}").ImprovedAltitudeDial)
+    throw new Exception("improved altitude dial should default on, allow saved opt-out, and survive settings parse");
+if (!new PilotUiSettings().MouseThrottleControl
+    || !PilotUiSettings.Parse("{}").MouseThrottleControl
+    || PilotUiSettings.Parse("{\"MouseThrottleControl\":false}").MouseThrottleControl)
+    throw new Exception("mouse throttle should default on and allow saved opt-out");
 var speedFormat = System.Globalization.CultureInfo.InvariantCulture;
 if (SpeedReadoutGeometry.Format(7_784.4, speedFormat) != new SpeedReadoutValue("7784.4", "m/s"))
     throw new Exception("orbital speed below KSP2 unit switch remains in m/s");

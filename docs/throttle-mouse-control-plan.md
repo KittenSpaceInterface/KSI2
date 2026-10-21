@@ -12,9 +12,9 @@ value. The gauge remains display only when no controllable vehicle is present,
 the game locks flight controls, layout editing or preview is active, or the
 flight computer controls the burn.
 
-Mouse dragging is disabled by default. Add an **Experimental** section to the
+Mouse dragging is enabled by default. Add an **Experimental** section to the
 existing KSI2 settings window with a **Mouse throttle control** checkbox,
-saved as `MouseThrottleControl` and defaulting to `false`. When enabled, a drag
+saved as `MouseThrottleControl` and defaulting to `true`. When enabled, a drag
 writes the private throttle input register for immediate response. If that
 path fails or its KSA field is unavailable, disable mouse control for the
 session and show the reason. There is no alternate input path.

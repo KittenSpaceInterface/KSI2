@@ -55,8 +55,8 @@ internal sealed class PilotUiSettings
     public string SelectedElement { get; set; } = "none";
     [JsonIgnore]
     public bool MoveAllElements { get; set; }
-    public bool MouseThrottleControl { get; set; }
-    public bool ImprovedAltitudeDial { get; set; }
+    public bool MouseThrottleControl { get; set; } = true;
+    public bool ImprovedAltitudeDial { get; set; } = true;
     public bool BlurPanelBackgrounds { get; set; }
     public bool ConfigurationVisible { get; set; } = true;
     public string LastKsaVersion { get; set; } = string.Empty;

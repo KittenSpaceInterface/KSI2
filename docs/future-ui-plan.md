@@ -6,13 +6,12 @@ validation remains. The atmospheric blur prototype is implemented and its
 remaining validation is tracked in
 [blur-phase1-plan.md](blur-phase1-plan.md). Experimental
 switches belong under the **Experimental** section of the KSI2 UI
-configuration and default to disabled. Mouse control is off unless its switch
-is enabled. Blur uses the current solid background when disabled or
-unavailable.
+configuration. Mouse control defaults to enabled and can be turned off. Blur
+uses the current solid background when disabled or unavailable.
 
 | Future switch | When enabled | Default behavior |
 |---|---|---|
-| Mouse throttle control | Drag the curved throttle handle to command throttle directly, subject to KSA control authority, time warp, minimum throttle, and automatic burn rules. | Drag control is disabled. The gauge remains read-only. |
+| Mouse throttle control | Drag the curved throttle handle to command throttle directly, subject to KSA control authority, time warp, minimum throttle, and automatic burn rules. | Drag control is enabled. |
 | Blurred panel backgrounds | Sample and blur the rendered scene inside the existing panel shape masks. | Draw the current solid-color masked backgrounds. |
 
 ## Shared pilot interface layout tree
