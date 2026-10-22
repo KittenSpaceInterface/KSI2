@@ -124,7 +124,7 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
     [
         new(Id, PilotLayerOrder.DirectionSelector, (layout, context) =>
             Draw(layout.Component("direction-selector"),
-                layout.Component(WheelId), layout.Component(ModeControlsId), context.Blur, context.Opacity,
+                layout.Component(WheelId), layout.Component(ModeControlsId), context.Background,
                 context.Mode == PilotInteractionMode.Instruments && !KSA.Program.IsModalOpen()))
     ];
 
@@ -154,7 +154,7 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
 
     private void Draw(PilotComponentBounds root, PilotComponentBounds wheel,
         PilotComponentBounds modeControls,
-        PanelBackgroundBlur? blur, float opacity, bool allowInteraction)
+        PanelBackgroundRenderer background, bool allowInteraction)
     {
         if (!KSA.Program.DrawUI) { ResetInput(); return; }
         var vehicle = KSA.Program.ControlledVehicle;
@@ -233,11 +233,7 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
                 var wheelMax = NavballPixelAlignment.Snap(new float2(
                     wheel.Position.X + WheelSize * scale,
                     wheel.Position.Y + WheelSize * scale));
-                var blurQueued = blur?.Queue(draw, wheelMin, wheelMax,
-                    _textures["KSI2DirectionSelectorBG"], opacity) == true;
-                if (!blurQueued)
-                    DrawImage(draw, "KSI2DirectionSelectorBG", wheel.Position,
-                        WheelSize * scale, WheelSize * scale, 0xFD190B03u);
+                background.Draw(draw, wheelMin, wheelMax, _textures["KSI2DirectionSelectorBG"], 0xFD190B03u);
                 DrawImage(draw, "KSI2DirectionSelectorBorder", wheel.Position,
                     WheelSize * scale, WheelSize * scale, 0xFF662B29u);
                 DrawImage(draw, "KSI2DirectionSelectorDirection", wheel.Position,
@@ -315,11 +311,11 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
             });
         }
 
-        DrawModeControls(modeControls, vehicle, blur, opacity, allowInteraction);
+        DrawModeControls(modeControls, vehicle, background, allowInteraction);
     }
 
     private void DrawModeControls(PilotComponentBounds bounds, Vehicle vehicle,
-        PanelBackgroundBlur? blur, float opacity, bool allowInteraction)
+        PanelBackgroundRenderer background, bool allowInteraction)
     {
         var panelMin = NavballPixelAlignment.Snap(new float2(bounds.Position.X, bounds.Position.Y));
         var panelMax = NavballPixelAlignment.Snap(new float2(
@@ -334,11 +330,11 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
                 ImGui.Dummy(panelMax - panelMin);
                 var draw = ImGui.GetWindowDrawList();
                 var origin = new float2(bounds.Position.X, bounds.Position.Y);
-                var blurred = DrawModePanel(draw, origin, bounds.Scale,
-                    bounds.Width, bounds.Height, blur, opacity);
+                DrawModePanel(draw, origin, bounds.Scale,
+                    bounds.Width, bounds.Height, background);
                 DrawModeCaption(draw, "SAS.CONTROL", origin, bounds.Scale,
                     new float2(42f, 42f), new float2(142f, 56f), 45f, 56f,
-                    blur, blurred, opacity);
+                    background);
             }
         }
         finally { PilotImGui.EndControlCanvas(); }
@@ -382,11 +378,11 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
             });
         }
         if (_referencePopupOpen)
-            DrawReferencePopup(bounds, vehicle, blur, opacity, allowInteraction, lockRightClicked);
+            DrawReferencePopup(bounds, vehicle, background, allowInteraction, lockRightClicked);
     }
 
     private void DrawReferencePopup(PilotComponentBounds bounds, Vehicle vehicle,
-        PanelBackgroundBlur? blur, float opacity, bool allowInteraction,
+        PanelBackgroundRenderer background, bool allowInteraction,
         bool lockRightClicked)
     {
         var scale = bounds.Scale;
@@ -403,11 +399,11 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
             {
                 ImGui.Dummy(panelMax - panelMin);
                 var draw = ImGui.GetWindowDrawList();
-                var blurred = DrawModePanel(draw, origin, scale,
-                    ReferencePopupWidth, ReferencePopupHeight, blur, opacity);
+                DrawModePanel(draw, origin, scale,
+                    ReferencePopupWidth, ReferencePopupHeight, background);
                 DrawModeCaption(draw, "MODE", origin, scale,
                     new float2(28f, 0f), new float2(60f, 14f), 0f, 11f,
-                    blur, blurred, opacity);
+                    background);
             }
         }
         finally { PilotImGui.EndControlCanvas(); }
@@ -473,36 +469,27 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
             _referencePopupOpen = false;
     }
 
-    private bool DrawModePanel(ImDrawListPtr draw, float2 origin, float scale,
-        float width, float height, PanelBackgroundBlur? blur, float opacity)
+    private void DrawModePanel(ImDrawListPtr draw, float2 origin, float scale,
+        float width, float height, PanelBackgroundRenderer background)
     {
         var min = NavballPixelAlignment.Snap(origin);
         var max = NavballPixelAlignment.Snap(origin + new float2(width, height) * scale);
-        var blurred = blur?.Queue(draw, min, max,
-            _textures["KSI2ModeControlsBackground"], opacity,
-            maskNineSlice: new PanelMaskNineSlice(14f / 48f, 7f / width, 7f / height)) == true;
-        if (!blurred)
-            DrawModeNineSlice(draw, "KSI2ModeControlsBackground", origin, scale,
-                0, 0, width, height, 14, 0xFD190B03u, true);
+        background.Draw(draw, min, max, _textures["KSI2ModeControlsBackground"], 0xFD190B03u,
+            maskNineSlice: new PanelMaskNineSlice(14f / 48f, 7f / width, 7f / height));
         DrawModeNineSlice(draw, "KSI2ModeControlsBorder", origin, scale,
             2, 2, width - 4, height - 4, 14, 0xFF662B29u, false);
         DrawModeNineSlice(draw, "KSI2ModeControlsBracket", origin, scale,
             2, 2, width - 4, height - 4, 14, 0xFFCC5752u, false);
-        return blurred;
     }
 
     private void DrawModeCaption(ImDrawListPtr draw, string label, float2 origin,
         float scale, float2 backingMin, float2 backingMax, float textTop,
-        float textBottom, PanelBackgroundBlur? blur, bool panelBlurred, float opacity)
+        float textBottom, PanelBackgroundRenderer background)
     {
         var min = NavballPixelAlignment.Snap(origin + backingMin * scale);
         var max = NavballPixelAlignment.Snap(origin + backingMax * scale);
-        var titleBlurred = panelBlurred && blur?.Queue(draw, min, max,
-            _textures["KSI2ModeControlsBackground"], opacity,
-            rectangularMask: true) == true;
-        if (!titleBlurred)
-            ImGui.PInvoke.ImDrawList_AddRectFilled(draw.Ptr, &min,
-                &max, 0xFF190B03u, 0f, ImDrawFlags.None);
+        background.Draw(draw, min, max, _textures["KSI2ModeControlsBackground"], 0xFF190B03u,
+            rectangularMask: true);
         ReadoutLcdText.Draw(draw, label, min.X, max.X,
             origin.Y + textTop * scale, origin.Y + textBottom * scale,
             11f, scale, false, 0xFFFF6D69u, alignCenter: true,

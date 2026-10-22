@@ -32,7 +32,11 @@ public sealed class KSI2Mod
     [StarMapUnload]
     public void Unload()
     {
-        _gaugeCopies.Dispose();
-        _ui.Dispose();
+        try
+        {
+            _gaugeCopies.Dispose();
+            _ui.Dispose();
+        }
+        finally { KsaGraphicsLifetime.Uninstall(); }
     }
 }

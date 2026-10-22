@@ -12,9 +12,9 @@ internal sealed unsafe class NavballClusterBackground
     internal void SetBackgroundTexture(TextureReference texture) => _backgroundTexture = texture;
     internal void SetBorderTexture(TextureReference texture) => _borderTexture = texture;
 
-    internal void Draw(PilotComponentBounds bounds, PanelBackgroundBlur? blur, float opacity)
+    internal void Draw(PilotComponentBounds bounds, PanelBackgroundRenderer background)
     {
-        if (!KSA.Program.DrawUI || _backgroundTexture?.ImguiTextureRef is not { } background) return;
+        if (!KSA.Program.DrawUI || _backgroundTexture?.ImguiTextureRef is null) return;
 
         var min = new float2(bounds.Position.X, bounds.Position.Y);
         var max = new float2(bounds.Max.X, bounds.Max.Y);
@@ -22,9 +22,7 @@ internal sealed unsafe class NavballClusterBackground
         var uvMax = new float2(1f, 1f);
         var draw = ImGui.GetWindowDrawList();
 
-        var blurQueued = blur?.Queue(draw, min, max, _backgroundTexture!, opacity) == true;
-        if (!blurQueued)
-            ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, background, &min, &max, &uvMin, &uvMax, NavballClusterLayout.BackgroundColor);
+        background.Draw(draw, min, max, _backgroundTexture, NavballClusterLayout.BackgroundColor);
         if (_borderTexture?.ImguiTextureRef is { } border)
             ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, border, &min, &max, &uvMin, &uvMax, 0xFF662B29u);
     }

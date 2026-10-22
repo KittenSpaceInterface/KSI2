@@ -16,8 +16,7 @@ internal sealed class PilotUiController : IDisposable
     private readonly IPilotUiModule[] _modules;
     private readonly PilotElementRenderer _elementRenderer;
     private readonly PilotLayoutDefinition[] _layoutDefinitions;
-    private PanelBackgroundBlur? _panelBlur;
-    private bool _panelBlurAttempted;
+    private readonly PanelBackgroundRenderer _background = new();
 
     internal PilotUiController()
     {
@@ -56,7 +55,9 @@ internal sealed class PilotUiController : IDisposable
             && _settings.Settings.ElementVisible("navball-cluster"));
         _orbitalReadout.SetNativeButtonsVisible(_settings.HudVisible
             && _settings.Settings.ElementVisible("orbital-readout"));
-        _panelBlur?.BeginFrame();
+        _background.BeginFrame(_settings.BackgroundStyle, _settings.BackgroundOpacity,
+            _settings.Settings.SolidBackgroundColor);
+        _settings.BackgroundStatus = _background.Status;
         if (!_settings.HudVisible)
         {
             foreach (var module in _modules) module.CancelInteraction();
@@ -82,8 +83,7 @@ internal sealed class PilotUiController : IDisposable
         var layout = PilotFrameLayout.Resolve(viewport.Pos.X, viewport.Pos.Y,
             viewport.Size.X, viewport.Size.Y, scaleViewport, _settings.Settings, _layoutDefinitions);
         var mode = _settings.Settings.Editing ? PilotInteractionMode.LayoutEditing : PilotInteractionMode.Instruments;
-        var blur = _settings.BlurPanelBackgrounds ? GetPanelBlur() : null;
-        var context = new PilotRenderContext(mode, blur, _settings.BlurOpacity, dt);
+        var context = new PilotRenderContext(mode, _background, dt);
         var modalOpen = KSA.Program.IsModalOpen();
         if (modalOpen)
         {
@@ -113,21 +113,10 @@ internal sealed class PilotUiController : IDisposable
         PilotImGui.PlaceHudBehindSettings();
     }
 
-    private PanelBackgroundBlur? GetPanelBlur()
-    {
-        if (!_settings.BlurPanelBackgrounds) return null;
-        if (!_panelBlurAttempted)
-        {
-            _panelBlurAttempted = true;
-            _panelBlur = PanelBackgroundBlur.Create();
-        }
-        return _panelBlur;
-    }
-
     public void Dispose()
     {
         foreach (var module in _modules) module.Dispose();
-        _panelBlur?.Dispose();
+        _background.Dispose();
         _settings.Dispose();
     }
 }

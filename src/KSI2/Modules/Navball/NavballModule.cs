@@ -23,7 +23,7 @@ internal sealed class NavballModule : IPilotUiModule
         [
             new("navball-cluster", PilotLayerOrder.ClusterBackground, (l,c) =>
             {
-                _navballClusterBackground.Draw(l.Component("cluster-background"),c.Blur,c.Opacity);
+                _navballClusterBackground.Draw(l.Component("cluster-background"),c.Background);
                 _frameButtons.Sync(l.Component("navball-cluster"));
             }),
             new("navball-cluster", PilotLayerOrder.NavballSphere, (l,c) => _navballSpike.Draw(l.Component("navball-sphere"),_speedReadout.SelectedMode)),

@@ -9,6 +9,9 @@ namespace KSI2;
 internal static class TimeSelectorGeometry
 {
     internal const int PanelWidth = 310;
+    internal const int RoundedEndSize = 56;
+    internal const int BackgroundSplit = 37;
+    internal const float RoundedEndUvWidth = 112f / 704f;
     internal const int RateStart = 59;
     internal const int RateWidth = 20;
     internal const int RatePitch = 22;
@@ -60,7 +63,7 @@ internal sealed class TimeSelectorModule : IPilotUiModule
     internal TimeSelectorModule() => Layers =
     [
         new(Id, PilotLayerOrder.TimeSelector, (layout, context) =>
-            _renderer.Draw(layout.Component(Id), context.Blur, context.Opacity,
+            _renderer.Draw(layout.Component(Id), context.Background,
                 context.DeltaTime, context.Mode == PilotInteractionMode.Instruments
                     && !Program.IsModalOpen()))
     ];
@@ -134,7 +137,7 @@ internal sealed unsafe class TimeSelectorRenderer : IDisposable
         _hasObservedSpeed = false;
     }
 
-    internal void Draw(PilotComponentBounds bounds, PanelBackgroundBlur? blur, float opacity,
+    internal void Draw(PilotComponentBounds bounds, PanelBackgroundRenderer background,
         double deltaTime, bool allowInteraction)
     {
         if (!KSA.Program.DrawUI) return;
@@ -191,21 +194,25 @@ internal sealed unsafe class TimeSelectorRenderer : IDisposable
             _rateHovered[i] = false;
         var panelMin = Snap(0, 0);
         var panelMax = Snap(310, 56);
-        var blurred = _textures.TryGetValue("KSI2TimeClusterFill", out var fillMask)
-            && blur?.Queue(draw, panelMin, panelMax, fillMask, opacity,
-                maskNineSlice: new PanelMaskNineSlice(56f / 704f, 28f / 310f, 8f / 56f)) == true;
-        if (!blurred) DrawImage("KSI2TimeClusterFill", 0, 0, 310, 56, PanelColor);
+        var panelSplit = Snap(TimeSelectorGeometry.BackgroundSplit, 0);
+        var capClipMax = new float2(panelSplit.X, panelMax.Y);
+        // Draw the original rounded cap once, using the selected background method.
+        ImGui.PInvoke.ImDrawList_PushClipRect(draw.Ptr, &panelMin, &capClipMax, true);
+        background.Draw(draw, panelMin, Snap(TimeSelectorGeometry.RoundedEndSize, TimeSelectorGeometry.RoundedEndSize),
+            _textures.GetValueOrDefault("KSI2TimeClusterFill"),
+            PanelColor, maskUvRect: new float4(0f, 0f, TimeSelectorGeometry.RoundedEndUvWidth, 1f));
+        ImGui.PInvoke.ImDrawList_PopClipRect(draw.Ptr);
+
+        // The main fill and frame start at the same pixel where the cap stops.
+        // Clipping the frame avoids needing an opaque cover over the pause button.
+        ImGui.PInvoke.ImDrawList_PushClipRect(draw.Ptr, &panelSplit, &panelMax, true);
+        background.Draw(draw, panelMin, panelMax, _textures.GetValueOrDefault("KSI2TimeClusterFill"),
+            PanelColor, maskNineSlice: new PanelMaskNineSlice(56f / 704f, 28f / 310f, 8f / 56f),
+            stretchSolidMask: true);
         DrawNineSlice("KSI2TimeClusterBorder", 24, 2, 284, 52,
             paused ? PausedBorderColor : BorderColor, fillCenter: false);
         DrawNineSlice("KSI2TimeClusterBracket", 24, 2, 284, 52,
             paused ? PausedBorderColor : BracketColor, fillCenter: false);
-
-        // Cover the frame beneath the pause button, stopping at its right edge.
-        // Clip the original 56-unit fill slice instead of rescaling its rounded edge.
-        var fillClipMax = Snap(37, 56);
-        ImGui.PInvoke.ImDrawList_PushClipRect(draw.Ptr, &panelMin, &fillClipMax, true);
-        DrawImagePart("KSI2TimeClusterFill", 0, 0, 56, 56,
-            new float2(0f, 0f), new float2(112f / 704f, 1f), PanelColor);
         ImGui.PInvoke.ImDrawList_PopClipRect(draw.Ptr);
         DrawImage(paused || pauseInput.Hovered
                 ? "KSI2TimeClusterButtonOutlineDot" : "KSI2TimeClusterButtonOutline",
@@ -297,13 +304,8 @@ internal sealed unsafe class TimeSelectorRenderer : IDisposable
         // Shorten the caption backing from its top edge so it clears the button row.
         var titleMin = Snap(115, 44);
         var titleMax = Snap(245, 56);
-        var titleBlurred = blurred && blur is not null &&
-            _textures.TryGetValue("KSI2TimeClusterFill", out var titleMask) &&
-            blur.Queue(draw, titleMin, titleMax, titleMask, opacity,
-                rectangularMask: true);
-        if (!titleBlurred)
-            ImGui.PInvoke.ImDrawList_AddRectFilled(draw.Ptr, &titleMin, &titleMax,
-                PanelColor, 0f, ImDrawFlags.None);
+        background.Draw(draw, titleMin, titleMax, _textures.GetValueOrDefault("KSI2TimeClusterFill"),
+            PanelColor, rectangularMask: true);
         ReadoutLcdText.Draw(draw,
             $"TIME.WARP = {displayedSpeed.ToString("#,0.###", CultureInfo.InvariantCulture)}x",
             titleMin.X, titleMax.X, Snap(0, 45).Y, Snap(0, 56).Y,
@@ -358,12 +360,8 @@ internal sealed unsafe class TimeSelectorRenderer : IDisposable
             // The single active signpost fills its layout group's 291x26 slot.
             var signMin = Snap(19, -32);
             var signMax = Snap(310, -6);
-            var signBlurred = _textures.TryGetValue("KSI2TimeClusterButtonFill", out var mask)
-                && blur?.Queue(draw, signMin, signMax, mask, opacity,
-                    maskNineSlice: new PanelMaskNineSlice(14f / 48f, 7f / 291f, 7f / 26f)) == true;
-            if (!signBlurred)
-                DrawNineSlice("KSI2TimeClusterButtonFill", 19, -32, 291, 26,
-                    PanelColor, fillCenter: true);
+            background.Draw(draw, signMin, signMax, _textures.GetValueOrDefault("KSI2TimeClusterButtonFill"),
+                PanelColor, maskNineSlice: new PanelMaskNineSlice(14f / 48f, 7f / 291f, 7f / 26f));
 
             // KSP2 fades the inset border and bracket through a 0.625-second yoyo.
             var pulse = 0.5f + 0.5f * MathF.Cos(_animationTime * MathF.PI * 2f / 1.25f);

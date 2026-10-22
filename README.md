@@ -75,11 +75,13 @@ saved KSA layout inherits the KSI2 arrangement currently on screen.
 | --- | --- |
 | Mouse throttle control | Enables dragging the throttle handle through KSA's input actions. Experimental; off by default. |
 | Improved altitude dial | Adjusts the dial's mark spacing for large distances. Off by default. |
-| Blur panel backgrounds | Adds blur to the four flight panel backings, with adjustable opacity. Experimental. |
+| Background style | Selects Solid color, Gaussian (single pass), or Gaussian (separable). Solid color has a saved color picker with hex entry. Blur styles retain separate opacity settings. Gaussian (separable) requires CMAA2; unavailable configurations use Solid color. |
 | Vertical Speed Configuration | Opens the calibration window under **Advanced**. Starts closed. |
 
 Settings are saved beside the mod. For manual layout overrides, see the
 [layout JSON guide](docs/pilot-layout-json.md).
+See [panel backgrounds](docs/panel-backgrounds.md) for the experimental blur
+process and its verification status.
 
 ### Switch back to KSA's HUD
 

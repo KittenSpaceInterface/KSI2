@@ -41,6 +41,7 @@ internal sealed class PilotUiSettings
         }
     }
     internal const int MaxElementLayer = 9999;
+    internal const uint DefaultSolidBackgroundColor = 0xFF190B03u;
     internal static readonly string[] EditableElements = ["throttle", "navball-cluster", "atmosphere", "vertical-speed", "orbital-readout", "direction-selector", "time-selector"];
     private static readonly JsonSerializerOptions ReadOptions = new() { PropertyNameCaseInsensitive = true };
     public bool Show { get; set; } = true;
@@ -57,10 +58,19 @@ internal sealed class PilotUiSettings
     public bool MoveAllElements { get; set; }
     public bool MouseThrottleControl { get; set; } = true;
     public bool ImprovedAltitudeDial { get; set; } = true;
-    public bool BlurPanelBackgrounds { get; set; }
+    // Read old settings without writing the retired checkbox into new files.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? BlurPanelBackgrounds { get; set; }
+    public PanelBackgroundStyle? BackgroundStyle { get; set; }
+    public uint SolidBackgroundColor { get; set; } = DefaultSolidBackgroundColor;
+    [JsonIgnore]
+    internal PanelBackgroundStyle EffectiveBackgroundStyle => BackgroundStyle is { } style
+        ? Enum.IsDefined(style) ? style : PanelBackgroundStyle.Solid
+        : BlurPanelBackgrounds == true ? PanelBackgroundStyle.CurrentBlur : PanelBackgroundStyle.Solid;
     public bool ConfigurationVisible { get; set; } = true;
     public string LastKsaVersion { get; set; } = string.Empty;
     public int BlurOpacityTicks { get; set; } = 398;
+    public int Ksp2BlurOpacityTicks { get; set; } = 400;
     public float[] VerticalSpeedMarkSpeeds { get; set; } = (float[])VerticalSpeedIndicatorGeometry.DefaultMarkSpeeds.Clone();
     public float VerticalSpeedNeedleOffset { get; set; } = 2f;
     internal static string ModDirectory => Path.GetDirectoryName(typeof(PilotUiSettings).Assembly.Location) ?? AppContext.BaseDirectory;
@@ -144,6 +154,9 @@ internal sealed class PilotUiSettings
             settings.X = Math.Clamp(settings.X, 0, 1);
             settings.Y = Math.Clamp(settings.Y, 0, 1);
             settings.BlurOpacityTicks = Math.Clamp(settings.BlurOpacityTicks, 0, 400);
+            settings.Ksp2BlurOpacityTicks = Math.Clamp(settings.Ksp2BlurOpacityTicks, 0, 400);
+            settings.BackgroundStyle = settings.EffectiveBackgroundStyle;
+            settings.BlurPanelBackgrounds = null;
             if (settings.VerticalSpeedMarkSpeeds is not { Length: 7 }
                 || settings.VerticalSpeedMarkSpeeds.Any(speed => !float.IsFinite(speed))
                 || settings.VerticalSpeedMarkSpeeds.Where((speed, index) => index > 0

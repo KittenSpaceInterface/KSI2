@@ -1,6 +1,8 @@
 <Assets>
   <Shader Id="KSI2PanelBlurVert" Path="assets/shaders/panel-blur.vert" />
   <Shader Id="KSI2PanelBlurFrag" Path="assets/shaders/panel-blur.frag" />
+  <Shader Id="KSI2BlurPassVert" Path="assets/shaders/panel-blur-pass.vert" />
+  <Shader Id="KSI2BlurPassFrag" Path="assets/shaders/panel-blur-pass.frag" />
   <GaugeCanvas Id="KSI2WarpButtons" AlwaysEnabled="true">
     <VisibleInContext>Vehicle</VisibleInContext>
     <!-- KSI2 removes EVA at runtime. KSA's own mod loader keeps this canvas hidden without StarMap. -->

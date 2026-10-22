@@ -3,7 +3,7 @@ using KSA;
 namespace KSI2;
 
 internal enum PilotInteractionMode { Instruments, LayoutEditing }
-internal readonly record struct PilotRenderContext(PilotInteractionMode Mode, PanelBackgroundBlur? Blur, float Opacity, double DeltaTime);
+internal readonly record struct PilotRenderContext(PilotInteractionMode Mode, PanelBackgroundRenderer Background, double DeltaTime);
 // Stable component identifiers. PilotLayoutDefaults.json orders components inside an element.
 internal enum PilotLayerOrder
 {

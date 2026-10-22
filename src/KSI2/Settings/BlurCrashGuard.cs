@@ -11,7 +11,8 @@ internal sealed class BlurCrashGuard
     private long _trialStartedAt;
     private bool _trialComplete;
 
-    internal bool Enabled => _settings.BlurPanelBackgrounds;
+    internal PanelBackgroundStyle Style => _settings.EffectiveBackgroundStyle;
+    internal bool Enabled => Style != PanelBackgroundStyle.Solid;
     internal bool RecoveredAfterCrash { get; private set; }
     internal string? Error { get; private set; }
 
@@ -22,8 +23,9 @@ internal sealed class BlurCrashGuard
         _markerPath = markerPath ?? Path.Combine(PilotUiSettings.ModDirectory, "ksi2.blur-active");
         if (File.Exists(_markerPath))
         {
-            RecoveredAfterCrash = _settings.BlurPanelBackgrounds;
-            _settings.BlurPanelBackgrounds = false;
+            RecoveredAfterCrash = Enabled;
+            _settings.BackgroundStyle = PanelBackgroundStyle.Solid;
+            _settings.BlurPanelBackgrounds = null;
             if (_save()) ClearMarker();
             else Error = "Could not save the recovered blur setting; blur stays off for this run.";
             if (RecoveredAfterCrash)
@@ -35,19 +37,28 @@ internal sealed class BlurCrashGuard
         }
     }
 
-    internal void SetEnabled(bool enabled)
+    internal void SetStyle(PanelBackgroundStyle style)
     {
-        if (enabled == Enabled) return;
+        if (!Enum.IsDefined(style)) style = PanelBackgroundStyle.Solid;
+        if (style == Style) return;
+        var previous = Style;
+        var enabled = style != PanelBackgroundStyle.Solid;
         if (enabled && !ArmMarker())
         {
             Error = "Could not arm blur crash recovery; blur remains off.";
             return;
         }
 
-        _settings.BlurPanelBackgrounds = enabled;
+        _settings.BackgroundStyle = style;
+        _settings.BlurPanelBackgrounds = null;
         if (_save())
         {
-            if (!enabled) ClearMarker();
+            if (!enabled)
+            {
+                ClearMarker();
+                _trialStartedAt = 0;
+                _trialComplete = false;
+            }
             else
             {
                 _trialStartedAt = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -58,7 +69,8 @@ internal sealed class BlurCrashGuard
         }
         else
         {
-            Error = "Could not save the blur setting. Blur will be disabled after an unclean exit.";
+            _settings.BackgroundStyle = previous;
+            Error = "Could not save the background style.";
         }
     }
 
@@ -74,7 +86,8 @@ internal sealed class BlurCrashGuard
         {
             if (!ArmMarker())
             {
-                _settings.BlurPanelBackgrounds = false;
+                _settings.BackgroundStyle = PanelBackgroundStyle.Solid;
+                _settings.BlurPanelBackgrounds = null;
                 _save();
                 Error = "Could not arm the five-second blur check; blur stays off.";
                 return;

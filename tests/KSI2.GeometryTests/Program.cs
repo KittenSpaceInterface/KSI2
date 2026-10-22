@@ -4,6 +4,9 @@ using System.Reflection;
 using System.Runtime.Loader;
 using System.Numerics;
 
+PanelBackgroundChecks.Run();
+if (args.Contains("--background-only")) return;
+
 PilotLayoutDefinition[] definitions =
 [
     .. ThrottleModule.Definitions,
@@ -633,24 +636,6 @@ foreach (var id in PilotUiSettings.EditableElements)
 resetLayout.Reset();
 if (resetLayout.ElementLayouts.Count != 0 || resetLayout.Editing || resetLayout.SelectedElement != "none")
     throw new Exception("reset retained independent element layout or edit state");
-var marker = Path.Combine(Path.GetTempPath(), $"ksi2-blur-test-{Guid.NewGuid():N}");
-try
-{
-    var blurSettings = new PilotUiSettings { BlurPanelBackgrounds = true };
-    var blurGuard = new BlurCrashGuard(blurSettings, () => true, marker);
-    if (!File.Exists(marker) || !blurGuard.Enabled) throw new Exception("blur marker was not armed");
-    blurGuard.OnCleanUnload();
-    if (File.Exists(marker)) throw new Exception("clean unload retained the blur marker");
-    File.WriteAllText(marker, "unclean exit");
-    var recovered = new BlurCrashGuard(blurSettings, () => true, marker);
-    if (recovered.Enabled || !recovered.RecoveredAfterCrash || File.Exists(marker))
-        throw new Exception("unclean blur session was not recovered");
-}
-finally
-{
-    if (File.Exists(marker)) File.Delete(marker);
-}
-
 if (typeof(KSI2Mod).Assembly.GetReferencedAssemblies()
     .Any(assembly => assembly.Name is "0Harmony" or "KSI2.FlightComputerInputPatch" or "ModMenu"))
     throw new Exception("main KSI2 assembly has a hard dependency on an optional integration");

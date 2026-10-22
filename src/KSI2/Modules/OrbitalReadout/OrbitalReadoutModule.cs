@@ -94,7 +94,7 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
     internal OrbitalReadoutModule() => Layers =
     [
         new(Id, PilotLayerOrder.OrbitalReadout,
-            (layout, context) => Draw(layout.Component(Id), context.Blur, context.Opacity,
+            (layout, context) => Draw(layout.Component(Id), context.Background,
                 context.Mode == PilotInteractionMode.Instruments && !Program.IsModalOpen()))
     ];
 
@@ -121,7 +121,7 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
             _warpCanvas.VisibleInContext = [GaugeVisibilityFlag.Vehicle, GaugeVisibilityFlag.EVA];
     }
 
-    private void Draw(PilotComponentBounds bounds, PanelBackgroundBlur? blur, float opacity,
+    private void Draw(PilotComponentBounds bounds, PanelBackgroundRenderer background,
         bool allowInteraction)
     {
         var vehicle = Program.ControlledVehicle;
@@ -132,11 +132,8 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
         var s = bounds.Scale;
         var now = Universe.GetElapsedTime();
 
-        // Use the same fill and optional blur as the other KSI2 panels.
-        var blurQueued = _textures.TryGetValue("KSI2OrbitFill", out var mask)
-            && blur?.Queue(draw, Snap(0, 0), Snap(240, 56), mask, opacity,
-                maskNineSlice: new PanelMaskNineSlice(14f / 48f, 7f / 240f, 7f / 56f)) == true;
-        if (!blurQueued) DrawNineSlice("KSI2OrbitFill", 0, 0, 240, 56, PanelColor, true);
+        background.Draw(draw, Snap(0, 0), Snap(240, 56), _textures.GetValueOrDefault("KSI2OrbitFill"),
+            PanelColor, maskNineSlice: new PanelMaskNineSlice(14f / 48f, 7f / 240f, 7f / 56f));
         DrawNineSlice("KSI2OrbitBorder", 2, 2, 236, 52, BorderColor, false);
         DrawNineSlice("KSI2OrbitBracket", 2, 2, 236, 52, BracketColor, false);
 
@@ -148,11 +145,8 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
 
         // This title backing intentionally covers the lower frame. Blur that same
         // rectangular area instead of removing it or leaving it opaque.
-        var titleBlurQueued = blurQueued && blur is not null &&
-            _textures.TryGetValue("KSI2OrbitFill", out var titleMask) &&
-            blur.Queue(draw, Snap(70, 42), Snap(170, 56), titleMask, opacity,
-                rectangularMask: true);
-        if (!titleBlurQueued) DrawRect(70, 42, 170, 56, OpaquePanelColor);
+        background.Draw(draw, Snap(70, 42), Snap(170, 56), _textures.GetValueOrDefault("KSI2OrbitFill"),
+            OpaquePanelColor, rectangularMask: true);
         DrawLcd("ORBITAL.INFO", 70, 170, 45, 56, 11, TitleColor, center: true);
 
         SyncWarpCanvas(bounds);
@@ -198,14 +192,6 @@ internal sealed unsafe class OrbitalReadoutModule : IPilotUiModule
                 var uvMax = new float2(cuts[column + 1] / 48, cuts[row + 1] / 48);
                 ImGui.PInvoke.ImDrawList_AddImage(draw.Ptr, image, &min, &max, &uvMin, &uvMax, tint);
             }
-        }
-
-        void DrawRect(float left, float top, float right, float bottom, uint tint)
-        {
-            var min = Snap(left, top);
-            var max = Snap(right, bottom);
-            ImGui.PInvoke.ImDrawList_AddRectFilled(draw.Ptr, &min, &max,
-                tint, 0f, ImDrawFlags.None);
         }
 
         void DrawLcd(string value, float left, float right, float top, float bottom,

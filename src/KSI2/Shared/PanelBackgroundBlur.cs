@@ -1,6 +1,7 @@
 using Brutal;
 using Brutal.ImGuiApi;
 using Brutal.ImGuiApi.Extensions;
+using Brutal.Memory;
 using Brutal.Numerics;
 using Brutal.Pointers;
 using Brutal.VulkanApi;
@@ -23,18 +24,23 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
         public float4 Rect;
         public float4 Scene;
         public float4 MaskSlice;
+        public float4 Fill;
+        public float4 Method;
+        public float4 MaskUvRect;
     }
 
     private struct PanelDrawData
     {
         public PanelData Panel;
         public VkDescriptorSet Descriptor;
+        public VkDescriptorSet FallbackDescriptor;
     }
 
     private sealed class MaskDescriptor
     {
         public required VkImageView View;
         public required VkDescriptorSet Set;
+        public VkDescriptorSet FallbackSet;
     }
 
     private const int MasksPerDescriptorPool = 5;
@@ -48,61 +54,106 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
     private DescriptorPoolEx _activeDescriptorPool;
     private int _activePoolMaskCount;
     private VkImageView _sceneView;
+    private VkImageView _fallbackSceneView;
+    private VkImageView _compositionSceneView;
+    private readonly PanelBlurProcess? _process;
+    private readonly PtrOwner<VkPipelineColorBlendAttachmentState>? _processedBlendAttachment;
+    private readonly PtrOwner<VkPipelineColorBlendStateCreateInfo>? _processedBlendState;
     private VkRenderPass _otherPass;
     private VkPipeline _otherPipeline;
     private bool _disposed;
     private bool _failed;
+    internal bool Available => !_failed && !_disposed;
 
-    private PanelBackgroundBlur(RendererContext context)
+    private PanelBackgroundBlur(RendererContext context, PanelBlurProcess? process)
         : base("KSI2 panel background blur", context, context.RenderPassInfo,
             [ModLibrary.Get<ShaderReference>("KSI2PanelBlurVert"),
              ModLibrary.Get<ShaderReference>("KSI2PanelBlurFrag")])
     {
-        var device = context.Renderer.Device;
-        VkDescriptorPoolSize poolSize = new()
+        _process = process;
+        try
         {
-            Type = VkDescriptorType.CombinedImageSampler,
-            DescriptorCount = MasksPerDescriptorPool * 2
-        };
-        DescriptorPool = device.CreateDescriptorPool(new DescriptorPoolEx.CreateInfo
-        {
-            MaxSets = MasksPerDescriptorPool,
-            PoolSizes = new Span<VkDescriptorPoolSize>(ref poolSize)
-        }, null);
-        _activeDescriptorPool = DescriptorPool;
-        Span<VkDescriptorSetLayoutBinding> bindings = stackalloc VkDescriptorSetLayoutBinding[2];
-        for (var i = 0; i < 2; i++)
-            bindings[i] = new VkDescriptorSetLayoutBinding
+            var device = context.Renderer.Device;
+            KsaGraphicsLifetime.EnsureInstalled(device);
+            if (process is not null)
             {
-                Binding = i,
-                DescriptorType = VkDescriptorType.CombinedImageSampler,
-                DescriptorCount = 1,
-                StageFlags = VkShaderStageFlags.FragmentBit
+                // RGB is scene-corrected and premultiplied in the shader. Alpha uses KSP2's captured factors.
+                _processedBlendAttachment = new(new VkPipelineColorBlendAttachmentState
+                {
+                    BlendEnable = true,
+                    SrcColorBlendFactor = VkBlendFactor.One,
+                    DstColorBlendFactor = VkBlendFactor.OneMinusSrcAlpha,
+                    ColorBlendOp = VkBlendOp.Add,
+                    SrcAlphaBlendFactor = VkBlendFactor.SrcAlpha,
+                    DstAlphaBlendFactor = VkBlendFactor.OneMinusSrcAlpha,
+                    AlphaBlendOp = VkBlendOp.Add,
+                    ColorWriteMask = VkColorComponentFlags.RBit | VkColorComponentFlags.GBit
+                        | VkColorComponentFlags.BBit | VkColorComponentFlags.ABit
+                });
+                _processedBlendState = new(new VkPipelineColorBlendStateCreateInfo
+                {
+                    AttachmentCount = 1,
+                    Attachments = _processedBlendAttachment
+                });
+            }
+            VkDescriptorPoolSize poolSize = new()
+            {
+                Type = VkDescriptorType.CombinedImageSampler,
+                DescriptorCount = MasksPerDescriptorPool * 6
             };
-        _layout = device.CreateDescriptorSetLayout(new DescriptorSetLayoutEx.CreateInfo
+            DescriptorPool = device.CreateDescriptorPool(new DescriptorPoolEx.CreateInfo
+            {
+                MaxSets = MasksPerDescriptorPool * 2,
+                PoolSizes = new Span<VkDescriptorPoolSize>(ref poolSize)
+            }, null);
+            _activeDescriptorPool = DescriptorPool;
+            Span<VkDescriptorSetLayoutBinding> bindings = stackalloc VkDescriptorSetLayoutBinding[3];
+            for (var i = 0; i < bindings.Length; i++)
+                bindings[i] = new VkDescriptorSetLayoutBinding
+                {
+                    Binding = i,
+                    DescriptorType = VkDescriptorType.CombinedImageSampler,
+                    DescriptorCount = 1,
+                    StageFlags = VkShaderStageFlags.FragmentBit
+                };
+            _layout = device.CreateDescriptorSetLayout(new DescriptorSetLayoutEx.CreateInfo
+            {
+                Bindings = bindings
+            }, null);
+            VkDescriptorSetLayout setLayout = _layout;
+            VkPushConstantRange pushRange = new()
+            {
+                StageFlags = VkShaderStageFlags.VertexBit | VkShaderStageFlags.FragmentBit,
+                Offset = ByteSize.Zero,
+                Size = ByteSize.Of<PanelData>()
+            };
+            PipelineLayout = device.CreatePipelineLayout(new Span<VkDescriptorSetLayout>(ref setLayout),
+                new Span<VkPushConstantRange>(ref pushRange), null);
+            RebuildFrameResources();
+            KsaGraphicsLifetime.Register(Release);
+        }
+        catch (Exception ex)
         {
-            Bindings = bindings
-        }, null);
-        VkDescriptorSetLayout setLayout = _layout;
-        VkPushConstantRange pushRange = new()
-        {
-            StageFlags = VkShaderStageFlags.VertexBit | VkShaderStageFlags.FragmentBit,
-            Offset = ByteSize.Zero,
-            Size = ByteSize.Of<PanelData>()
-        };
-        PipelineLayout = device.CreatePipelineLayout(new Span<VkDescriptorSetLayout>(ref setLayout),
-            new Span<VkPushConstantRange>(ref pushRange), null);
-        RebuildFrameResources();
+            KsaGraphicsLifetime.ObserveFailure(ex);
+            if (KsaGraphicsLifetime.CanUse(Renderer.Device))
+            {
+                base.Dispose();
+                if (_layout is not null) Renderer.Device.DestroyDescriptorSetLayout(_layout, null);
+            }
+            _processedBlendState?.Dispose();
+            _processedBlendAttachment?.Dispose();
+            throw;
+        }
     }
 
-    internal static PanelBackgroundBlur? Create()
+    internal static PanelBackgroundBlur? Create(PanelBlurProcess? process = null)
     {
         try
         {
             if (ModLibrary.Get<ShaderReference>("KSI2PanelBlurVert").Shader is null ||
                 ModLibrary.Get<ShaderReference>("KSI2PanelBlurFrag").Shader is null)
                 throw new InvalidOperationException("Blur shaders were not loaded.");
-            return new PanelBackgroundBlur(KSA.Program.GetGaugeContext());
+            return new PanelBackgroundBlur(KSA.Program.GetGaugeContext(), process);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -113,21 +164,30 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
 
     internal bool Queue(ImDrawListPtr draw, float2 min, float2 max, TextureReference mask,
         float opacity, bool flipVertically = false, PanelMaskNineSlice? maskNineSlice = null,
-        bool rectangularMask = false)
+        bool rectangularMask = false, uint solidColor = 0xFD190B03u, float4? maskUvRect = null)
     {
         try
         {
-            if (_failed) return false;
-            var scene = KSA.Program.OffscreenTarget?.ColorImage;
-            if (scene is null) return false;
+            if (_failed || _disposed || !KsaGraphicsLifetime.CanUse(Renderer.Device)) return false;
+            var fallback = KSA.Program.OffscreenTarget?.ColorImage;
+            var scene = _process is null ? fallback : _process.Output;
+            var compositionScene = _process is null ? fallback : _process.SceneColor;
+            if (scene is null || fallback is null || compositionScene is null) return false;
             if (scene.Width <= 0 || scene.Height <= 0 || mask.ImageView.IsNull()) return false;
-            if (_sceneView.VkHandle != scene.ImageView.VkHandle)
+            if (_sceneView.VkHandle != scene.ImageView.VkHandle
+                || _fallbackSceneView.VkHandle != fallback.ImageView.VkHandle
+                || _compositionSceneView.VkHandle != compositionScene.ImageView.VkHandle)
             {
                 // Descriptor changes must not race the prior frame's command buffer.
-                Renderer.Device.WaitIdle();
+                if (!KsaGraphicsLifetime.TryWaitIdle(Renderer.Device)) return false;
                 _sceneView = scene.ImageView;
+                _fallbackSceneView = fallback.ImageView;
+                _compositionSceneView = compositionScene.ImageView;
                 foreach (var entry in _masks.Values)
-                    UpdateImages(_sceneView, entry.View, entry.Set);
+                {
+                    UpdateImages(_sceneView, entry.View, _compositionSceneView, entry.Set);
+                    if (_process is not null) UpdateImages(_fallbackSceneView, entry.View, _fallbackSceneView, entry.FallbackSet);
+                }
             }
             if (!_masks.TryGetValue(mask, out var maskDescriptor))
             {
@@ -140,17 +200,20 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
                 maskDescriptor = new MaskDescriptor
                 {
                     View = mask.ImageView,
-                    Set = Renderer.Device.AllocateDescriptorSet(_activeDescriptorPool, _layout)
+                    Set = Renderer.Device.AllocateDescriptorSet(_activeDescriptorPool, _layout),
+                    FallbackSet = _process is null ? default : Renderer.Device.AllocateDescriptorSet(_activeDescriptorPool, _layout)
                 };
-                UpdateImages(_sceneView, maskDescriptor.View, maskDescriptor.Set);
+                UpdateImages(_sceneView, maskDescriptor.View, _compositionSceneView, maskDescriptor.Set);
+                if (_process is not null) UpdateImages(_fallbackSceneView, maskDescriptor.View, _fallbackSceneView, maskDescriptor.FallbackSet);
                 _masks.Add(mask, maskDescriptor);
                 _activePoolMaskCount++;
             }
             else if (maskDescriptor.View.VkHandle != mask.ImageView.VkHandle)
             {
-                Renderer.Device.WaitIdle();
+                if (!KsaGraphicsLifetime.TryWaitIdle(Renderer.Device)) return false;
                 maskDescriptor.View = mask.ImageView;
-                UpdateImages(_sceneView, maskDescriptor.View, maskDescriptor.Set);
+                UpdateImages(_sceneView, maskDescriptor.View, _compositionSceneView, maskDescriptor.Set);
+                if (_process is not null) UpdateImages(_fallbackSceneView, maskDescriptor.View, _fallbackSceneView, maskDescriptor.FallbackSet);
             }
             var viewport = ImGui.GetMainViewport();
             var data = new PanelDrawData
@@ -166,9 +229,14 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
                         : maskNineSlice is { } slice
                         ? new float4(slice.SourceCornerFraction, slice.DestinationCornerFractionX,
                             slice.DestinationCornerFractionY, 1f)
-                        : float4.Zero
+                        : float4.Zero,
+                    Fill = new float4((solidColor & 255) / 255f, ((solidColor >> 8) & 255) / 255f,
+                        ((solidColor >> 16) & 255) / 255f, (solidColor >> 24) / 255f),
+                    Method = new float4(_process is null ? 0 : 1, _process is null ? 0 : 1, 0, 0),
+                    MaskUvRect = maskUvRect ?? new float4(0, 0, 1, 1)
                 },
-                Descriptor = maskDescriptor.Set
+                Descriptor = maskDescriptor.Set,
+                FallbackDescriptor = maskDescriptor.FallbackSet
             };
             var callbackData = (PanelDrawData*)NativeMemory.Alloc((nuint)sizeof(PanelDrawData));
             if (callbackData is null) return false;
@@ -180,6 +248,7 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
+            KsaGraphicsLifetime.ObserveFailure(ex);
             Console.Error.WriteLine($"KSI2: panel blur draw unavailable: {ex.Message}");
             _failed = true;
             return false;
@@ -191,11 +260,11 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
         VkDescriptorPoolSize poolSize = new()
         {
             Type = VkDescriptorType.CombinedImageSampler,
-            DescriptorCount = MasksPerDescriptorPool * 2
+            DescriptorCount = MasksPerDescriptorPool * 6
         };
         return Renderer.Device.CreateDescriptorPool(new DescriptorPoolEx.CreateInfo
         {
-            MaxSets = MasksPerDescriptorPool,
+            MaxSets = MasksPerDescriptorPool * 2,
             PoolSizes = new Span<VkDescriptorPoolSize>(ref poolSize)
         }, null);
     }
@@ -215,9 +284,10 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
         NativeMemory.Free((void*)pointer);
     }
 
-    private void UpdateImages(VkImageView sceneView, VkImageView maskView, VkDescriptorSet descriptorSet)
+    private void UpdateImages(VkImageView sceneView, VkImageView maskView, VkImageView compositionView,
+        VkDescriptorSet descriptorSet)
     {
-        Span<VkDescriptorImageInfo> images = stackalloc VkDescriptorImageInfo[2];
+        Span<VkDescriptorImageInfo> images = stackalloc VkDescriptorImageInfo[3];
         images[0] = new VkDescriptorImageInfo
         {
             ImageView = sceneView,
@@ -230,9 +300,15 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
             ImageLayout = VkImageLayout.ShaderReadOnlyOptimal,
             Sampler = KSA.Program.LinearClampedSampler
         };
-        Span<VkWriteDescriptorSet> writes = stackalloc VkWriteDescriptorSet[2];
+        images[2] = new VkDescriptorImageInfo
+        {
+            ImageView = compositionView,
+            ImageLayout = VkImageLayout.ShaderReadOnlyOptimal,
+            Sampler = KSA.Program.LinearClampedSampler
+        };
+        Span<VkWriteDescriptorSet> writes = stackalloc VkWriteDescriptorSet[3];
         fixed (VkDescriptorImageInfo* imagePtr = images)
-            for (var i = 0; i < 2; i++)
+            for (var i = 0; i < writes.Length; i++)
                 writes[i] = new VkWriteDescriptorSet
                 {
                     DescriptorType = VkDescriptorType.CombinedImageSampler,
@@ -253,8 +329,8 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
         {
             var state = (ImGuiBackendVulkanImpl.RenderState*)ImGui.GetPlatformIO().Renderer_RenderState;
             var target = KSA.Program.OffscreenTarget;
-            var scene = target?.ColorImage;
-            if (state is null || scene is null || scene.ImageView.VkHandle != current._sceneView.VkHandle)
+            var fallback = target?.ColorImage;
+            if (state is null || fallback is null || fallback.ImageView.VkHandle != current._fallbackSceneView.VkHandle)
                 return;
             var clipMin = float2.Max((cmd->ClipRect.XY - state->ClipOffset) * state->ClipScale, float2.Zero);
             var clipMax = float2.Min((cmd->ClipRect.ZW - state->ClipOffset) * state->ClipScale, state->FramebufferSize);
@@ -269,9 +345,16 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
             command.BindPipeline(VkPipelineBindPoint.Graphics, current.GetPipeline(state->RenderPass));
             var data = *(PanelDrawData*)callbackData;
             VkDescriptorSet descriptor = data.Descriptor;
+            var panel = data.Panel;
+            if (current._process is { } process && (!process.Ready
+                || process.Output?.ImageView.VkHandle != current._sceneView.VkHandle))
+            {
+                // Bind the valid HDR image for a solid draw; never bind an unwritten blur target.
+                descriptor = data.FallbackDescriptor;
+                panel.Method.X = 2;
+            }
             command.BindDescriptorSets(VkPipelineBindPoint.Graphics, current.PipelineLayout, 0,
                 new Span<VkDescriptorSet>(ref descriptor), default);
-            var panel = data.Panel;
             panel.Scene.X = 1f / state->FramebufferSize.X;
             panel.Scene.Y = 1f / state->FramebufferSize.Y;
             command.PushConstants(current.PipelineLayout,
@@ -280,6 +363,7 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
         }
         catch (Exception ex)
         {
+            KsaGraphicsLifetime.ObserveFailure(ex);
             Console.Error.WriteLine($"KSI2: panel blur callback failed: {ex.Message}");
             current._failed = true;
         }
@@ -298,7 +382,7 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
             CreatePipeline(pass, VkPrimitiveTopology.TriangleStrip, VkCullModeFlags.None,
                 VkFrontFace.CounterClockwise, VkPolygonMode.Fill,
                 RenderingPresets.ReverseZDepthStencil.NoDepthTest,
-                RenderingPresets.BlendState.BlendColorAlphaOver, out _otherPipeline);
+                BlendState, out _otherPipeline);
             _otherPass = pass;
         }
         return _otherPipeline;
@@ -306,26 +390,41 @@ internal sealed unsafe class PanelBackgroundBlur : RenderTechnique
 
     protected override VertexInput? MakeVertexInput() => null;
 
+    private PtrOwner<VkPipelineColorBlendStateCreateInfo> BlendState =>
+        _processedBlendState ?? RenderingPresets.BlendState.BlendColorAlphaOver;
+
     protected override void OnRebuildFrameResources()
     {
         CreatePipeline(VkPrimitiveTopology.TriangleStrip, VkCullModeFlags.None,
             VkFrontFace.CounterClockwise, VkPolygonMode.Fill,
             RenderingPresets.ReverseZDepthStencil.NoDepthTest,
-            RenderingPresets.BlendState.BlendColorAlphaOver, out Pipeline);
+            BlendState, out Pipeline);
     }
 
     public override void Dispose()
     {
         if (_disposed) return;
+        Release(KsaGraphicsLifetime.TryWaitIdle(Renderer.Device));
+    }
+
+    private void Release(bool canUseDevice)
+    {
+        if (_disposed) return;
         _disposed = true;
-        Renderer.Device.WaitIdle();
+        KsaGraphicsLifetime.Unregister(Release);
         BeginFrame();
-        foreach (var pool in _additionalDescriptorPools)
-            Renderer.Device.DestroyDescriptorPool(pool, null);
-        _additionalDescriptorPools.Clear();
-        if (!_otherPipeline.IsNull()) Renderer.Device.DestroyPipeline(_otherPipeline, null);
-        base.Dispose();
-        Renderer.Device.DestroyDescriptorSetLayout(_layout, null);
         if (ReferenceEquals(_active, this)) _active = null;
+        if (canUseDevice)
+        {
+            foreach (var pool in _additionalDescriptorPools)
+                Renderer.Device.DestroyDescriptorPool(pool, null);
+            if (!_otherPipeline.IsNull()) Renderer.Device.DestroyPipeline(_otherPipeline, null);
+            base.Dispose();
+            Renderer.Device.DestroyDescriptorSetLayout(_layout, null);
+        }
+        _additionalDescriptorPools.Clear();
+        _masks.Clear();
+        _processedBlendState?.Dispose();
+        _processedBlendAttachment?.Dispose();
     }
 }

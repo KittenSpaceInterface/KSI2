@@ -33,7 +33,7 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
     private float2 Align(float2 point)
         => NavballPixelAlignment.Snap(point);
 
-    internal void Draw(Point widgetOrigin, float scale, PanelBackgroundBlur? blur, float opacity)
+    internal void Draw(Point widgetOrigin, float scale, PanelBackgroundRenderer background)
     {
         if (!KSA.Program.DrawUI || !KsaAtmosphereSource.TryRead(out var gauge)) return;
         if (Assets.Any(asset => !_textures.TryGetValue(asset, out var texture) || texture.ImguiTextureRef is null)) return;
@@ -42,10 +42,9 @@ internal sealed unsafe class AtmosphericIndicatorRenderer
         var origin = new float2(widgetOrigin.X, widgetOrigin.Y);
         var draw = ImGui.GetWindowDrawList();
 
-        var blurQueued = blur?.Queue(draw, Align(origin),
+        background.Draw(draw, Align(origin),
             Align(origin + new float2(85f * scale, 140f * scale)),
-            _textures["KSI2AtmoFill"], opacity) == true;
-        if (!blurQueued) DrawLayer("KSI2AtmoFill", 0xFD190B03u);
+            _textures["KSI2AtmoFill"], 0xFD190B03u);
         DrawLayer("KSI2AtmoLayers", 0xFFF2F2F2u);
         DrawLayer("KSI2AtmoBorder", 0xFF662B29u);
         DrawLayer("KSI2AtmoBracket", 0xFFCC5753u);

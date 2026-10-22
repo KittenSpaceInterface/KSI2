@@ -26,9 +26,11 @@ internal sealed class PilotSettingsController : IDisposable
         var key = selected is null ? null : $"{selected.Id}|{selected.MetaData.Created.Ticks}";
         return _hudLayouts.Select(key, selected?.Id == "KSI2 Default");
     }
-    internal bool BlurPanelBackgrounds => _blurCrashGuard.Enabled;
+    internal PanelBackgroundStyle BackgroundStyle => _blurCrashGuard.Style;
+    internal string? BackgroundStatus { get; set; }
     internal bool OptionsResetAfterKsaVersionChange { get; }
-    internal float BlurOpacity => _settings.BlurOpacityTicks / 400f;
+    internal float BackgroundOpacity => (BackgroundStyle == PanelBackgroundStyle.Ksp2Blur
+        ? _settings.Ksp2BlurOpacityTicks : _settings.BlurOpacityTicks) / 400f;
     internal PilotSettingsController()
     {
         _hudLayouts = new PilotHudLayoutStates(_settings, _settings.Save);
@@ -36,7 +38,8 @@ internal sealed class PilotSettingsController : IDisposable
         if (!string.IsNullOrEmpty(_settings.LastKsaVersion)
             && !string.Equals(_settings.LastKsaVersion, currentVersion, StringComparison.Ordinal))
         {
-            _settings.BlurPanelBackgrounds = false;
+            _settings.BackgroundStyle = PanelBackgroundStyle.Solid;
+            _settings.BlurPanelBackgrounds = null;
             OptionsResetAfterKsaVersionChange = true;
         }
         _settings.LastKsaVersion = currentVersion;
@@ -133,6 +136,11 @@ internal sealed class PilotSettingsController : IDisposable
                         ConsoleStyle.EndBody();
                     }
                 }
+                else
+                {
+                    // BeginWindow positions the body cursor even when Close was clicked.
+                    ImGui.Dummy(float2.Zero);
+                }
             }
             finally { ConsoleStyle.EndWindow(); }
         }
@@ -145,24 +153,52 @@ internal sealed class PilotSettingsController : IDisposable
         ImGui.TextWrapped("Panel blur is checked for five seconds after it is enabled.");
         if (OptionsResetAfterKsaVersionChange)
             ImGui.TextWrapped("Experimental options were disabled because the KSA version changed. Re-enable them to test this version.");
-        var blurPanelBackgrounds = BlurPanelBackgrounds;
-        ConsoleWidgets.BeginRow("BLUR PANEL BACKGROUNDS");
-        var blurChanged = ConsoleWidgets.Checkbox("ksi2-blur-panels", ref blurPanelBackgrounds,
-            pending: false);
+        ConsoleWidgets.BeginRow("BACKGROUND STYLE");
+        if (ConsoleWidgets.BeginComboControl("ksi2-background-style",
+            PanelBackgroundStyles.Label(BackgroundStyle), pending: false))
+        {
+            foreach (var style in Enum.GetValues<PanelBackgroundStyle>())
+                if (ImGui.Selectable(PanelBackgroundStyles.Label(style), BackgroundStyle == style))
+                    _blurCrashGuard.SetStyle(style);
+            ConsoleWidgets.EndComboControl();
+        }
         ConsoleWidgets.EndRow();
-        if (blurChanged)
-            _blurCrashGuard.SetEnabled(blurPanelBackgrounds);
-        if (BlurPanelBackgrounds)
+        if (BackgroundStyle == PanelBackgroundStyle.Solid)
+        {
+            ConsoleWidgets.BeginRow("BACKGROUND COLOR");
+            var color = ImGui.ColorConvertU32ToFloat4(_settings.SolidBackgroundColor).XYZ;
+            var resetWidth = ConsoleWidgets.ButtonWidth("RESET");
+            ImGui.SetNextItemWidth(MathF.Max(1f,
+                ConsoleWidgets.RowControlWidth - resetWidth - ImGui.GetStyle().ItemSpacing.X));
+            if (ImGui.ColorEdit3("##KSI2SolidBackgroundColor", ref color,
+                ImGuiColorEditFlags.DisplayHex | ImGuiColorEditFlags.NoOptions))
+            {
+                _settings.SolidBackgroundColor = ImGui.ColorConvertFloat4ToU32(new float4(color, 1f));
+                Save();
+            }
+            ImGui.SameLine();
+            if (ConsoleWidgets.Button("RESET", "KSI2SolidBackgroundColorReset", float2.Zero))
+            {
+                _settings.SolidBackgroundColor = PilotUiSettings.DefaultSolidBackgroundColor;
+                Save();
+            }
+            ConsoleWidgets.EndRow();
+        }
+        else
         {
             ConsoleWidgets.BeginRow("BLUR OPACITY");
-            var opacityPercent = _settings.BlurOpacityTicks / 4f;
+            var opacityPercent = BackgroundOpacity * 100f;
             ImGui.SetNextItemWidth(ConsoleWidgets.RowControlWidth);
-            if (ImGui.SliderFloat("##KSI2BlurOpacity", ref opacityPercent, 0f, 100f,
-                "%.1f%%"))
-                _settings.BlurOpacityTicks = Math.Clamp((int)MathF.Round(opacityPercent * 4f), 0, 400);
+            if (ImGui.SliderFloat("##KSI2BlurOpacity", ref opacityPercent, 0f, 100f, "%.1f%%"))
+            {
+                var ticks = Math.Clamp((int)MathF.Round(opacityPercent * 4f), 0, 400);
+                if (BackgroundStyle == PanelBackgroundStyle.Ksp2Blur) _settings.Ksp2BlurOpacityTicks = ticks;
+                else _settings.BlurOpacityTicks = ticks;
+            }
             if (ImGui.IsItemDeactivatedAfterEdit()) Save();
             ConsoleWidgets.EndRow();
         }
+        if (BackgroundStatus is { } status) ImGui.TextWrapped(status);
         if (_blurCrashGuard.RecoveredAfterCrash)
             ImGui.TextWrapped("Panel blur was disabled because its five-second activation check did not complete.");
         if (_blurCrashGuard.Error is { } blurError) ImGui.TextWrapped(blurError);

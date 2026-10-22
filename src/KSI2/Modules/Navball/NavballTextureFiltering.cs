@@ -13,19 +13,24 @@ internal sealed unsafe class NavballTextureFiltering : IDisposable
     private VkSampler _sampler;
     private readonly Dictionary<TextureReference, ImTextureRef> _textures = new();
     private bool _unavailable;
+    private bool _disposed;
+    private Device? _device;
 
     internal ImTextureRef GetTexture(TextureReference source)
     {
         if (_textures.TryGetValue(source, out var texture)) return texture;
-        if (_unavailable) return source.ImguiTextureRef!.Value;
+        if (_unavailable || _disposed) return source.ImguiTextureRef!.Value;
         var renderer = KSA.Program.GetRenderer();
         try
         {
             if (!_sampler.IsNotNull())
             {
+                KsaGraphicsLifetime.EnsureInstalled(renderer.Device);
                 var settings = CreateSamplerSettings(renderer.GetFeatures().SamplerAnisotropy,
                     renderer.GetLimits().MaxSamplerAnisotropy);
                 _sampler = renderer.Device.CreateSampler(in settings, null);
+                _device = renderer.Device;
+                KsaGraphicsLifetime.Register(Release);
                 Console.WriteLine($"KSI2: navball mip filtering enabled, anisotropy {settings.MaxAnisotropy}x.");
             }
             texture = ImGuiBackend.Vulkan.AddTexture(_sampler, source.ImageView);
@@ -34,6 +39,7 @@ internal sealed unsafe class NavballTextureFiltering : IDisposable
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
+            KsaGraphicsLifetime.ObserveFailure(ex);
             _unavailable = true;
             Console.Error.WriteLine($"KSI2: navball filtering unavailable; using UI sampler: {ex.Message}");
             return source.ImguiTextureRef!.Value;
@@ -50,13 +56,22 @@ internal sealed unsafe class NavballTextureFiltering : IDisposable
 
     public void Dispose()
     {
-        if (_textures.Count == 0 && !_sampler.IsNotNull()) return;
-        var device = KSA.Program.GetRenderer().Device;
-        // Submitted ImGui frames can still reference our descriptor and sampler.
-        device.WaitIdle();
-        foreach (var texture in _textures.Values) ImGuiBackend.Vulkan.RemoveTexture(texture);
-        if (_sampler.IsNotNull()) device.DestroySampler(_sampler, null);
+        if (_disposed) return;
+        Release(_device is not null && KsaGraphicsLifetime.TryWaitIdle(_device));
+    }
+
+    private void Release(bool canUseDevice)
+    {
+        if (_disposed) return;
+        _disposed = true;
+        KsaGraphicsLifetime.Unregister(Release);
+        if (canUseDevice && _device is not null)
+        {
+            foreach (var texture in _textures.Values) ImGuiBackend.Vulkan.RemoveTexture(texture);
+            if (_sampler.IsNotNull()) _device.DestroySampler(_sampler, null);
+        }
         _textures.Clear();
         _sampler = default;
+        _device = null;
     }
 }

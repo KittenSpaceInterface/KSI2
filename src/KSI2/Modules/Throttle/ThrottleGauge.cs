@@ -46,7 +46,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
     internal void SetPercentGlyphTexture(TextureReference texture) => _percentGlyphTexture = texture;
     internal void SetFillTexture(TextureReference texture) => _fillTexture = texture;
 
-    internal void Draw(ThrottleBounds layout, PanelBackgroundBlur? blur, float blurOpacity,
+    internal void Draw(ThrottleBounds layout, PanelBackgroundRenderer background,
         bool allowInteraction)
     {
         if (_disposed || ImGui.GetCurrentContext().IsNull() || !KSA.Program.DrawUI)
@@ -58,7 +58,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         var throttle = _uiState.Snapshot?.Value;
         if (throttle is null) { _mouseControl.Cancel(); return; }
         EnsureArtwork();
-        if (_artwork is not null) DrawGauge(throttle.Value, layout, blur, blurOpacity,
+        if (_artwork is not null) DrawGauge(throttle.Value, layout, background,
             allowInteraction);
         else _mouseControl.Cancel();
     }
@@ -84,8 +84,7 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         }
     }
 
-    private void DrawGauge(float throttle, ThrottleBounds layout, PanelBackgroundBlur? blur,
-        float blurOpacity, bool allowInteraction)
+    private void DrawGauge(float throttle, ThrottleBounds layout, PanelBackgroundRenderer background, bool allowInteraction)
     {
         var scale = layout.Scale;
         var frame = layout.Position;
@@ -96,11 +95,11 @@ internal sealed unsafe class ThrottleGauge : IDisposable
         var alignedOrigin = NavballPixelAlignment.Snap(new float2(left, top));
         var origin = new Point(alignedOrigin.X, alignedOrigin.Y);
         var art = _artwork!;
-        var blurQueued = _bgTexture is { } mask &&
-            blur?.Queue(draw, alignedOrigin,
+        if (_bgTexture is { } mask)
+            background.Draw(draw, alignedOrigin,
                 NavballPixelAlignment.Snap(alignedOrigin + new float2(ArtworkWidth * scale, 290f * scale)),
-                mask, blurOpacity) == true;
-        if (!blurQueued) DrawStaticLayer(draw, _bgTexture, art, "Background", origin, scale, 0xFD190B03u);
+                mask, 0xFD190B03u);
+        else DrawStaticLayer(draw, null, art, "Background", origin, scale, 0xFD190B03u);
         DrawStaticLayer(draw, _barsTexture, art, "Bars", origin, scale, 0xFF99413Eu);
         DrawStaticLayer(draw, _borderTexture, art, "Border", origin, scale, 0xFF662B29u);
         DrawStaticLayer(draw, _bracketTexture, art, "Bracket", origin, scale, 0xFFFF6D69u);

@@ -51,7 +51,7 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
     private float2 Align(float2 point)
         => NavballPixelAlignment.Snap(point);
 
-    internal void Draw(Point widgetOrigin, float scale, PanelBackgroundBlur? blur, float opacity)
+    internal void Draw(Point widgetOrigin, float scale, PanelBackgroundRenderer background)
     {
         if (!KSA.Program.DrawUI) return;
         if (_configuration.IsOpen) DrawConfigurationWindow();
@@ -68,11 +68,10 @@ internal sealed unsafe class VerticalSpeedIndicatorRenderer
         var origin = new float2(widgetOrigin.X, widgetOrigin.Y);
         var draw = ImGui.GetWindowDrawList();
 
-        var blurQueued = blur?.Queue(draw, Align(origin),
+        background.Draw(draw, Align(origin),
             Align(origin + new float2(VerticalSpeedIndicatorGeometry.WidgetWidth * scale,
                 VerticalSpeedIndicatorGeometry.WidgetHeight * scale)),
-            _textures["KSI2AtmoFill"], opacity, flipVertically: true) == true;
-        if (!blurQueued) DrawLayer("KSI2AtmoFill", 0xFD190B03u, flipVertically: true);
+            _textures["KSI2AtmoFill"], 0xFD190B03u, flipVertically: true);
         DrawLayer("KSI2VertSpeedColors", 0xFFFFFFFFu);
         DrawLayer("KSI2VertSpeedNumbers", 0xFFFF6D69u);
         DrawLayer("KSI2AtmoBorder", 0x33FF6C68u, flipVertically: true);

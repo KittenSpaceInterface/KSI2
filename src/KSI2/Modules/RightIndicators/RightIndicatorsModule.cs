@@ -17,9 +17,9 @@ internal sealed class RightIndicatorsModule : IPilotUiModule
         Layers =
         [
             new(AtmosphereId, PilotLayerOrder.Atmosphere, (l,c) => _atmosphericIndicator.Draw(l.Component(AtmosphereId).Position,
-                l.Component(AtmosphereId).Scale, c.Blur, c.Opacity)),
+                l.Component(AtmosphereId).Scale, c.Background)),
             new(VerticalSpeedId, PilotLayerOrder.VerticalSpeed, (l,c) => _verticalSpeedIndicator.Draw(l.Component(VerticalSpeedId).Position,
-                l.Component(VerticalSpeedId).Scale, c.Blur, c.Opacity))
+                l.Component(VerticalSpeedId).Scale, c.Background))
         ];
     }
     public void Initialize(TextureRegistry assets)
