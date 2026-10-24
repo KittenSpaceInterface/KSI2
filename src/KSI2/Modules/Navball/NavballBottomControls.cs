@@ -155,7 +155,8 @@ internal sealed unsafe class NavballBottomControls
             var pressed = interactive && (clicked || visual.Pressed) &&
                 ImGui.IsMouseDown(ImGuiMouseButton.Left);
             var input = new ButtonInput(clicked, interactive, pressed);
-            UpdateInput(visual, input, active);
+            UpdateInput(visual, input, active,
+                new float2(topLeft.X + size.X * .5f, topLeft.Y + size.Y * .5f));
             UpdateColors(visual, active, dt, disabled);
             DrawToggle(artworkDraw, label, topLeft, size.X / 48f, visual);
             if (visible)
@@ -178,12 +179,14 @@ internal sealed unsafe class NavballBottomControls
         _sasVisual.Hovered = _sasVisual.Pressed = false;
     }
 
-    private static void UpdateInput(ToggleVisual visual, ButtonInput input, bool active)
+    private static void UpdateInput(ToggleVisual visual, ButtonInput input, bool active,
+        float2 screenCenter)
     {
         if (input.Hovered && !visual.Hovered)
-            FlightUiSounds.Play("KSI2SasRcsHover");
+            FlightUiSounds.Play("KSI2SasRcsHover", screenCenter);
         if (input.Pressed && !visual.Pressed)
-            FlightUiSounds.Play(active ? "KSI2SasRcsDisable" : "KSI2SasRcsEnable");
+            FlightUiSounds.Play(active ? "KSI2SasRcsDisable" : "KSI2SasRcsEnable",
+                screenCenter);
         visual.Hovered = input.Hovered;
         visual.Pressed = input.Pressed;
     }

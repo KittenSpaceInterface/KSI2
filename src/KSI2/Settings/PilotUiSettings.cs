@@ -58,6 +58,7 @@ internal sealed class PilotUiSettings
     public bool MoveAllElements { get; set; }
     public bool MouseThrottleControl { get; set; } = true;
     public bool ImprovedAltitudeDial { get; set; } = true;
+    public bool UseSourceUiAudio { get; set; } = true;
     // Read old settings without writing the retired checkbox into new files.
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? BlurPanelBackgrounds { get; set; }

@@ -75,11 +75,12 @@ internal sealed unsafe class SpeedReadoutRenderer
             if (!visible) { _hovered = false; return; }
             ImGui.Dummy(size);
             var hovered = allowInteraction && ImGui.IsWindowHovered();
-            if (hovered && !_hovered) FlightUiSounds.Play("KSI2SpeedModeHover");
+            var soundCenter = new float2(origin.X + size.X * .5f, origin.Y + size.Y * .5f);
+            if (hovered && !_hovered) FlightUiSounds.Play("KSI2SpeedModeHover", soundCenter);
             _hovered = hovered;
             if (hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
             {
-                FlightUiSounds.Play("KSI2SpeedModeSelect");
+                FlightUiSounds.Play("KSI2SpeedModeSelect", soundCenter);
                 var selected = _modeState.SelectNext(vehicle.Target is not null);
                 vehicle.SetNavBallFrame(selected switch
                 {

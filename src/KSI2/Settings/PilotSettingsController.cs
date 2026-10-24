@@ -12,6 +12,7 @@ internal sealed class PilotSettingsController : IDisposable
     private readonly PilotHudLayoutStates _hudLayouts;
     private readonly BlurCrashGuard _blurCrashGuard;
     private static PilotSettingsController? _current;
+    internal static bool SourceUiAudioEnabled => _current?._settings.UseSourceUiAudio ?? true;
     private bool _modMenuInstalled;
     private bool _initialized;
     private bool _layoutWindowOpen;
@@ -228,6 +229,19 @@ internal sealed class PilotSettingsController : IDisposable
         if (altitudeChanged)
         {
             _settings.ImprovedAltitudeDial = improvedAltitudeDial;
+            Save();
+        }
+
+        var useSourceUiAudio = _settings.UseSourceUiAudio;
+        ConsoleWidgets.BeginRow("SOURCE UI AUDIO");
+        var sourceAudioChanged = ConsoleWidgets.Checkbox("ksi2-source-ui-audio", ref useSourceUiAudio,
+            pending: false);
+        if (ConsoleWidgets.RowHovered)
+            ConsoleWidgets.Tooltip("Use recreated KSP2 UI sounds. Off plays the recorded sounds for comparison.");
+        ConsoleWidgets.EndRow();
+        if (sourceAudioChanged)
+        {
+            _settings.UseSourceUiAudio = useSourceUiAudio;
             Save();
         }
 

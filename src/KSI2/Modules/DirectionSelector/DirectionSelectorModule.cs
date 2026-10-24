@@ -291,7 +291,6 @@ internal sealed unsafe class DirectionSelectorModule : IPilotUiModule
                 allowInteraction);
             if (!clicked) continue;
 
-            FlightUiSounds.Play("KSI2SasRcsEnable");
             if (ksiDirection != KsiSurfaceDirection.None)
             {
                 (surfaceState ??= _surfaceDirections.GetOrCreateValue(vehicle)).Direction = ksiDirection;

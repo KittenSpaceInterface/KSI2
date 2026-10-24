@@ -24,6 +24,7 @@ public sealed class KSI2Mod
         }
         KsaHudLayoutProfile.UpdatePortraitPosition();
         _gaugeCopies.Sync();
+        SourceUiSounds.Update();
         _ui.Draw(dt);
     }
 
@@ -36,6 +37,7 @@ public sealed class KSI2Mod
         {
             _gaugeCopies.Dispose();
             _ui.Dispose();
+            SourceUiSounds.Dispose();
         }
         finally { KsaGraphicsLifetime.Uninstall(); }
     }

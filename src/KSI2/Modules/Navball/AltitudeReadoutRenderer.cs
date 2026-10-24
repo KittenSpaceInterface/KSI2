@@ -73,11 +73,12 @@ internal sealed unsafe class AltitudeReadoutRenderer
             if (!visible) { _hovered = false; return; }
             ImGui.Dummy(size);
             var hovered = allowInteraction && ImGui.IsWindowHovered();
-            if (hovered && !_hovered) FlightUiSounds.Play("KSI2AltitudeModeHover");
+            var soundCenter = new float2(origin.X + size.X * .5f, origin.Y + size.Y * .5f);
+            if (hovered && !_hovered) FlightUiSounds.Play("KSI2AltitudeModeHover", soundCenter);
             _hovered = hovered;
             if (hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
             {
-                FlightUiSounds.Play("KSI2AltitudeModeSelect");
+                FlightUiSounds.Play("KSI2AltitudeModeSelect", soundCenter);
                 _selectedMode = _selectedMode == AltitudeReadoutMode.SeaLevel
                     ? AltitudeReadoutMode.GroundLevel : AltitudeReadoutMode.SeaLevel;
             }

@@ -170,13 +170,14 @@ internal sealed unsafe class TimeSelectorRenderer : IDisposable
         if (pauseInput.Clicked)
             QueueSpeed(new SimSpeed(paused ? _lastRunningSpeed : 0d));
         var modeInput = Control("Mode", 59, 7, 42, 16);
+        var modeSoundPosition = origin + new float2(80f * scale, 15f * scale);
         if (modeInput.Hovered && !_modeHovered)
-            FlightUiSounds.Play(TimeSelectorSoundIds.ModeHover);
+            FlightUiSounds.Play(TimeSelectorSoundIds.ModeHover, modeSoundPosition);
         _modeHovered = modeInput.Hovered;
         if (modeInput.Clicked)
         {
             FlightUiSounds.Play(Program.DisplayGameTime
-                ? "KSI2TimeUtToMet" : "KSI2TimeMetToUt");
+                ? "KSI2TimeUtToMet" : "KSI2TimeMetToUt", modeSoundPosition);
             Program.DisplayGameTime = !Program.DisplayGameTime;
         }
         for (var i = 0; i < visibleRateCount; i++)
